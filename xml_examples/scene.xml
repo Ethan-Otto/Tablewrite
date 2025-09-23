@@ -1,0 +1,41 @@
+<scene>
+    <metadata>
+        <setting>e.g., Forgotten Realms, Eberron</setting>
+        <time_period>e.g., Medieval, Renaissance</time_period>
+        <image_style>e.g., Photorealistic, Oil Painting, Watercolor</image_style>
+    </metadata>
+    <location>
+        <name>e.g., The Dragon's Lair, Room 1A</name>
+        <description>
+            A general overview of the room or area. This is the main "box text" that a Dungeon Master would read aloud to the players.
+        </description>
+        <environment>
+            Details about the sensory experience of the room: what it smells, sounds, and feels like. e.g., "The air is thick with the smell of sulfur," or "A constant dripping can be heard from the corner of the room."
+        </environment>
+        <entry_points>
+            <entry id="main_entrance">
+                <description>e.g., A large, iron-bound door on the north wall.</description>
+            </entry>
+            <entry id="secret_door">
+                <description>e.g., A hidden door behind a tapestry, requiring a successful perception check to find.</description>
+            </entry>
+        </entry_points>
+        <exits>
+            <exit id="east_passage">
+                <description>e.g., A dark, narrow passage leading to the east.</description>
+            </exit>
+        </exits>
+        <contents>
+            <object id="treasure_chest">
+                <name>Treasure Chest</name>
+                <description>A large, locked wooden chest bound in iron.</description>
+                <position>In the center of the room.</position>
+            </object>
+            <creature id="orc_guard" quantity="2">
+                <name>Orc Guards</name>
+                <description>Two large orcs stand guard near the treasure chest.</description>
+                <disposition>Hostile</disposition>
+            </creature>
+        </contents>
+    </location>
+</scene>

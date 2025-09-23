@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+
+# Environment
+.env
+
+# Output
+output/
+pdf_sections/
+
+# OS-specific
+.DS_Store
+
+# Other
+api_keys.env.rtf
+Lost_Mine_of_Phandelver_Part1.xml
+temp_chunk_*.pdf
