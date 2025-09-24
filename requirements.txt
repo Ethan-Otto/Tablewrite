@@ -1,0 +1,7 @@
+google
+dotenv
+fitz 
+xml
+tempfile
+PIL
+pytesseract
