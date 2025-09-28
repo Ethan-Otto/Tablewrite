@@ -10,7 +10,7 @@ Utilities for turning official Dungeons & Dragons PDFs into structured assets th
 - `pdf_sections/` – cache of manually curated chapter PDFs used as input for the XML step.
 
 ## Setup
-1. Create an isolated environment: `python -m venv .venv && source .venv/bin/activate` (or `conda activate dnd`).
+1. Activate the provided Conda env: `conda activate dnd`.
 2. Install dependencies: `pip install -r requirements.txt`.
 3. Add a `.env` file at the project root with `GeminiImageAPI=<your key>` so the XML step can reach Gemini 2.5.
 4. Drop source PDFs under `data/pdfs/`; the default workflow expects `Lost_Mine_of_Phandelver.pdf`.
@@ -25,4 +25,3 @@ Each run preserves logs, raw model responses, and word-count checks beneath `out
 ## Validation & Next Steps
 - Use `python -m compileall src` after edits to catch syntax errors; add offline-friendly `pytest` suites under `tests/` as the pipeline evolves.
 - The long-term target is an exporter that maps the generated XML into FoundryVTT module manifests. Upcoming work includes normalising the XML schema, attaching media assets, and wiring an actual Foundry package builder.
-
