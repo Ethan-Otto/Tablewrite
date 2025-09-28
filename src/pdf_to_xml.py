@@ -18,6 +18,8 @@ from collections import Counter
 # Project root is two levels up from the script's directory (src -> root)
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+GEMINI_MODEL_NAME = "gemini-2.5-pro"
+
 def configure_gemini():
     """Configures the Gemini API with the API key from environment variables."""
     dotenv_path = os.path.join(PROJECT_ROOT, ".env")
@@ -48,7 +50,7 @@ def verify_and_correct_xml(xml_content: str, original_text: str, chapter_name: s
     """
     print(f"Verifying and correcting XML for chapter: {chapter_name}...")
     try:
-        model = genai.GenerativeModel(model_name="gemini-1.5-pro")
+        model = genai.GenerativeModel(model_name=GEMINI_MODEL_NAME)
         prompt = f"""
         Please verify that the following XML content is a faithful and complete representation of the original text.
         If there are any discrepancies, please correct the XML.
@@ -69,7 +71,9 @@ def verify_and_correct_xml(xml_content: str, original_text: str, chapter_name: s
         
         if response and response.text:
             # Use regex to find the chapter block, stripping everything else
-            match = re.search(r'<{}>.*</{}>'.format(chapter_name, chapter_name), response.text, re.DOTALL)
+            escaped_chapter = re.escape(chapter_name)
+            chapter_pattern = rf'<{escaped_chapter}(?:\s[^>]*)?>.*?</{escaped_chapter}>'
+            match = re.search(chapter_pattern, response.text, re.DOTALL)
             if not match:
                 raise ValueError("Verification failed: Could not find valid XML in response.")
             
@@ -95,7 +99,7 @@ def correct_xml_with_gemini(malformed_xml: str, original_text: str, page_number:
     """
     print(f"Attempting to correct malformed XML for page {page_number} with Gemini...")
     try:
-        model = genai.GenerativeModel(model_name="gemini-1.5-pro")
+        model = genai.GenerativeModel(model_name=GEMINI_MODEL_NAME)
         prompt = f"""
         The following XML is malformed. Please correct it based on the original text provided below.
         Ensure all tags are properly closed and the structure is valid.
@@ -117,7 +121,7 @@ def correct_xml_with_gemini(malformed_xml: str, original_text: str, page_number:
         
         if response and response.text:
             # Use regex to find the <page> block, stripping everything else
-            match = re.search(r'<page>.*</page>', response.text, re.DOTALL)
+            match = re.search(r'<page(?:\s[^>]*)?>.*?</page>', response.text, re.DOTALL)
             if not match:
                 raise ValueError("Correction failed: Could not find valid <page> XML in response.")
             
@@ -142,7 +146,7 @@ def verify_and_correct_xml(xml_content: str, original_text: str, chapter_name: s
     """
     print(f"Verifying and correcting XML for chapter: {chapter_name}...")
     try:
-        model = genai.GenerativeModel(model_name="gemini-1.5-pro")
+        model = genai.GenerativeModel(model_name=GEMINI_MODEL_NAME)
         prompt = f"""
         Please verify that the following XML content is a faithful and complete representation of the original text.
         If there are any discrepancies, please correct the XML.
@@ -163,7 +167,9 @@ def verify_and_correct_xml(xml_content: str, original_text: str, chapter_name: s
         
         if response and response.text:
             # Use regex to find the chapter block, stripping everything else
-            match = re.search(r'<{}>.*</{}>'.format(chapter_name, chapter_name), response.text, re.DOTALL)
+            escaped_chapter = re.escape(chapter_name)
+            chapter_pattern = rf'<{escaped_chapter}(?:\s[^>]*)?>.*?</{escaped_chapter}>'
+            match = re.search(chapter_pattern, response.text, re.DOTALL)
             if not match:
                 raise ValueError("Verification failed: Could not find valid XML in response.")
             
@@ -258,7 +264,7 @@ def get_xml_for_page(page_info: tuple) -> str:
                 print(f"Uploading {display_name} from {temp_pdf_path} (Attempt {attempt + 1})...")
                 uploaded_file = genai.upload_file(path=temp_pdf_path, display_name=display_name)
                 
-                model = genai.GenerativeModel(model_name="gemini-1.5-pro")
+                model = genai.GenerativeModel(model_name=GEMINI_MODEL_NAME)
                 
                 prompt = """
                 You are a highly skilled document analyst. Your task is to convert the provided Dungeons & Dragons module PDF page into a well-structured XML format.
@@ -289,7 +295,7 @@ def get_xml_for_page(page_info: tuple) -> str:
                         f.write(raw_response_text)
 
                     # Use regex to find the <page> block, stripping everything else
-                    match = re.search(r'<page>.*</page>', raw_response_text, re.DOTALL)
+                    match = re.search(r'<page(?:\s[^>]*)?>.*?</page>', raw_response_text, re.DOTALL)
                     if not match:
                         raise ValueError("Could not find valid <page> XML in response.")
                     
