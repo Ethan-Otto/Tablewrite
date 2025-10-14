@@ -1,9 +1,14 @@
 import os
 import xml.etree.ElementTree as ET
 from datetime import datetime
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from logging_config import setup_logging
 
-# Project root is two levels up from the script's directory (src -> root)
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Project root is three levels up from the script's directory (pdf_processing -> src -> root)
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+logger = setup_logging(__name__)
 
 def xml_to_html_content(xml_path):
     """Converts the content of an XML file to an HTML string."""
@@ -27,7 +32,7 @@ def xml_to_html_content(xml_path):
         
         return html_content
     except ET.ParseError as e:
-        print(f"Error parsing {xml_path}: {e}")
+        logger.error(f"Error parsing {xml_path}: {e}")
         return f"<h2>Error parsing {os.path.basename(xml_path)}</h2><p>{e}</p>"
 
 def generate_html_page(xml_path, nav_links, output_path):
@@ -66,7 +71,7 @@ def generate_html_page(xml_path, nav_links, output_path):
     
     with open(output_path, "w") as f:
         f.write(full_html)
-    print(f"Successfully created HTML file: {output_path}")
+    logger.debug(f"Successfully created HTML file: {output_path}")
 
 def main(input_dir, output_dir):
     """Main function to convert all XML files in a directory to HTML."""
@@ -82,7 +87,7 @@ def main(input_dir, output_dir):
 
     for xml_file in xml_files:
         xml_path = os.path.join(input_dir, xml_file)
-        print(f"Processing {xml_path}...")
+        logger.info(f"Processing {xml_path}")
         html_filename = f"{os.path.splitext(xml_file)[0]}.html"
         output_path = os.path.join(output_dir, html_filename)
         generate_html_page(xml_path, nav_links, output_path)
