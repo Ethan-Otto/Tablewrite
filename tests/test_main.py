@@ -188,34 +188,64 @@ class TestEndToEndPipeline:
 class TestPipelineOutputStructure:
     """Test the structure of pipeline outputs."""
 
-    @pytest.mark.integration
-    @pytest.mark.slow
-    @pytest.mark.requires_api
     @pytest.mark.requires_pdf
-    def test_output_directory_structure(self, test_pdf_path, test_run_dir, check_api_key):
+    def test_output_directory_structure(self, test_pdf_path, test_run_dir, monkeypatch):
         """
         Test that the pipeline creates the expected directory structure.
 
-        WARNING: Makes REAL Gemini API call.
+        Uses mocked Gemini API to avoid real API calls.
         """
-        configure_gemini()
-
         documents_dir = test_run_dir / "documents"
         logs_dir = test_run_dir / "intermediate_logs"
         documents_dir.mkdir(exist_ok=True)
         logs_dir.mkdir(exist_ok=True)
 
-        # Extract single page
+        # Extract single page first
         doc = fitz.open(test_pdf_path)
         test_pdf = test_run_dir / "test_chapter.pdf"
 
         single_doc = fitz.open()
         single_doc.insert_pdf(doc, from_page=0, to_page=0)
+        single_pdf_bytes = single_doc.write()
         single_doc.save(test_pdf)
         single_doc.close()
         doc.close()
 
-        # Run conversion
+        # Get actual word count from PDF
+        from pdf_processing.pdf_to_xml import get_legible_text_from_page, count_words
+        text, _ = get_legible_text_from_page(single_pdf_bytes, 1, str(logs_dir))
+        actual_word_count = count_words(text)
+
+        # Mock Gemini API responses
+        class MockResponse:
+            def __init__(self, text):
+                self.text = text
+
+        class MockUploadedFile:
+            def __init__(self):
+                self.name = "mock_file_123"
+
+        def mock_generate_content(prompt, file_obj=None):
+            # Generate mock content with matching word count
+            mock_words = " ".join([f"word{i}" for i in range(actual_word_count)])
+            return MockResponse(f"<page><paragraph>{mock_words}</paragraph></page>")
+
+        def mock_upload_file(file_path, display_name=None):
+            return MockUploadedFile()
+
+        def mock_delete_file(file_name):
+            pass
+
+        # Configure mock Gemini API
+        configure_gemini()
+        from pdf_processing import pdf_to_xml
+
+        # Patch the Gemini API methods
+        monkeypatch.setattr(pdf_to_xml.gemini_api, "generate_content", mock_generate_content)
+        monkeypatch.setattr(pdf_to_xml.gemini_api, "upload_file", mock_upload_file)
+        monkeypatch.setattr(pdf_to_xml.gemini_api, "delete_file", mock_delete_file)
+
+        # Run conversion with mocked API
         xml_output = documents_dir / "test_chapter.xml"
         process_chapter(str(test_pdf), str(xml_output), str(logs_dir))
 

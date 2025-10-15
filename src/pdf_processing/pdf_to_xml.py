@@ -1,6 +1,4 @@
 import os
-import google.generativeai as genai
-from dotenv import load_dotenv
 from datetime import datetime
 import concurrent.futures
 import fitz  # PyMuPDF
@@ -17,6 +15,7 @@ from collections import Counter
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from logging_config import setup_logging, get_run_logger
+from util.gemini import GeminiAPI, GeminiFileContext
 
 # Project root is three levels up from the script's directory (pdf_processing -> src -> root)
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -24,17 +23,14 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_
 # Initialize logger (will be reconfigured in main() with run directory)
 logger = setup_logging(__name__)
 
-GEMINI_MODEL_NAME = "gemini-2.5-pro"
+# Global Gemini API instance
+gemini_api = None
 
 def configure_gemini():
     """Configures the Gemini API with the API key from environment variables."""
-    dotenv_path = os.path.join(PROJECT_ROOT, ".env")
-    load_dotenv(dotenv_path=dotenv_path)
-    
-    api_key = os.getenv("GeminiImageAPI")
-    if not api_key:
-        raise ValueError("API key not found. Make sure to set the GeminiImageAPI environment variable.")
-    genai.configure(api_key=api_key)
+    global gemini_api
+    gemini_api = GeminiAPI()
+    return gemini_api
 
 def sanitize_xml_element_name(name: str) -> str:
     """
@@ -66,7 +62,6 @@ def verify_and_correct_xml(xml_content: str, original_text: str, chapter_name: s
     """
     logger.info(f"Verifying and correcting XML for chapter: {chapter_name}...")
     try:
-        model = genai.GenerativeModel(model_name=GEMINI_MODEL_NAME)
         prompt = f"""
         Please verify that the following XML content is a faithful and complete representation of the original text.
         If there are any discrepancies, please correct the XML.
@@ -82,8 +77,8 @@ def verify_and_correct_xml(xml_content: str, original_text: str, chapter_name: s
         {xml_content}
         ---
         """
-        
-        response = model.generate_content(prompt)
+
+        response = gemini_api.generate_content(prompt)
         
         if response and response.text:
             # Use regex to find the chapter block, stripping everything else
@@ -115,7 +110,6 @@ def correct_xml_with_gemini(malformed_xml: str, original_text: str, page_number:
     """
     logger.info(f"Attempting to correct malformed XML for page {page_number} with Gemini...")
     try:
-        model = genai.GenerativeModel(model_name=GEMINI_MODEL_NAME)
         prompt = f"""
         The following XML is malformed. Please correct it based on the original text provided below.
         Ensure all tags are properly closed and the structure is valid.
@@ -132,8 +126,8 @@ def correct_xml_with_gemini(malformed_xml: str, original_text: str, page_number:
         {malformed_xml}
         ---
         """
-        
-        response = model.generate_content(prompt)
+
+        response = gemini_api.generate_content(prompt)
         
         if response and response.text:
             # Use regex to find the <page> block, stripping everything else
@@ -209,8 +203,9 @@ def get_legible_text_from_page(page_bytes: bytes, page_number: int, log_dir: str
 def get_xml_for_page(page_info: tuple) -> str:
     """
     Converts a single PDF page to XML, using a robust text extraction method.
+    Now uses a pre-uploaded PDF file to avoid repeated uploads.
     """
-    page_bytes, page_number, log_dir = page_info
+    page_bytes, page_number, log_dir, uploaded_pdf_file = page_info
     display_name = f"page_{page_number}"
     max_retries = 3
     backoff_factor = 2
@@ -222,117 +217,111 @@ def get_xml_for_page(page_info: tuple) -> str:
     legible_text, text_source = get_legible_text_from_page(page_bytes, page_number, log_dir)
     pdf_word_count = count_words(legible_text)
 
-    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=True) as temp_pdf:
-        temp_pdf.write(page_bytes)
-        temp_pdf.seek(0)
-        temp_pdf_path = temp_pdf.name
+    for attempt in range(max_retries):
+        try:
+            logger.debug(f"Processing {display_name} from uploaded PDF (Attempt {attempt + 1})...")
 
-        for attempt in range(max_retries):
-            try:
-                logger.debug(f"Uploading {display_name} from {temp_pdf_path} (Attempt {attempt + 1})...")
-                uploaded_file = genai.upload_file(path=temp_pdf_path, display_name=display_name)
-                
-                model = genai.GenerativeModel(model_name=GEMINI_MODEL_NAME)
-                
-                prompt = """
-                You are a highly skilled document analyst. Your task is to convert the provided Dungeons & Dragons module PDF page into a well-structured XML format.
-                Analyze the document's structure, including headings, paragraphs, lists, tables, and any other distinct elements. Preserve the semantic structure of the document.
-                The output should be a single XML file containing only the content for this single page. Do not include any text, comments, or any other data outside of the root XML element.
-                The root element should be `<page>`. Do not wrap the XML in markdown fences like ```xml.
-                
-                IMPORTANT: For styling, do not use HTML tags. Instead, use Markdown syntax. For example, use *text* for italics and **text** for bold.
-                
-                For monster stat blocks, use a `<monster>` tag and within it, use tags like `<name>`, `<size>`, `<armor_class>`, `<hit_points>`, `<speed>`, `<strength>`, etc.
-                Ensure that all special characters (e.g., &, <, >) are properly escaped.
-                All XML tags must be properly closed. For example, `<tag>content</tag>`.
-                For lists, use the following format: `<list><item>Item 1</item><item>Item 2</item></list>`.
-                For definition lists, use the following format: `<definition_list><definition_item><term>Term</term><definition>Definition</definition></definition_item></definition_list>`.
-                """
-                
-                logger.debug(f"Generating XML for {display_name}")
-                response = model.generate_content([prompt, uploaded_file])
-                
-                logger.debug(f"Deleting uploaded file for {display_name}")
-                genai.delete_file(uploaded_file.name)
+            prompt = f"""
+            You are a highly skilled document analyst. Your task is to convert page {page_number} of the provided Dungeons & Dragons module PDF into a well-structured XML format.
 
-                cleaned_xml = ""
-                if response and response.text:
-                    raw_response_text = response.text
-                    raw_output_path = os.path.join(log_dir, "pages", f"{display_name}_attempt_{attempt + 1}_raw.xml")
-                    with open(raw_output_path, "w") as f:
-                        f.write(raw_response_text)
+            IMPORTANT: Process ONLY page {page_number} of the PDF. Ignore all other pages.
 
-                    # Use regex to find the <page> block, stripping everything else
-                    match = re.search(r'<page(?:\s[^>]*)?>.*?</page>', raw_response_text, re.DOTALL)
-                    if not match:
-                        raise ValueError("Could not find valid <page> XML in response.")
-                    
-                    cleaned_response_text = match.group(0)
+            Analyze the document's structure, including headings, paragraphs, lists, tables, and any other distinct elements. Preserve the semantic structure of the document.
+            The output should be a single XML file containing only the content for page {page_number}. Do not include any text, comments, or any other data outside of the root XML element.
+            The root element should be `<page>`. Do not wrap the XML in markdown fences like ```xml.
 
-                    temp_xml = re.sub(r'<i>(.*?)</i>', r'*\1*', cleaned_response_text, flags=re.DOTALL)
-                    temp_xml = re.sub(r'<b>(.*?)</b>', r'**\1**', temp_xml, flags=re.DOTALL)
-                    temp_xml = re.sub(r'<italic>(.*?)</italic>', r'*\1*', temp_xml, flags=re.DOTALL)
+            IMPORTANT: For styling, do not use HTML tags. Instead, use Markdown syntax. For example, use *text* for italics and **text** for bold.
 
-                    try:
-                        ET.fromstring(temp_xml)  # Validate the cleaned XML
-                        cleaned_xml = temp_xml
-                    except ET.ParseError as e:
-                        logger.warning(f"Malformed XML detected on page {page_number}: {e}")
-                        cleaned_xml = correct_xml_with_gemini(temp_xml, legible_text, page_number, log_dir)
+            For monster stat blocks, use a `<monster>` tag and within it, use tags like `<name>`, `<size>`, `<armor_class>`, `<hit_points>`, `<speed>`, `<strength>`, etc.
+            Ensure that all special characters (e.g., &, <, >) are properly escaped.
+            All XML tags must be properly closed. For example, `<tag>content</tag>`.
+            For lists, use the following format: `<list><item>Item 1</item><item>Item 2</item></list>`.
+            For definition lists, use the following format: `<definition_list><definition_item><term>Term</term><definition>Definition</definition></definition_item></definition_list>`.
+            """
 
-                else:
-                    raise ValueError("Failed to generate content.")
+            logger.debug(f"Generating XML for {display_name}")
+            # Use the pre-uploaded file
+            response = gemini_api.generate_content(prompt, uploaded_pdf_file)
 
-                if pdf_word_count >= 30:
-                    xml_word_count = count_words(cleaned_xml)
-                    difference = abs(pdf_word_count - xml_word_count)
-                    if pdf_word_count > 0:
-                        percentage_diff = (difference / pdf_word_count) * 100
-                        if percentage_diff > 15:
-                            raise ValueError(f"Word count mismatch ({text_source}) for page {page_number} is over 15% ({percentage_diff:.2f}%).")
-                    elif xml_word_count > 0:
-                        raise ValueError(f"Word count mismatch ({text_source}): PDF has 0 words, XML has {xml_word_count} words.")
+            cleaned_xml = ""
+            if response and response.text:
+                raw_response_text = response.text
+                raw_output_path = os.path.join(log_dir, "pages", f"{display_name}_attempt_{attempt + 1}_raw.xml")
+                with open(raw_output_path, "w") as f:
+                    f.write(raw_response_text)
 
-                page_xml_path = os.path.join(log_dir, "pages", f"{display_name}.xml")
-                with open(page_xml_path, "w") as f:
-                    f.write(cleaned_xml)
-                
-                return cleaned_xml
+                # Use regex to find the <page> block, stripping everything else
+                match = re.search(r'<page(?:\s[^>]*)?>.*?</page>', raw_response_text, re.DOTALL)
+                if not match:
+                    raise ValueError("Could not find valid <page> XML in response.")
 
-            except Exception as e:
-                logger.warning(f"An error occurred on attempt {attempt + 1} for page {page_number}: {e}")
-                if "Word count mismatch" in str(e):
-                    # Generate and save word frequency analysis only for word count errors
-                    pdf_word_freq = get_word_frequencies(legible_text)
-                    xml_word_freq = get_word_frequencies(cleaned_xml)
+                cleaned_response_text = match.group(0)
 
-                    pdf_freq_log_path = os.path.join(log_dir, "pages", f"{display_name}_pdf_word_frequencies.json")
-                    with open(pdf_freq_log_path, "w") as f:
-                        json.dump(pdf_word_freq, f, indent=4)
-                    logger.debug(f"PDF word frequency analysis for page {page_number} saved to {pdf_freq_log_path}")
+                temp_xml = re.sub(r'<i>(.*?)</i>', r'*\1*', cleaned_response_text, flags=re.DOTALL)
+                temp_xml = re.sub(r'<b>(.*?)</b>', r'**\1**', temp_xml, flags=re.DOTALL)
+                temp_xml = re.sub(r'<italic>(.*?)</italic>', r'*\1*', temp_xml, flags=re.DOTALL)
 
-                    xml_freq_log_path = os.path.join(log_dir, "pages", f"{display_name}_xml_word_frequencies.json")
-                    with open(xml_freq_log_path, "w") as f:
-                        json.dump(xml_word_freq, f, indent=4)
-                    logger.debug(f"XML word frequency analysis for page {page_number} saved to {xml_freq_log_path}")
+                try:
+                    ET.fromstring(temp_xml)  # Validate the cleaned XML
+                    cleaned_xml = temp_xml
+                except ET.ParseError as e:
+                    logger.warning(f"Malformed XML detected on page {page_number}: {e}")
+                    cleaned_xml = correct_xml_with_gemini(temp_xml, legible_text, page_number, log_dir)
 
-                if attempt < max_retries - 1:
-                    sleep_time = backoff_factor ** attempt
-                    logger.warning(f"Retrying in {sleep_time} seconds...")
-                    time.sleep(sleep_time)
-                else:
-                    logger.error(f"Failed to process page {page_number} after {max_retries} attempts.")
-                    error_xml_root = ET.Element("page")
-                    error_tag = ET.SubElement(error_xml_root, "error")
-                    error_tag.text = f"Failed to process after multiple retries. Last error: {e}"
-                    return ET.tostring(error_xml_root, encoding='unicode')
+            else:
+                raise ValueError("Failed to generate content.")
 
-        return "<page><error>An unexpected error occurred in the processing loop.</error></page>"
+            if pdf_word_count >= 30:
+                xml_word_count = count_words(cleaned_xml)
+                difference = abs(pdf_word_count - xml_word_count)
+                if pdf_word_count > 0:
+                    percentage_diff = (difference / pdf_word_count) * 100
+                    if percentage_diff > 15:
+                        raise ValueError(f"Word count mismatch ({text_source}) for page {page_number} is over 15% ({percentage_diff:.2f}%).")
+                elif xml_word_count > 0:
+                    raise ValueError(f"Word count mismatch ({text_source}): PDF has 0 words, XML has {xml_word_count} words.")
+
+            page_xml_path = os.path.join(log_dir, "pages", f"{display_name}.xml")
+            with open(page_xml_path, "w") as f:
+                f.write(cleaned_xml)
+
+            return cleaned_xml
+
+        except Exception as e:
+            logger.warning(f"An error occurred on attempt {attempt + 1} for page {page_number}: {e}")
+            if "Word count mismatch" in str(e):
+                # Generate and save word frequency analysis only for word count errors
+                pdf_word_freq = get_word_frequencies(legible_text)
+                xml_word_freq = get_word_frequencies(cleaned_xml)
+
+                pdf_freq_log_path = os.path.join(log_dir, "pages", f"{display_name}_pdf_word_frequencies.json")
+                with open(pdf_freq_log_path, "w") as f:
+                    json.dump(pdf_word_freq, f, indent=4)
+                logger.debug(f"PDF word frequency analysis for page {page_number} saved to {pdf_freq_log_path}")
+
+                xml_freq_log_path = os.path.join(log_dir, "pages", f"{display_name}_xml_word_frequencies.json")
+                with open(xml_freq_log_path, "w") as f:
+                    json.dump(xml_word_freq, f, indent=4)
+                logger.debug(f"XML word frequency analysis for page {page_number} saved to {xml_freq_log_path}")
+
+            if attempt < max_retries - 1:
+                sleep_time = backoff_factor ** attempt
+                logger.warning(f"Retrying in {sleep_time} seconds...")
+                time.sleep(sleep_time)
+            else:
+                logger.error(f"Failed to process page {page_number} after {max_retries} attempts.")
+                error_xml_root = ET.Element("page")
+                error_tag = ET.SubElement(error_xml_root, "error")
+                error_tag.text = f"Failed to process after multiple retries. Last error: {e}"
+                return ET.tostring(error_xml_root, encoding='unicode')
+
+    return "<page><error>An unexpected error occurred in the processing loop.</error></page>"
 
 def process_chapter(pdf_path: str, output_xml_path: str, base_log_dir: str) -> List[str]:
     """
     Orchestrates the page-by-page conversion and merges them into a single XML file.
     If any page fails, the entire chapter is marked as failed.
+    Now optimized to upload the PDF once and reuse it for all pages.
     """
     chapter_name = os.path.splitext(os.path.basename(pdf_path))[0]
     log_dir = os.path.join(base_log_dir, chapter_name)
@@ -347,14 +336,21 @@ def process_chapter(pdf_path: str, output_xml_path: str, base_log_dir: str) -> L
         doc = fitz.open()
         doc.insert_pdf(pdf_document, from_page=page_num, to_page=page_num)
         page_bytes = doc.write()
-        page_infos.append((page_bytes, page_num + 1, log_dir))
         page_text, _ = get_legible_text_from_page(page_bytes, page_num + 1, log_dir)
         pdf_text += page_text
         doc.close()
+        # Don't add uploaded_file yet - will add it after upload
+        page_infos.append((page_bytes, page_num + 1, log_dir, None))
     pdf_document.close()
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-        page_xmls = list(executor.map(get_xml_for_page, page_infos))
+    # Upload the full PDF once and reuse for all pages
+    logger.info(f"Uploading full PDF for chapter: {chapter_name}")
+    with GeminiFileContext(gemini_api, pdf_path, f"chapter_{chapter_name}") as uploaded_pdf:
+        # Update all page_infos with the uploaded file
+        page_infos = [(pb, pn, ld, uploaded_pdf) for pb, pn, ld, _ in page_infos]
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            page_xmls = list(executor.map(get_xml_for_page, page_infos))
 
     # Sanitize chapter name for use as XML element name
     xml_element_name = sanitize_xml_element_name(chapter_name)

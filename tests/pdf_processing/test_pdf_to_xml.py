@@ -213,7 +213,8 @@ class TestGeminiIntegration:
 
         WARNING: This test makes a REAL API call and will consume quota.
         """
-        configure_gemini()
+        from util.gemini import GeminiFileContext
+        gemini_api = configure_gemini()
 
         doc = fitz.open(test_pdf_path)
 
@@ -227,9 +228,10 @@ class TestGeminiIntegration:
         log_dir = test_output_dir / "test_chapter"
         os.makedirs(log_dir / "pages", exist_ok=True)
 
-        # Generate XML for this page
-        page_info = (page_data, 1, str(log_dir))
-        xml_result = get_xml_for_page(page_info)
+        # Upload PDF and generate XML for this page
+        with GeminiFileContext(gemini_api, test_pdf_path, "test_pdf") as uploaded_pdf:
+            page_info = (page_data, 1, str(log_dir), uploaded_pdf)
+            xml_result = get_xml_for_page(page_info)
 
         # Validate result
         assert xml_result is not None
@@ -251,7 +253,8 @@ class TestGeminiIntegration:
 
         WARNING: This test makes a REAL API call.
         """
-        configure_gemini()
+        from util.gemini import GeminiFileContext
+        gemini_api = configure_gemini()
 
         doc = fitz.open(test_pdf_path)
 
@@ -268,9 +271,10 @@ class TestGeminiIntegration:
         text, _ = get_legible_text_from_page(page_data, 1, str(log_dir))
         pdf_word_count = count_words(text)
 
-        # Generate XML
-        page_info = (page_data, 1, str(log_dir))
-        xml_result = get_xml_for_page(page_info)
+        # Upload PDF and generate XML
+        with GeminiFileContext(gemini_api, test_pdf_path, "test_pdf") as uploaded_pdf:
+            page_info = (page_data, 1, str(log_dir), uploaded_pdf)
+            xml_result = get_xml_for_page(page_info)
 
         # Check XML word count
         xml_word_count = count_words(xml_result)
