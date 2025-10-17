@@ -352,6 +352,7 @@ class TestFoundryIntegration:
         found_deleted = real_client.find_journal_by_name(journal_name)
         assert found_deleted is None, "Journal still exists after deletion"
 
+    @pytest.mark.skip(reason="Disabled to conserve API calls - enable when needed")
     @pytest.mark.integration
     @pytest.mark.slow
     def test_create_or_update_workflow(self, real_client):
@@ -401,6 +402,7 @@ class TestFoundryIntegration:
                 journal_uuid = found.get('uuid') or f"JournalEntry.{found.get('_id') or found.get('id')}"
                 real_client.delete_journal_entry(journal_uuid=journal_uuid)
 
+    @pytest.mark.skip(reason="Disabled to conserve API calls - enable when needed")
     @pytest.mark.integration
     @pytest.mark.slow
     def test_delete_nonexistent_journal(self, real_client):
@@ -411,6 +413,7 @@ class TestFoundryIntegration:
         result = real_client.delete_journal_entry(journal_uuid=fake_uuid)
         assert result.get('success') is True
 
+    @pytest.mark.skip(reason="Disabled to conserve API calls - enable when needed")
     @pytest.mark.integration
     @pytest.mark.slow
     def test_update_nonexistent_journal(self, real_client):
