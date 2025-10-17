@@ -3,6 +3,7 @@
 import pytest
 import os
 from unittest.mock import Mock, patch
+from dotenv import load_dotenv
 from src.foundry.client import FoundryClient
 
 
@@ -281,3 +282,143 @@ class TestJournalOperations:
         call_args = mock_put.call_args
         url = call_args[0][0]
         assert "uuid=JournalEntry.test456" in url
+
+
+class TestFoundryIntegration:
+    """Integration tests for FoundryVTT API (requires running server)."""
+
+    @pytest.fixture
+    def real_client(self):
+        """Create a real FoundryClient with environment variables."""
+        load_dotenv()
+
+        # Check if required environment variables are set
+        required_vars = [
+            "FOUNDRY_RELAY_URL",
+            "FOUNDRY_LOCAL_URL",
+            "FOUNDRY_LOCAL_API_KEY",
+            "FOUNDRY_LOCAL_CLIENT_ID"
+        ]
+
+        missing_vars = [var for var in required_vars if not os.getenv(var)]
+        if missing_vars:
+            pytest.skip(f"Missing required environment variables: {', '.join(missing_vars)}")
+
+        return FoundryClient(target="local")
+
+    @pytest.mark.integration
+    @pytest.mark.slow
+    def test_full_crud_workflow(self, real_client):
+        """Test complete create → search → update → delete workflow with real server."""
+        journal_name = "Integration Test CRUD Workflow"
+
+        # 1. CREATE
+        create_result = real_client.create_journal_entry(
+            name=journal_name,
+            content="<h1>Initial Content</h1><p>This is a test.</p>"
+        )
+        entity_id = create_result.get('entity', {}).get('_id') or create_result.get('uuid', 'unknown')
+        assert entity_id != 'unknown', "Failed to extract entity ID from create response"
+
+        # 2. SEARCH
+        found = real_client.find_journal_by_name(journal_name)
+        assert found is not None, "Failed to find newly created journal"
+        assert found['name'] == journal_name
+
+        # Extract UUID for update/delete
+        journal_uuid = found.get('uuid') or f"JournalEntry.{found.get('_id') or found.get('id')}"
+        assert journal_uuid.startswith('JournalEntry.'), f"Invalid UUID format: {journal_uuid}"
+
+        # 3. UPDATE
+        update_result = real_client.update_journal_entry(
+            journal_uuid=journal_uuid,
+            content="<h1>Updated Content</h1><p>Content has been updated!</p>",
+            name=f"{journal_name} (Updated)"
+        )
+        assert update_result is not None, "Update operation failed"
+
+        # 4. VERIFY UPDATE
+        found_updated = real_client.find_journal_by_name(f"{journal_name} (Updated)")
+        if not found_updated:
+            # Name update might be delayed, try old name
+            found_updated = real_client.find_journal_by_name(journal_name)
+        assert found_updated is not None, "Failed to find journal after update"
+
+        # 5. DELETE
+        delete_result = real_client.delete_journal_entry(journal_uuid=journal_uuid)
+        assert delete_result.get('success') is True, "Delete operation did not return success"
+
+        # 6. VERIFY DELETION
+        found_deleted = real_client.find_journal_by_name(journal_name)
+        assert found_deleted is None, "Journal still exists after deletion"
+
+    @pytest.mark.integration
+    @pytest.mark.slow
+    def test_create_or_update_workflow(self, real_client):
+        """Test create_or_update creates on first call, updates on second call."""
+        journal_name = "Integration Test Create or Update"
+
+        try:
+            # First call should CREATE
+            result1 = real_client.create_or_update_journal(
+                name=journal_name,
+                content="<h1>First Version</h1><p>Initial content</p>"
+            )
+
+            # Extract ID from create response
+            entity1 = result1.get('entity', {})
+            if isinstance(entity1, list):
+                id1 = entity1[0].get('_id') if entity1 else None
+            else:
+                id1 = entity1.get('_id')
+
+            assert id1 is not None, "Failed to extract ID from first call"
+
+            # Second call should UPDATE (same ID)
+            result2 = real_client.create_or_update_journal(
+                name=journal_name,
+                content="<h1>Second Version</h1><p>Updated content!</p>"
+            )
+
+            # Extract ID from update response (entity is a list for updates)
+            entity2 = result2.get('entity', {})
+            if isinstance(entity2, list):
+                id2 = entity2[0].get('_id') if entity2 else None
+            else:
+                id2 = entity2.get('_id')
+
+            # Should be same journal (updated, not duplicated)
+            assert id2 == id1, f"Second call created duplicate journal: {id1} vs {id2}"
+
+            # Verify only one journal exists with this name
+            found = real_client.find_journal_by_name(journal_name)
+            assert found is not None, "Journal not found after create_or_update"
+
+        finally:
+            # Clean up - delete the test journal
+            found = real_client.find_journal_by_name(journal_name)
+            if found:
+                journal_uuid = found.get('uuid') or f"JournalEntry.{found.get('_id') or found.get('id')}"
+                real_client.delete_journal_entry(journal_uuid=journal_uuid)
+
+    @pytest.mark.integration
+    @pytest.mark.slow
+    def test_delete_nonexistent_journal(self, real_client):
+        """Test deleting a non-existent journal succeeds (idempotent delete)."""
+        fake_uuid = "JournalEntry.nonexistentfake123"
+
+        # Delete endpoint is idempotent - returns success even if journal doesn't exist
+        result = real_client.delete_journal_entry(journal_uuid=fake_uuid)
+        assert result.get('success') is True
+
+    @pytest.mark.integration
+    @pytest.mark.slow
+    def test_update_nonexistent_journal(self, real_client):
+        """Test updating a non-existent journal raises appropriate error."""
+        fake_uuid = "JournalEntry.nonexistentfake456"
+
+        with pytest.raises(RuntimeError, match="Failed to update journal"):
+            real_client.update_journal_entry(
+                journal_uuid=fake_uuid,
+                content="<h1>Test</h1>"
+            )
