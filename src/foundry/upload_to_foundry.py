@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
-"""Upload generated HTML files to FoundryVTT as journal entries."""
+"""Upload generated XML documents to FoundryVTT as journal entries."""
 
 import os
 import sys
 import logging
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Dict, Any
 from dotenv import load_dotenv
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from foundry.client import FoundryClient
+from foundry.xml_to_journal_html import convert_xml_directory_to_journals
 from logging_config import setup_logging
 
 logger = setup_logging(__name__)
@@ -47,87 +48,95 @@ def find_latest_run(runs_dir: str) -> str:
     return str(latest)
 
 
-def read_html_files(html_dir: str) -> List[Dict[str, str]]:
+def find_xml_directory(run_dir: str) -> str:
     """
-    Read all HTML files from directory.
+    Find the XML documents directory in a run.
 
     Args:
-        html_dir: Path to HTML directory
+        run_dir: Path to run directory
 
     Returns:
-        List of dicts with 'name' and 'content' keys
+        Path to XML documents directory
+
+    Raises:
+        ValueError: If XML directory not found
     """
-    html_path = Path(html_dir)
+    run_path = Path(run_dir)
 
-    if not html_path.exists():
-        raise ValueError(f"HTML directory does not exist: {html_dir}")
+    # Try documents/ directory (standard location)
+    xml_dir = run_path / "documents"
+    if xml_dir.exists() and list(xml_dir.glob("*.xml")):
+        return str(xml_dir)
 
-    html_files = []
+    # Try root of run directory
+    if list(run_path.glob("*.xml")):
+        return str(run_path)
 
-    for html_file in sorted(html_path.glob("*.html")):
-        name = html_file.stem  # Filename without extension
-        content = html_file.read_text(encoding="utf-8")
-
-        html_files.append({
-            "name": name,
-            "content": content,
-            "path": str(html_file)
-        })
-
-        logger.debug(f"Read HTML file: {name} ({len(content)} chars)")
-
-    logger.info(f"Found {len(html_files)} HTML files")
-    return html_files
+    raise ValueError(f"No XML files found in run directory: {run_dir}")
 
 
 def upload_run_to_foundry(
-    html_dir: str,
+    run_dir: str,
     target: str = "local",
     journal_name: str = None
 ) -> Dict[str, Any]:
     """
-    Upload all HTML files from a run to FoundryVTT as a single journal with multiple pages.
+    Upload XML documents from a run to FoundryVTT as a single journal with multiple pages.
+
+    This is a pipeline function that:
+    1. Finds XML files in the run directory
+    2. Converts them to journal HTML using xml_to_journal_html module
+    3. Uploads to FoundryVTT using client module
 
     Args:
-        html_dir: Path to HTML directory
+        run_dir: Path to run directory (contains documents/ with XML files)
         target: Target environment ('local' or 'forge')
-        journal_name: Name for the journal entry (default: derived from directory)
+        journal_name: Name for the journal entry (default: "D&D Module")
 
     Returns:
         Dict with upload statistics
     """
     logger.info(f"Uploading to FoundryVTT ({target})")
 
-    # Read HTML files
-    html_files = read_html_files(html_dir)
+    # Find XML directory
+    try:
+        xml_dir = find_xml_directory(run_dir)
+        logger.info(f"Found XML directory: {xml_dir}")
+    except ValueError as e:
+        logger.error(str(e))
+        return {"uploaded": 0, "failed": 0, "errors": [str(e)]}
 
-    if not html_files:
-        logger.warning("No HTML files to upload")
+    # Convert XML to journal data using foundry module
+    try:
+        journals = convert_xml_directory_to_journals(xml_dir)
+        logger.info(f"Converted {len(journals)} XML files to journal pages")
+    except Exception as e:
+        error_msg = f"Failed to convert XML files: {e}"
+        logger.error(error_msg)
+        return {"uploaded": 0, "failed": 0, "errors": [error_msg]}
+
+    if not journals:
+        logger.warning("No journal pages to upload")
         return {"uploaded": 0, "failed": 0}
 
     # Determine journal name
     if not journal_name:
-        # Try to extract module name from path structure
-        # Path is typically: output/runs/<timestamp>/documents/html/
-        html_path = Path(html_dir)
-        run_dir = html_path.parent.parent  # Go up from html -> documents -> run_dir
-        # For now, use a generic name - could be enhanced to read from config
         journal_name = "D&D Module"
-        logger.info(f"Using journal name: {journal_name}")
+        logger.info(f"Using default journal name: {journal_name}")
 
     # Initialize client
     client = FoundryClient(target=target)
 
-    # Build pages list from HTML files
+    # Build pages list from journal data
     pages = [
         {
-            "name": html_file["name"],
-            "content": html_file["content"]
+            "name": journal["name"],
+            "content": journal["html"]
         }
-        for html_file in html_files
+        for journal in journals
     ]
 
-    logger.info(f"Creating journal '{journal_name}' with {len(pages)} page(s)")
+    logger.info(f"Uploading journal '{journal_name}' with {len(pages)} page(s)")
 
     # Upload as single journal with multiple pages
     try:
@@ -166,7 +175,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Upload HTML files to FoundryVTT as a single journal with multiple pages"
+        description="Upload XML documents to FoundryVTT as a single journal with multiple pages"
     )
     parser.add_argument(
         "--run-dir",
@@ -196,22 +205,16 @@ def main():
         runs_dir = project_root / "output" / "runs"
         run_dir = find_latest_run(str(runs_dir))
 
-    # Find HTML directory
-    html_dir = Path(run_dir) / "documents" / "html"
-
-    if not html_dir.exists():
-        logger.error(f"HTML directory not found: {html_dir}")
-        sys.exit(1)
-
-    # Upload
+    # Upload (pipeline: find XML -> convert to journal HTML -> upload)
     try:
         result = upload_run_to_foundry(
-            str(html_dir),
+            run_dir=run_dir,
             target=args.target,
             journal_name=args.journal_name
         )
 
-        if result["failed"] > 0:
+        if result["failed"] > 0 or result.get("errors"):
+            logger.error("Upload completed with errors")
             sys.exit(1)
         else:
             logger.info("Upload complete!")

@@ -9,13 +9,18 @@ class TestXMLToJournalConverter:
     """Tests for XML to Journal HTML conversion."""
 
     def test_convert_single_xml_file(self, tmp_path):
-        """Test converting a single XML file to journal data."""
+        """Test converting a single XML file to journal data.
+
+        Uses XML structure that matches xml_to_html_content expectations:
+        - title/chapter_title -> h1
+        - section (with text) -> h2
+        - p -> p
+        """
         xml_content = """<?xml version="1.0" encoding="UTF-8"?>
 <chapter>
     <title>Test Chapter</title>
-    <section>
-        <heading>Introduction</heading>
-        <paragraph>This is a test paragraph.</paragraph>
+    <section>Introduction
+        <p>This is a test paragraph.</p>
     </section>
 </chapter>"""
 
@@ -41,7 +46,7 @@ class TestXMLToJournalConverter:
             xml_content = f"""<?xml version="1.0" encoding="UTF-8"?>
 <chapter>
     <title>Chapter {i}</title>
-    <paragraph>Content for chapter {i}.</paragraph>
+    <p>Content for chapter {i}.</p>
 </chapter>"""
             (xml_dir / f"0{i}_Chapter_{i}.xml").write_text(xml_content)
 

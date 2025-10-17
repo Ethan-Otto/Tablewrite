@@ -1,65 +1,27 @@
-"""Convert XML documents to FoundryVTT journal-ready HTML."""
+"""Convert XML documents to FoundryVTT journal-ready HTML.
+
+This module reuses the core XML to HTML conversion from pdf_processing/xml_to_html.py
+and adds only FoundryVTT-specific modifications if needed.
+"""
 
 import os
 import sys
 from pathlib import Path
 from typing import Dict, Any, List
-import xml.etree.ElementTree as ET
 
 # Add parent to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-
-def xml_to_html(xml_element: ET.Element, level: int = 0) -> str:
-    """
-    Convert XML element to HTML recursively.
-
-    Reuses logic from xml_to_html.py but returns string instead of writing file.
-
-    Args:
-        xml_element: XML element to convert
-        level: Current heading level for nested sections
-
-    Returns:
-        HTML string
-    """
-    html_parts = []
-
-    tag = xml_element.tag
-    text = (xml_element.text or "").strip()
-
-    # Map XML tags to HTML
-    # title is always h1 (chapter title), heading starts at h2 and increments with nesting
-    tag_map = {
-        "chapter": ("", ""),  # Container, no HTML tag
-        "title": ("<h1>", "</h1>"),
-        "heading": (f"<h{min(level + 1, 6)}>", f"</h{min(level + 1, 6)}>"),
-        "paragraph": ("<p>", "</p>"),
-        "section": ("", ""),  # Container
-        "list": ("<ul>", "</ul>"),
-        "item": ("<li>", "</li>"),
-        "emphasis": ("<em>", "</em>"),
-        "strong": ("<strong>", "</strong>"),
-    }
-
-    open_tag, close_tag = tag_map.get(tag, ("", ""))
-
-    if text and open_tag:
-        html_parts.append(f"{open_tag}{text}{close_tag}")
-    elif text:
-        html_parts.append(text)
-
-    # Process children
-    for child in xml_element:
-        child_level = level + 1 if tag == "section" else level
-        html_parts.append(xml_to_html(child, child_level))
-
-    return "\n".join(html_parts)
+# Import the shared XML to HTML conversion function
+from pdf_processing.xml_to_html import xml_to_html_content
 
 
 def convert_xml_to_journal_data(xml_file_path: str) -> Dict[str, Any]:
     """
     Convert an XML file to journal-ready data structure.
+
+    Uses the shared xml_to_html_content() function from pdf_processing module.
+    FoundryVTT journals don't need navigation or full page structure, just content.
 
     Args:
         xml_file_path: Path to XML file
@@ -78,12 +40,9 @@ def convert_xml_to_journal_data(xml_file_path: str) -> Dict[str, Any]:
     """
     xml_path = Path(xml_file_path)
 
-    # Parse XML
-    tree = ET.parse(xml_file_path)
-    root = tree.getroot()
-
-    # Convert to HTML
-    html_content = xml_to_html(root)
+    # Convert XML to HTML using shared function
+    # include_footers=False to exclude headers/footers from journal pages
+    html_content = xml_to_html_content(str(xml_path), include_footers=False)
 
     # Extract metadata from filename
     filename = xml_path.stem  # Without extension
