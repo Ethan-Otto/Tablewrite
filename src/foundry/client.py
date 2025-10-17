@@ -255,7 +255,11 @@ class FoundryClient:
         folder: str = None
     ) -> Dict[str, Any]:
         """
-        Create a new journal or update existing one with same name.
+        Create a new journal entry.
+
+        Note: Currently creates new journals instead of updating existing ones
+        due to undocumented update API behavior. Users should manually delete
+        old journals before re-uploading if they want to replace content.
 
         Args:
             name: Name of the journal entry
@@ -265,18 +269,11 @@ class FoundryClient:
         Returns:
             Dict containing journal entry data
         """
-        existing = self.find_journal_by_name(name)
-
-        if existing:
-            logger.info(f"Journal '{name}' exists, updating...")
-            return self.update_journal_entry(
-                journal_id=existing["_id"],
-                content=content
-            )
-        else:
-            logger.info(f"Journal '{name}' not found, creating...")
-            return self.create_journal_entry(
-                name=name,
-                content=content,
-                folder=folder
-            )
+        # Skip search/update due to unreliable update API
+        # Always create new journal entries
+        logger.info(f"Creating journal entry: {name}")
+        return self.create_journal_entry(
+            name=name,
+            content=content,
+            folder=folder
+        )
