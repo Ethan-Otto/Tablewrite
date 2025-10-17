@@ -1,9 +1,14 @@
 
 import fitz  # PyMuPDF
 import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from logging_config import setup_logging
 
-# Project root is two levels up from the script's directory (src -> root)
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Project root is three levels up from the script's directory (pdf_processing -> src -> root)
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+logger = setup_logging(__name__)
 
 def split_pdf_by_chapters():
     """
@@ -35,7 +40,7 @@ def split_pdf_by_chapters():
         (64, len(doc), "09_Rules_Index"),
     ]
 
-    print(f"Splitting PDF into {len(sections)} sections in {output_dir}...")
+    logger.info(f"Splitting PDF into {len(sections)} sections in {output_dir}")
 
     for start_page, end_page, title in sections:
         start_page_0_indexed = start_page - 1
@@ -49,10 +54,10 @@ def split_pdf_by_chapters():
         new_doc.insert_pdf(doc, from_page=start_page_0_indexed, to_page=end_page_0_indexed)
         new_doc.save(output_pdf_path)
         new_doc.close()
-        print(f"  Created: {output_pdf_path}")
+        logger.debug(f"Created: {output_pdf_path}")
 
     doc.close()
-    print("PDF splitting complete.")
+    logger.info("PDF splitting complete")
 
 if __name__ == "__main__":
     split_pdf_by_chapters()

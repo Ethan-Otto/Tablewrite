@@ -2,15 +2,18 @@
 __pycache__/
 *.pyc
 
+# Virtual environments
+.venv/
+venv/
+
 # Environment
 .env
 
 # Output
 output/
 pdf_sections/
-
-
-data/pdfs/Lost_Mine_of_Phandelver.pdf
+tests/test_runs/
+tests/output/
 
 # OS-specific
 .DS_Store
