@@ -102,3 +102,42 @@ class TestJournalOperations:
         result = mock_client.find_journal_by_name("Nonexistent")
 
         assert result is None
+
+    @patch('requests.post')
+    def test_create_journal_entry_success(self, mock_post, mock_client):
+        """Test creating a journal entry via REST API."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "_id": "journal123",
+            "name": "Test Journal",
+            "content": "<p>Test content</p>"
+        }
+        mock_post.return_value = mock_response
+
+        result = mock_client.create_journal_entry(
+            name="Test Journal",
+            content="<p>Test content</p>"
+        )
+
+        assert result["_id"] == "journal123"
+        assert result["name"] == "Test Journal"
+        mock_post.assert_called_once()
+
+        # Verify API key header
+        call_kwargs = mock_post.call_args[1]
+        assert call_kwargs["headers"]["x-api-key"] == "test-key"
+
+    @patch('requests.post')
+    def test_create_journal_entry_failure(self, mock_post, mock_client):
+        """Test journal creation handles API errors."""
+        mock_response = Mock()
+        mock_response.status_code = 500
+        mock_response.text = "Internal server error"
+        mock_post.return_value = mock_response
+
+        with pytest.raises(RuntimeError, match="Failed to create journal"):
+            mock_client.create_journal_entry(
+                name="Test Journal",
+                content="<p>Test content</p>"
+            )

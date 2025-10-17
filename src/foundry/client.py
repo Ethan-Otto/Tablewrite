@@ -46,6 +46,63 @@ class FoundryClient:
 
         logger.info(f"Initialized FoundryClient for {target} at {self.foundry_url}")
 
+    def create_journal_entry(
+        self,
+        name: str,
+        content: str,
+        folder: str = None
+    ) -> Dict[str, Any]:
+        """
+        Create a new journal entry in FoundryVTT.
+
+        Args:
+            name: Name of the journal entry
+            content: HTML content for the journal
+            folder: Optional folder ID to organize the journal
+
+        Returns:
+            Dict containing created journal entry data
+
+        Raises:
+            RuntimeError: If API request fails
+        """
+        url = f"{self.relay_url}/create"
+
+        headers = {
+            "x-api-key": self.api_key,
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "type": "JournalEntry",
+            "data": {
+                "name": name,
+                "content": content
+            }
+        }
+
+        if folder:
+            payload["data"]["folder"] = folder
+
+        logger.debug(f"Creating journal entry: {name}")
+
+        try:
+            response = requests.post(url, json=payload, headers=headers, timeout=30)
+
+            if response.status_code != 200:
+                logger.error(f"Failed to create journal: {response.status_code} - {response.text}")
+                raise RuntimeError(
+                    f"Failed to create journal entry: {response.status_code} - {response.text}"
+                )
+
+            result = response.json()
+            logger.info(f"Created journal entry: {name} (ID: {result.get('_id')})")
+            return result
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request failed: {e}")
+            raise RuntimeError(f"Failed to create journal entry: {e}") from e
+
     def find_journal_by_name(self, name: str) -> Optional[Dict[str, Any]]:
         """
         Find a journal entry by name.
