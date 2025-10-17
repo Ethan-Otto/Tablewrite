@@ -546,7 +546,8 @@ def main(input_dir: str, base_output_dir: str, single_file: str = None):
 
     # Reconfigure logger to write to run directory
     global logger
-    logger = get_run_logger("pdf_to_xml", run_dir)
+    from pathlib import Path
+    logger = get_run_logger("pdf_to_xml", Path(run_dir))
 
     all_errors = {}
     if single_file:

@@ -1,0 +1,276 @@
+#!/usr/bin/env python3
+"""
+Full pipeline orchestration: PDF → XML → FoundryVTT
+
+This script coordinates the complete workflow:
+1. Split PDF into chapter PDFs (split_pdf.py)
+2. Generate XML from chapters using Gemini (pdf_to_xml.py)
+3. Upload XML to FoundryVTT (upload_to_foundry.py)
+
+Each step can be skipped with flags for resuming interrupted runs.
+"""
+
+import os
+import sys
+import subprocess
+import logging
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.logging_config import setup_logging
+
+logger = setup_logging(__name__)
+
+
+def run_pdf_split(project_root: Path) -> None:
+    """
+    Run split_pdf.py to split source PDF into chapter PDFs.
+
+    Args:
+        project_root: Project root directory
+
+    Raises:
+        RuntimeError: If split fails
+    """
+    split_script = project_root / "src" / "pdf_processing" / "split_pdf.py"
+
+    logger.info("=" * 60)
+    logger.info("STEP 1: Splitting PDF into chapters")
+    logger.info("=" * 60)
+
+    try:
+        result = subprocess.run(
+            [sys.executable, str(split_script)],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=300  # 5 minute timeout
+        )
+
+        if result.returncode != 0:
+            logger.error(f"PDF split failed: {result.stderr}")
+            raise RuntimeError(f"split_pdf.py failed with code {result.returncode}")
+
+        logger.info("✓ PDF split completed successfully")
+        if result.stdout:
+            logger.debug(f"Output: {result.stdout}")
+
+    except subprocess.TimeoutExpired:
+        logger.error("PDF split timed out after 5 minutes")
+        raise RuntimeError("PDF split timed out")
+    except Exception as e:
+        logger.error(f"Failed to run split_pdf.py: {e}")
+        raise
+
+
+def run_pdf_to_xml(project_root: Path, chapter_file: str = None) -> Path:
+    """
+    Run pdf_to_xml.py to generate XML from chapter PDFs using Gemini.
+
+    Args:
+        project_root: Project root directory
+        chapter_file: Optional specific chapter file to process
+
+    Returns:
+        Path to the generated run directory
+
+    Raises:
+        RuntimeError: If XML generation fails
+    """
+    xml_script = project_root / "src" / "pdf_processing" / "pdf_to_xml.py"
+
+    logger.info("=" * 60)
+    logger.info("STEP 2: Generating XML from PDFs using Gemini")
+    logger.info("=" * 60)
+    logger.info("This may take several minutes depending on PDF size...")
+
+    try:
+        cmd = [sys.executable, str(xml_script)]
+        if chapter_file:
+            cmd.extend(["--file", chapter_file])
+
+        result = subprocess.run(
+            cmd,
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=3600  # 1 hour timeout for Gemini API calls
+        )
+
+        if result.returncode != 0:
+            logger.error(f"XML generation failed: {result.stderr}")
+            raise RuntimeError(f"pdf_to_xml.py failed with code {result.returncode}")
+
+        logger.info("✓ XML generation completed successfully")
+        if result.stdout:
+            logger.debug(f"Output: {result.stdout}")
+
+        # Find the latest run directory
+        runs_dir = project_root / "output" / "runs"
+        if not runs_dir.exists():
+            raise RuntimeError("No runs directory found after XML generation")
+
+        run_dirs = [d for d in runs_dir.iterdir() if d.is_dir()]
+        if not run_dirs:
+            raise RuntimeError("No run directories found after XML generation")
+
+        latest_run = sorted(run_dirs, key=lambda d: d.name)[-1]
+        logger.info(f"XML files generated in: {latest_run / 'documents'}")
+        return latest_run
+
+    except subprocess.TimeoutExpired:
+        logger.error("XML generation timed out after 1 hour")
+        raise RuntimeError("XML generation timed out")
+    except Exception as e:
+        logger.error(f"Failed to run pdf_to_xml.py: {e}")
+        raise
+
+
+def upload_to_foundry(run_dir: Path, target: str = "local", journal_name: str = None) -> dict:
+    """
+    Upload XML files to FoundryVTT.
+
+    Args:
+        run_dir: Path to run directory containing XML files
+        target: Target environment ('local' or 'forge')
+        journal_name: Optional journal name
+
+    Returns:
+        Upload statistics dict
+
+    Raises:
+        RuntimeError: If upload fails
+    """
+    logger.info("=" * 60)
+    logger.info("STEP 3: Uploading to FoundryVTT")
+    logger.info("=" * 60)
+
+    # Import here to avoid circular dependencies
+    from src.foundry.upload_to_foundry import upload_run_to_foundry
+
+    try:
+        result = upload_run_to_foundry(
+            str(run_dir),
+            target=target,
+            journal_name=journal_name
+        )
+
+        if result["failed"] > 0 or result.get("errors"):
+            logger.warning(
+                f"Upload completed with errors: "
+                f"{result['uploaded']} succeeded, {result['failed']} failed"
+            )
+            for error in result.get("errors", []):
+                logger.error(f"  {error}")
+        else:
+            logger.info(f"✓ Successfully uploaded {result['uploaded']} page(s) to FoundryVTT")
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Upload to FoundryVTT failed: {e}")
+        raise RuntimeError(f"Upload failed: {e}")
+
+
+def main():
+    """Main entry point for full pipeline orchestration."""
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Full pipeline: Split PDF → Generate XML → Upload to FoundryVTT"
+    )
+    parser.add_argument(
+        "--skip-split",
+        action="store_true",
+        help="Skip PDF splitting (use existing chapter PDFs)"
+    )
+    parser.add_argument(
+        "--skip-xml",
+        action="store_true",
+        help="Skip XML generation (use latest run)"
+    )
+    parser.add_argument(
+        "--skip-upload",
+        action="store_true",
+        help="Skip FoundryVTT upload"
+    )
+    parser.add_argument(
+        "--chapter-file",
+        help="Process only a specific chapter file (e.g., '01_Introduction.pdf')"
+    )
+    parser.add_argument(
+        "--journal-name",
+        help="Name for the FoundryVTT journal entry (default: 'D&D Module')"
+    )
+    parser.add_argument(
+        "--target",
+        choices=["local", "forge"],
+        default="local",
+        help="Target FoundryVTT environment (default: local)"
+    )
+
+    args = parser.parse_args()
+
+    # Load environment variables
+    load_dotenv()
+
+    # Determine project root
+    project_root = Path(__file__).parent.parent
+
+    try:
+        # Step 1: Split PDF
+        if args.skip_split:
+            logger.info("Skipping PDF split (--skip-split)")
+        else:
+            run_pdf_split(project_root)
+
+        # Step 2: Generate XML
+        if args.skip_xml:
+            logger.info("Skipping XML generation (--skip-xml), using latest run...")
+            runs_dir = project_root / "output" / "runs"
+
+            if not runs_dir.exists():
+                logger.error("No runs directory found")
+                sys.exit(1)
+
+            run_dirs = [d for d in runs_dir.iterdir() if d.is_dir()]
+            if not run_dirs:
+                logger.error("No run directories found")
+                sys.exit(1)
+
+            run_dir = sorted(run_dirs, key=lambda d: d.name)[-1]
+            logger.info(f"Using latest run: {run_dir.name}")
+        else:
+            run_dir = run_pdf_to_xml(project_root, chapter_file=args.chapter_file)
+
+        # Step 3: Upload to FoundryVTT
+        if args.skip_upload:
+            logger.info("Skipping FoundryVTT upload (--skip-upload)")
+        else:
+            result = upload_to_foundry(
+                run_dir,
+                target=args.target,
+                journal_name=args.journal_name
+            )
+
+            if result["failed"] > 0 or result.get("errors"):
+                logger.warning("Some uploads failed, check logs above")
+                sys.exit(1)
+
+        logger.info("=" * 60)
+        logger.info("PIPELINE COMPLETE!")
+        logger.info("=" * 60)
+        sys.exit(0)
+
+    except Exception as e:
+        logger.error("=" * 60)
+        logger.error(f"PIPELINE FAILED: {e}")
+        logger.error("=" * 60)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
