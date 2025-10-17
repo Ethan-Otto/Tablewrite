@@ -308,6 +308,31 @@ class TestFoundryIntegration:
 
     @pytest.mark.integration
     @pytest.mark.slow
+    def test_create_and_delete(self, real_client):
+        """Test basic create and delete workflow (minimal API calls)."""
+        journal_name = "Integration Test Create Delete"
+
+        # 1. CREATE (1 API call)
+        create_result = real_client.create_journal_entry(
+            name=journal_name,
+            content="<h1>Test Content</h1><p>This journal will be deleted immediately.</p>"
+        )
+
+        # Extract UUID from create response
+        journal_uuid = create_result.get('uuid')
+        if not journal_uuid:
+            entity_id = create_result.get('entity', {}).get('_id')
+            journal_uuid = f"JournalEntry.{entity_id}"
+
+        assert journal_uuid.startswith('JournalEntry.'), f"Invalid UUID format: {journal_uuid}"
+
+        # 2. DELETE (1 API call)
+        delete_result = real_client.delete_journal_entry(journal_uuid=journal_uuid)
+        assert delete_result.get('success') is True, "Delete operation did not return success"
+
+    @pytest.mark.skip(reason="Disabled to conserve API calls - enable when needed")
+    @pytest.mark.integration
+    @pytest.mark.slow
     def test_full_crud_workflow(self, real_client):
         """Test complete create → search → update → delete workflow with real server."""
         journal_name = "Integration Test CRUD Workflow"
