@@ -83,7 +83,15 @@ class FoundryClient:
             "entityType": "JournalEntry",
             "data": {
                 "name": name,
-                "content": content
+                "pages": [
+                    {
+                        "name": name,
+                        "type": "text",
+                        "text": {
+                            "content": content
+                        }
+                    }
+                ]
             }
         }
 
@@ -102,7 +110,9 @@ class FoundryClient:
                 )
 
             result = response.json()
-            logger.info(f"Created journal entry: {name} (ID: {result.get('_id')})")
+            # Response format: {"entity": {"_id": "..."}, "uuid": "JournalEntry.xxx"}
+            entity_id = result.get('entity', {}).get('_id') or result.get('uuid', 'unknown')
+            logger.info(f"Created journal entry: {name} (ID: {entity_id})")
             return result
 
         except requests.exceptions.RequestException as e:
@@ -162,7 +172,10 @@ class FoundryClient:
             # Return first exact match
             for journal in search_results:
                 if journal.get("name") == name:
-                    logger.debug(f"Found journal: {name} (ID: {journal.get('_id')})")
+                    # Search results use 'id' field, normalize to '_id' for consistency
+                    if 'id' in journal and '_id' not in journal:
+                        journal['_id'] = journal['id']
+                    logger.debug(f"Found journal: {name} (ID: {journal.get('_id') or journal.get('id')})")
                     return journal
 
             return None
@@ -205,7 +218,16 @@ class FoundryClient:
         }
 
         if content is not None:
-            payload["data"]["content"] = content
+            # Update with pages structure for FoundryVTT v10+
+            payload["data"]["pages"] = [
+                {
+                    "name": name or "Content",
+                    "type": "text",
+                    "text": {
+                        "content": content
+                    }
+                }
+            ]
         if name is not None:
             payload["data"]["name"] = name
 
@@ -215,8 +237,8 @@ class FoundryClient:
             response = requests.put(url, json=payload, headers=headers, timeout=30)
 
             if response.status_code != 200:
-                logger.error(f"Update failed: {response.status_code}")
-                raise RuntimeError(f"Failed to update journal: {response.status_code}")
+                logger.error(f"Update failed: {response.status_code} - {response.text}")
+                raise RuntimeError(f"Failed to update journal: {response.status_code} - {response.text}")
 
             result = response.json()
             logger.info(f"Updated journal entry: {journal_id}")

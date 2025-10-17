@@ -121,7 +121,9 @@ def upload_run_to_foundry(
             )
 
             uploaded += 1
-            logger.info(f"✓ Uploaded: {html_file['name']} (ID: {result.get('_id')})")
+            # Extract ID from response (entity._id or uuid)
+            entity_id = result.get('entity', {}).get('_id') or result.get('uuid', 'unknown')
+            logger.info(f"✓ Uploaded: {html_file['name']} (ID: {entity_id})")
 
         except Exception as e:
             failed += 1
