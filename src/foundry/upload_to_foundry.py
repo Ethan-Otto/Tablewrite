@@ -82,14 +82,16 @@ def read_html_files(html_dir: str) -> List[Dict[str, str]]:
 
 def upload_run_to_foundry(
     html_dir: str,
-    target: str = "local"
+    target: str = "local",
+    journal_name: str = None
 ) -> Dict[str, Any]:
     """
-    Upload all HTML files from a run to FoundryVTT.
+    Upload all HTML files from a run to FoundryVTT as a single journal with multiple pages.
 
     Args:
         html_dir: Path to HTML directory
         target: Target environment ('local' or 'forge')
+        journal_name: Name for the journal entry (default: derived from directory)
 
     Returns:
         Dict with upload statistics
@@ -103,46 +105,60 @@ def upload_run_to_foundry(
         logger.warning("No HTML files to upload")
         return {"uploaded": 0, "failed": 0}
 
+    # Determine journal name
+    if not journal_name:
+        # Try to extract module name from path structure
+        # Path is typically: output/runs/<timestamp>/documents/html/
+        html_path = Path(html_dir)
+        run_dir = html_path.parent.parent  # Go up from html -> documents -> run_dir
+        # For now, use a generic name - could be enhanced to read from config
+        journal_name = "D&D Module"
+        logger.info(f"Using journal name: {journal_name}")
+
     # Initialize client
     client = FoundryClient(target=target)
 
-    # Upload each file
-    uploaded = 0
-    failed = 0
-    errors = []
+    # Build pages list from HTML files
+    pages = [
+        {
+            "name": html_file["name"],
+            "content": html_file["content"]
+        }
+        for html_file in html_files
+    ]
 
-    for html_file in html_files:
-        try:
-            logger.info(f"Uploading: {html_file['name']}")
+    logger.info(f"Creating journal '{journal_name}' with {len(pages)} page(s)")
 
-            result = client.create_or_update_journal(
-                name=html_file["name"],
-                content=html_file["content"]
-            )
+    # Upload as single journal with multiple pages
+    try:
+        result = client.create_or_update_journal(
+            name=journal_name,
+            pages=pages
+        )
 
-            uploaded += 1
-            # Extract ID from response (entity._id or uuid)
-            # Note: create returns entity as dict, update returns entity as list
-            entity = result.get('entity', {})
-            if isinstance(entity, list):
-                entity_id = entity[0].get('_id') if entity else result.get('uuid', 'unknown')
-            else:
-                entity_id = entity.get('_id') or result.get('uuid', 'unknown')
-            logger.info(f"✓ Uploaded: {html_file['name']} (ID: {entity_id})")
+        # Extract ID from response
+        entity = result.get('entity', {})
+        if isinstance(entity, list):
+            entity_id = entity[0].get('_id') if entity else result.get('uuid', 'unknown')
+        else:
+            entity_id = entity.get('_id') or result.get('uuid', 'unknown')
 
-        except Exception as e:
-            failed += 1
-            error_msg = f"✗ Failed: {html_file['name']} - {e}"
-            logger.error(error_msg)
-            errors.append(error_msg)
+        logger.info(f"✓ Uploaded journal: {journal_name} with {len(pages)} page(s) (ID: {entity_id})")
 
-    logger.info(f"Upload complete: {uploaded} succeeded, {failed} failed")
+        return {
+            "uploaded": len(pages),
+            "failed": 0,
+            "errors": []
+        }
 
-    return {
-        "uploaded": uploaded,
-        "failed": failed,
-        "errors": errors
-    }
+    except Exception as e:
+        error_msg = f"✗ Failed to upload journal: {journal_name} - {e}"
+        logger.error(error_msg)
+        return {
+            "uploaded": 0,
+            "failed": len(pages),
+            "errors": [error_msg]
+        }
 
 
 def main():
@@ -150,7 +166,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Upload HTML files to FoundryVTT journal entries"
+        description="Upload HTML files to FoundryVTT as a single journal with multiple pages"
     )
     parser.add_argument(
         "--run-dir",
@@ -161,6 +177,10 @@ def main():
         choices=["local", "forge"],
         default="local",
         help="Target environment (default: local)"
+    )
+    parser.add_argument(
+        "--journal-name",
+        help="Name for the journal entry (default: 'D&D Module')"
     )
 
     args = parser.parse_args()
@@ -185,12 +205,16 @@ def main():
 
     # Upload
     try:
-        result = upload_run_to_foundry(str(html_dir), target=args.target)
+        result = upload_run_to_foundry(
+            str(html_dir),
+            target=args.target,
+            journal_name=args.journal_name
+        )
 
         if result["failed"] > 0:
             sys.exit(1)
         else:
-            logger.info("All files uploaded successfully!")
+            logger.info("Upload complete!")
             sys.exit(0)
 
     except Exception as e:

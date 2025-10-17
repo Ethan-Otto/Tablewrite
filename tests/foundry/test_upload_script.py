@@ -44,7 +44,7 @@ class TestUploadScript:
 
     @patch('src.foundry.upload_to_foundry.FoundryClient')
     def test_upload_run_to_foundry(self, mock_client_class, tmp_path):
-        """Test uploading HTML files to Foundry."""
+        """Test uploading HTML files to Foundry as single journal with multiple pages."""
         html_dir = tmp_path / "documents" / "html"
         html_dir.mkdir(parents=True)
         (html_dir / "01_Test.html").write_text("<p>Test</p>")
@@ -53,11 +53,36 @@ class TestUploadScript:
         mock_client.create_or_update_journal.return_value = {"_id": "journal123"}
         mock_client_class.return_value = mock_client
 
-        result = upload_run_to_foundry(str(html_dir), target="local")
+        result = upload_run_to_foundry(str(html_dir), target="local", journal_name="Test Module")
 
         assert result["uploaded"] == 1
         assert result["failed"] == 0
         mock_client.create_or_update_journal.assert_called_once_with(
-            name="01_Test",
-            content="<p>Test</p>"
+            name="Test Module",
+            pages=[{"name": "01_Test", "content": "<p>Test</p>"}]
         )
+
+    @patch('src.foundry.upload_to_foundry.FoundryClient')
+    def test_upload_run_to_foundry_multiple_pages(self, mock_client_class, tmp_path):
+        """Test uploading multiple HTML files as pages in single journal."""
+        html_dir = tmp_path / "documents" / "html"
+        html_dir.mkdir(parents=True)
+        (html_dir / "01_Chapter_One.html").write_text("<h1>Chapter 1</h1>")
+        (html_dir / "02_Chapter_Two.html").write_text("<h1>Chapter 2</h1>")
+
+        mock_client = Mock()
+        mock_client.create_or_update_journal.return_value = {"_id": "journal123"}
+        mock_client_class.return_value = mock_client
+
+        result = upload_run_to_foundry(str(html_dir), target="local", journal_name="Test Module")
+
+        assert result["uploaded"] == 2  # 2 pages uploaded
+        assert result["failed"] == 0
+
+        # Verify single journal created with both pages
+        mock_client.create_or_update_journal.assert_called_once()
+        call_args = mock_client.create_or_update_journal.call_args
+        assert call_args.kwargs["name"] == "Test Module"
+        assert len(call_args.kwargs["pages"]) == 2
+        assert call_args.kwargs["pages"][0]["name"] == "01_Chapter_One"
+        assert call_args.kwargs["pages"][1]["name"] == "02_Chapter_Two"

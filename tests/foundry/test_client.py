@@ -283,6 +283,99 @@ class TestJournalOperations:
         url = call_args[0][0]
         assert "uuid=JournalEntry.test456" in url
 
+    @patch('requests.post')
+    def test_create_journal_entry_with_multiple_pages(self, mock_post, mock_client):
+        """Test creating a journal entry with multiple pages."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "entity": {"_id": "journal123"},
+            "uuid": "JournalEntry.journal123"
+        }
+        mock_post.return_value = mock_response
+
+        pages = [
+            {"name": "Chapter 1", "content": "<h1>Chapter 1</h1>"},
+            {"name": "Chapter 2", "content": "<h1>Chapter 2</h1>"},
+            {"name": "Chapter 3", "content": "<h1>Chapter 3</h1>"}
+        ]
+
+        result = mock_client.create_journal_entry(
+            name="Test Module",
+            pages=pages
+        )
+
+        assert result["entity"]["_id"] == "journal123"
+        mock_post.assert_called_once()
+
+        # Verify payload includes all pages
+        call_kwargs = mock_post.call_args[1]
+        payload = call_kwargs["json"]
+        assert len(payload["data"]["pages"]) == 3
+        assert payload["data"]["pages"][0]["name"] == "Chapter 1"
+        assert payload["data"]["pages"][1]["name"] == "Chapter 2"
+        assert payload["data"]["pages"][2]["name"] == "Chapter 3"
+
+    @patch('requests.put')
+    def test_update_journal_entry_with_multiple_pages(self, mock_put, mock_client):
+        """Test updating a journal entry with multiple pages."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"_id": "journal123"}
+        mock_put.return_value = mock_response
+
+        pages = [
+            {"name": "Updated Chapter 1", "content": "<h1>Updated Chapter 1</h1>"},
+            {"name": "Updated Chapter 2", "content": "<h1>Updated Chapter 2</h1>"}
+        ]
+
+        result = mock_client.update_journal_entry(
+            journal_uuid="JournalEntry.journal123",
+            pages=pages,
+            name="Updated Module"
+        )
+
+        assert result["_id"] == "journal123"
+        mock_put.assert_called_once()
+
+        # Verify payload includes all pages
+        call_kwargs = mock_put.call_args[1]
+        payload = call_kwargs["json"]
+        assert len(payload["data"]["pages"]) == 2
+        assert payload["data"]["name"] == "Updated Module"
+
+    @patch('requests.post')
+    def test_create_journal_entry_legacy_content_param(self, mock_post, mock_client):
+        """Test backward compatibility with legacy content parameter."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "entity": {"_id": "journal123"},
+            "uuid": "JournalEntry.journal123"
+        }
+        mock_post.return_value = mock_response
+
+        # Old API: content parameter
+        result = mock_client.create_journal_entry(
+            name="Test Journal",
+            content="<p>Legacy content</p>"
+        )
+
+        assert result["entity"]["_id"] == "journal123"
+        mock_post.assert_called_once()
+
+        # Verify it creates a single-page journal
+        call_kwargs = mock_post.call_args[1]
+        payload = call_kwargs["json"]
+        assert len(payload["data"]["pages"]) == 1
+        assert payload["data"]["pages"][0]["name"] == "Test Journal"
+        assert payload["data"]["pages"][0]["text"]["content"] == "<p>Legacy content</p>"
+
+    def test_create_journal_entry_raises_on_missing_content(self, mock_client):
+        """Test creating journal without pages or content raises ValueError."""
+        with pytest.raises(ValueError, match="Must provide either 'pages' or 'content'"):
+            mock_client.create_journal_entry(name="Test Journal")
+
 
 class TestFoundryIntegration:
     """Integration tests for FoundryVTT API (requires running server)."""

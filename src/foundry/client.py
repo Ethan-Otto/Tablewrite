@@ -55,7 +55,8 @@ class FoundryClient:
     def create_journal_entry(
         self,
         name: str,
-        content: str,
+        pages: list = None,
+        content: str = None,
         folder: str = None
     ) -> Dict[str, Any]:
         """
@@ -63,7 +64,8 @@ class FoundryClient:
 
         Args:
             name: Name of the journal entry
-            content: HTML content for the journal
+            pages: List of page dicts with 'name' and 'content' keys (preferred)
+            content: HTML content for single-page journal (legacy, use pages instead)
             folder: Optional folder ID to organize the journal
 
         Returns:
@@ -71,6 +73,7 @@ class FoundryClient:
 
         Raises:
             RuntimeError: If API request fails
+            ValueError: If neither pages nor content provided
         """
         url = f"{self.relay_url}/create?clientId={self.client_id}"
 
@@ -79,26 +82,46 @@ class FoundryClient:
             "Content-Type": "application/json"
         }
 
+        # Build pages array
+        if pages:
+            # Multiple pages provided
+            pages_data = [
+                {
+                    "name": page["name"],
+                    "type": "text",
+                    "text": {
+                        "content": page["content"]
+                    }
+                }
+                for page in pages
+            ]
+        elif content is not None:
+            # Legacy single-page mode
+            pages_data = [
+                {
+                    "name": name,
+                    "type": "text",
+                    "text": {
+                        "content": content
+                    }
+                }
+            ]
+        else:
+            raise ValueError("Must provide either 'pages' or 'content'")
+
         payload = {
             "entityType": "JournalEntry",
             "data": {
                 "name": name,
-                "pages": [
-                    {
-                        "name": name,
-                        "type": "text",
-                        "text": {
-                            "content": content
-                        }
-                    }
-                ]
+                "pages": pages_data
             }
         }
 
         if folder:
             payload["data"]["folder"] = folder
 
-        logger.debug(f"Creating journal entry: {name}")
+        page_count = len(pages_data)
+        logger.debug(f"Creating journal entry: {name} with {page_count} page(s)")
 
         try:
             response = requests.post(url, json=payload, headers=headers, timeout=30)
@@ -112,7 +135,7 @@ class FoundryClient:
             result = response.json()
             # Response format: {"entity": {"_id": "..."}, "uuid": "JournalEntry.xxx"}
             entity_id = result.get('entity', {}).get('_id') or result.get('uuid', 'unknown')
-            logger.info(f"Created journal entry: {name} (ID: {entity_id})")
+            logger.info(f"Created journal entry: {name} with {page_count} page(s) (ID: {entity_id})")
             return result
 
         except requests.exceptions.RequestException as e:
@@ -187,6 +210,7 @@ class FoundryClient:
     def update_journal_entry(
         self,
         journal_uuid: str,
+        pages: list = None,
         content: str = None,
         name: str = None
     ) -> Dict[str, Any]:
@@ -195,7 +219,8 @@ class FoundryClient:
 
         Args:
             journal_uuid: UUID of the journal entry (format: JournalEntry.{id})
-            content: New HTML content (optional)
+            pages: List of page dicts with 'name' and 'content' keys (preferred)
+            content: New HTML content for single page (legacy, use pages instead)
             name: New name (optional)
 
         Returns:
@@ -215,8 +240,21 @@ class FoundryClient:
             "data": {}
         }
 
-        if content is not None:
-            # Update with pages structure for FoundryVTT v10+
+        # Build pages array if content provided
+        if pages:
+            # Multiple pages provided
+            payload["data"]["pages"] = [
+                {
+                    "name": page["name"],
+                    "type": "text",
+                    "text": {
+                        "content": page["content"]
+                    }
+                }
+                for page in pages
+            ]
+        elif content is not None:
+            # Legacy single-page mode
             payload["data"]["pages"] = [
                 {
                     "name": name or "Content",
@@ -226,10 +264,12 @@ class FoundryClient:
                     }
                 }
             ]
+
         if name is not None:
             payload["data"]["name"] = name
 
-        logger.debug(f"Updating journal entry: {journal_uuid}")
+        page_info = f" with {len(pages)} page(s)" if pages else ""
+        logger.debug(f"Updating journal entry: {journal_uuid}{page_info}")
 
         try:
             response = requests.put(url, json=payload, headers=headers, timeout=30)
@@ -239,7 +279,7 @@ class FoundryClient:
                 raise RuntimeError(f"Failed to update journal: {response.status_code} - {response.text}")
 
             result = response.json()
-            logger.info(f"Updated journal entry: {journal_uuid}")
+            logger.info(f"Updated journal entry: {journal_uuid}{page_info}")
             return result
 
         except requests.exceptions.RequestException as e:
@@ -286,7 +326,8 @@ class FoundryClient:
     def create_or_update_journal(
         self,
         name: str,
-        content: str,
+        pages: list = None,
+        content: str = None,
         folder: str = None
     ) -> Dict[str, Any]:
         """
@@ -297,12 +338,19 @@ class FoundryClient:
 
         Args:
             name: Name of the journal entry
-            content: HTML content for the journal
+            pages: List of page dicts with 'name' and 'content' keys (preferred)
+            content: HTML content for single-page journal (legacy, use pages instead)
             folder: Optional folder ID
 
         Returns:
             Dict containing journal entry data
+
+        Raises:
+            ValueError: If neither pages nor content provided
         """
+        if not pages and content is None:
+            raise ValueError("Must provide either 'pages' or 'content'")
+
         # Try to find existing journal
         existing = self.find_journal_by_name(name)
 
@@ -319,6 +367,7 @@ class FoundryClient:
                 logger.info(f"Updating existing journal: {name} (UUID: {journal_uuid})")
                 return self.update_journal_entry(
                     journal_uuid=journal_uuid,
+                    pages=pages,
                     content=content,
                     name=name
                 )
@@ -329,6 +378,7 @@ class FoundryClient:
         logger.info(f"Creating new journal entry: {name}")
         return self.create_journal_entry(
             name=name,
+            pages=pages,
             content=content,
             folder=folder
         )
