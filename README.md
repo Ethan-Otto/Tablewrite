@@ -8,6 +8,11 @@ Utilities for turning official Dungeons & Dragons PDFs into structured assets th
   - `pdf_to_xml.py` – uploads each chapter page to Gemini (`GEMINI_MODEL_NAME`) and writes XML plus logs to `output/runs/<timestamp>/`
   - `get_toc.py` – extracts table of contents from PDF
   - `xml_to_html.py` – converts the latest run's XML into browsable HTML inside the same run directory
+- `src/foundry/` – FoundryVTT integration:
+  - `client.py` – REST API client with CRUD operations for journal entries
+  - `upload_to_foundry.py` – batch upload script for HTML files
+  - `xml_to_journal_html.py` – XML to journal HTML converter
+- `scripts/process_and_upload.py` – orchestration script for XML → HTML → Foundry workflow
 - `src/logging_config.py` – centralized logging configuration
 - `xml_examples/` – reference markup while refining the converters
 - `pdf_sections/` – cache of manually curated chapter PDFs used as input for the XML step
@@ -29,6 +34,55 @@ Or activate the virtual environment first (`source .venv/bin/activate`) and use 
 
 Each run preserves logs, raw model responses, and word-count checks beneath `output/runs/<timestamp>/`; avoid editing outputs in place so history stays intact.
 
+## FoundryVTT Integration
+
+The project includes optional integration for uploading generated HTML content directly to FoundryVTT as journal entries.
+
+### Setup
+
+1. **Install FoundryVTT REST API Module:**
+   - In FoundryVTT, go to Add-on Modules > Install Module
+   - Paste manifest URL: `https://github.com/ThreeHats/foundryvtt-rest-api/releases/latest/download/module.json`
+   - Enable the module in your world
+   - Generate an API key in Module Settings
+
+2. **Configure Environment:**
+   Add to your `.env` file:
+   ```bash
+   FOUNDRY_RELAY_URL=https://foundryvtt-rest-api-relay.fly.dev
+   FOUNDRY_LOCAL_URL=http://localhost:30000
+   FOUNDRY_LOCAL_API_KEY=<your_api_key>
+   FOUNDRY_LOCAL_CLIENT_ID=<your_client_id>
+   FOUNDRY_AUTO_UPLOAD=false
+   FOUNDRY_TARGET=local
+   ```
+
+3. **Upload HTML to FoundryVTT:**
+   ```bash
+   # Manual upload of latest run (local FoundryVTT)
+   uv run src/foundry/upload_to_foundry.py
+
+   # Upload specific run
+   uv run src/foundry/upload_to_foundry.py --run-dir output/runs/20241017_123456
+
+   # Process XML to HTML and upload in one step
+   uv run scripts/process_and_upload.py --upload
+   ```
+
+### Features
+
+- **Smart Updates**: Automatically searches for existing journals by name and updates them instead of creating duplicates
+- **UUID-based Operations**: Properly handles FoundryVTT's UUID format for updates and deletes
+- **Pages Structure**: Compatible with FoundryVTT v10+ pages architecture
+- **Dual Environment Support**: Works with both local FoundryVTT and The Forge
+
+### Architecture
+
+The integration uses the ThreeHats REST API module with a relay server architecture:
+- Script → HTTP → Relay Server → WebSocket → FoundryVTT Module → FoundryVTT
+
+This allows uploads even when Foundry is behind a firewall.
+
 ## Logging
 All scripts use Python's standard `logging` module for structured output:
 - **DEBUG**: Detailed processing steps (page uploads, file creation)
@@ -46,11 +100,15 @@ The project includes a comprehensive pytest test suite that mirrors the `src/` d
 tests/
 ├── conftest.py              # Shared fixtures and configuration
 ├── test_main.py             # End-to-end pipeline tests (PDF → XML → HTML)
-└── pdf_processing/          # Tests for PDF processing scripts
-    ├── test_split_pdf.py   # PDF splitting tests
-    ├── test_pdf_to_xml.py  # XML generation tests
-    ├── test_get_toc.py     # TOC extraction tests
-    └── test_xml_to_html.py # HTML conversion tests
+├── pdf_processing/          # Tests for PDF processing scripts
+│   ├── test_split_pdf.py   # PDF splitting tests
+│   ├── test_pdf_to_xml.py  # XML generation tests
+│   ├── test_get_toc.py     # TOC extraction tests
+│   └── test_xml_to_html.py # HTML conversion tests
+└── foundry/                 # Tests for FoundryVTT integration
+    ├── test_client.py       # FoundryClient API tests
+    ├── test_upload_script.py # Upload script tests
+    └── test_xml_to_journal_html.py # XML to journal converter tests
 ```
 
 ### Running Tests
@@ -98,4 +156,12 @@ GitHub Actions automatically runs the full test suite on all pull requests. See 
 - Use `uv run python -m compileall src` after edits to catch syntax errors
 - Run `uv run pytest` to verify changes don't break functionality
 - GitHub Actions runs all tests automatically on pull requests
-- The long-term target is an exporter that maps the generated XML into FoundryVTT module manifests. Upcoming work includes normalising the XML schema, attaching media assets, and wiring an actual Foundry package builder.
+
+### Current Status
+✅ **FoundryVTT Upload Integration**: Implemented with smart update/create logic, UUID-based operations, and support for both local and Forge environments.
+
+### Future Work
+- Normalize XML schema for consistent journal structure
+- Attach media assets (images, maps) to journal entries
+- Build complete FoundryVTT module manifest exporter
+- Add folder organization for journal entries
