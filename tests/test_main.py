@@ -35,32 +35,38 @@ from pdf_processing.xml_to_html import (
 
 @pytest.fixture
 def test_run_dir(test_output_dir):
-    """Create a timestamped test run directory."""
+    """Create a timestamped test run directory (temporary, auto-cleaned)."""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_dir = test_output_dir / "test_runs" / timestamp
     run_dir.mkdir(parents=True, exist_ok=True)
     return run_dir
 
 
-@pytest.fixture
-def test_documents_dir(test_run_dir):
-    """Create documents directory for XML output."""
-    docs_dir = test_run_dir / "documents"
+@pytest.fixture(scope="session")
+def integration_run_dir(integration_test_output_dir):
+    """Create a timestamped test run directory for integration tests (persistent, shared across session)."""
+    return integration_test_output_dir
+
+
+@pytest.fixture(scope="session")
+def test_documents_dir(integration_run_dir):
+    """Create documents directory for XML output (shared across session)."""
+    docs_dir = integration_run_dir / "documents"
     docs_dir.mkdir(exist_ok=True)
     return docs_dir
 
 
-@pytest.fixture
-def test_logs_dir(test_run_dir):
-    """Create intermediate logs directory."""
-    logs_dir = test_run_dir / "intermediate_logs"
+@pytest.fixture(scope="session")
+def test_logs_dir(integration_run_dir):
+    """Create intermediate logs directory (shared across session)."""
+    logs_dir = integration_run_dir / "intermediate_logs"
     logs_dir.mkdir(exist_ok=True)
     return logs_dir
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def test_html_dir(test_documents_dir):
-    """Create HTML output directory."""
+    """Create HTML output directory (shared across session)."""
     html_dir = test_documents_dir / "html"
     html_dir.mkdir(exist_ok=True)
     return html_dir
@@ -128,6 +134,32 @@ class TestEndToEndPipeline:
         assert "<body>" in html_content
         assert "</body>" in html_content
 
+        # Verify XML content appears in HTML
+        tree = ET.parse(xml_output_path)
+        root = tree.getroot()
+
+        # Extract paragraph text from XML
+        xml_paragraphs = []
+        for p_elem in root.findall(".//p"):
+            if p_elem.text and p_elem.text.strip():
+                text = p_elem.text.strip()
+                if len(text) > 20:  # Only check substantial paragraphs
+                    xml_paragraphs.append(text)
+
+        # Verify paragraphs appear in HTML
+        found_count = 0
+        missing_paragraphs = []
+        for paragraph in xml_paragraphs:
+            if paragraph in html_content:
+                found_count += 1
+            else:
+                missing_paragraphs.append(paragraph[:50] + "...")
+
+        if len(xml_paragraphs) > 0:
+            found_percentage = (found_count / len(xml_paragraphs)) * 100
+            assert found_percentage >= 80, \
+                f"Only {found_percentage:.1f}% of XML paragraphs found in HTML. Missing: {missing_paragraphs[:3]}"
+
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.requires_api
@@ -189,20 +221,20 @@ class TestPipelineOutputStructure:
     """Test the structure of pipeline outputs."""
 
     @pytest.mark.requires_pdf
-    def test_output_directory_structure(self, test_pdf_path, test_run_dir, monkeypatch):
+    def test_output_directory_structure(self, test_pdf_path, integration_run_dir, monkeypatch):
         """
         Test that the pipeline creates the expected directory structure.
 
         Uses mocked Gemini API to avoid real API calls.
         """
-        documents_dir = test_run_dir / "documents"
-        logs_dir = test_run_dir / "intermediate_logs"
+        documents_dir = integration_run_dir / "documents"
+        logs_dir = integration_run_dir / "intermediate_logs"
         documents_dir.mkdir(exist_ok=True)
         logs_dir.mkdir(exist_ok=True)
 
         # Extract single page first
         doc = fitz.open(test_pdf_path)
-        test_pdf = test_run_dir / "test_chapter.pdf"
+        test_pdf = integration_run_dir / "test_chapter.pdf"
 
         single_doc = fitz.open()
         single_doc.insert_pdf(doc, from_page=0, to_page=0)
@@ -228,7 +260,7 @@ class TestPipelineOutputStructure:
         def mock_generate_content(prompt, file_obj=None):
             # Generate mock content with matching word count
             mock_words = " ".join([f"word{i}" for i in range(actual_word_count)])
-            return MockResponse(f"<page><paragraph>{mock_words}</paragraph></page>")
+            return MockResponse(f"<page><p>{mock_words}</p></page>")
 
         def mock_upload_file(file_path, display_name=None):
             return MockUploadedFile()
@@ -294,6 +326,57 @@ class TestPipelineXMLToHTML:
         assert "<!DOCTYPE html>" in html_content
         assert "<nav>" in html_content
         assert "Sample Chapter" in html_content
+
+    def test_xml_content_appears_in_html(self, sample_xml_content, test_documents_dir, test_html_dir):
+        """Test that text content from XML appears in the generated HTML."""
+        # Create a sample XML file
+        xml_file = test_documents_dir / "content_test.xml"
+        xml_file.write_text(sample_xml_content)
+
+        # Convert to HTML
+        html_file = test_html_dir / "content_test.html"
+        nav_links = [("Content Test", "content_test.html")]
+        generate_html_page(xml_file, nav_links, html_file)
+
+        # Parse XML to extract text content
+        tree = ET.parse(xml_file)
+        root = tree.getroot()
+
+        # Get all text content from XML (excluding tag names)
+        xml_texts = []
+        for elem in root.iter():
+            if elem.text and elem.text.strip():
+                xml_texts.append(elem.text.strip())
+            if elem.tail and elem.tail.strip():
+                xml_texts.append(elem.tail.strip())
+
+        # Read generated HTML
+        html_content = html_file.read_text()
+
+        # Verify that XML text content appears in HTML
+        # Check a reasonable sample of text content (at least 80%)
+        # Note: Markdown syntax (**bold**, *italic*) is converted to HTML tags,
+        # so we check for word presence rather than exact string matching
+        import re
+        found_count = 0
+        missing_texts = []
+        for text in xml_texts:
+            # Skip very short text (like single words from tags)
+            if len(text) > 10:
+                # Extract the core words from the text (stripping markdown and punctuation)
+                words = re.findall(r'\w+', text)
+                # Check if at least 80% of the words appear in HTML
+                found_words = sum(1 for word in words if word in html_content)
+                if len(words) > 0 and (found_words / len(words)) >= 0.8:
+                    found_count += 1
+                else:
+                    missing_texts.append(text)
+
+        total_significant_texts = len([t for t in xml_texts if len(t) > 10])
+        if total_significant_texts > 0:
+            found_percentage = (found_count / total_significant_texts) * 100
+            assert found_percentage >= 80, \
+                f"Only {found_percentage:.1f}% of XML text content found in HTML. Missing texts: {missing_texts[:3]}"
 
     def test_multiple_xml_to_html_conversion(self, sample_xml_content, test_documents_dir, test_html_dir):
         """Test converting multiple XML files to HTML with navigation."""

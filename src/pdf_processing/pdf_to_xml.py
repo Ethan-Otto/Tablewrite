@@ -16,6 +16,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from logging_config import setup_logging, get_run_logger
 from util.gemini import GeminiAPI, GeminiFileContext
+from pdf_processing.valid_xml_tags import APPROVED_XML_TAGS, get_approved_tags_text
 
 # Project root is three levels up from the script's directory (pdf_processing -> src -> root)
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -25,6 +26,29 @@ logger = setup_logging(__name__)
 
 # Global Gemini API instance
 gemini_api = None
+
+def validate_xml_tags(xml_content: str, page_number: int = None) -> Tuple[bool, List[str]]:
+    """
+    Validates that all tags in the XML content are in the approved list.
+    Returns (is_valid, list_of_unknown_tags).
+    """
+    try:
+        root = ET.fromstring(xml_content)
+        unknown_tags = set()
+
+        for elem in root.iter():
+            if elem.tag not in APPROVED_XML_TAGS:
+                unknown_tags.add(elem.tag)
+
+        if unknown_tags:
+            page_info = f" on page {page_number}" if page_number else ""
+            logger.error(f"Unknown XML tags found{page_info}: {', '.join(sorted(unknown_tags))}")
+            return False, list(unknown_tags)
+
+        return True, []
+    except ET.ParseError as e:
+        logger.error(f"XML parsing error during validation: {e}")
+        return False, ["PARSE_ERROR"]
 
 def configure_gemini():
     """Configures the Gemini API with the API key from environment variables."""
@@ -221,22 +245,43 @@ def get_xml_for_page(page_info: tuple) -> str:
         try:
             logger.debug(f"Processing {display_name} from uploaded PDF (Attempt {attempt + 1})...")
 
+            # Get approved tags list for prompt
+            approved_tags_text = get_approved_tags_text()
+
             prompt = f"""
             You are a highly skilled document analyst. Your task is to convert page {page_number} of the provided Dungeons & Dragons module PDF into a well-structured XML format.
 
             IMPORTANT: Process ONLY page {page_number} of the PDF. Ignore all other pages.
 
-            Analyze the document's structure, including headings, paragraphs, lists, tables, and any other distinct elements. Preserve the semantic structure of the document.
-            The output should be a single XML file containing only the content for page {page_number}. Do not include any text, comments, or any other data outside of the root XML element.
-            The root element should be `<page>`. Do not wrap the XML in markdown fences like ```xml.
+            ## APPROVED XML TAGS
+            You MUST use ONLY the following XML tags. Using any other tags will result in an error:
 
-            IMPORTANT: For styling, do not use HTML tags. Instead, use Markdown syntax. For example, use *text* for italics and **text** for bold.
+            {approved_tags_text}
 
-            For monster stat blocks, use a `<monster>` tag and within it, use tags like `<name>`, `<size>`, `<armor_class>`, `<hit_points>`, `<speed>`, `<strength>`, etc.
-            Ensure that all special characters (e.g., &, <, >) are properly escaped.
-            All XML tags must be properly closed. For example, `<tag>content</tag>`.
-            For lists, use the following format: `<list><item>Item 1</item><item>Item 2</item></list>`.
-            For definition lists, use the following format: `<definition_list><definition_item><term>Term</term><definition>Definition</definition></definition_item></definition_list>`.
+            ## FORMATTING RULES
+            - The root element must be `<page>`
+            - Do not wrap the XML in markdown fences like ```xml
+            - For styling, use Markdown syntax (*text* for italics, **text** for bold)
+            - All XML tags must be properly closed
+            - Escape special characters (&, <, >)
+            - Preserve the semantic structure of the document
+
+            ## IDENTIFYING HEADERS AND FOOTERS
+            - **Footers** are typically small text at the bottom of the page (page numbers, chapter names, copyright info)
+            - **Headers** are typically text at the top of the page (chapter titles, section names)
+            - If text appears in the same position on multiple pages with same/similar content, it's likely a header or footer
+            - Tag repeating bottom text as `<footer>`, repeating top text as `<header>`
+            - Page numbers should be tagged as `<page_number>` within the footer or header
+
+            ## EXAMPLES
+            - Headings (semantic): `<chapter_title>Chapter Title</chapter_title>`, `<section>Section Title</section>`, `<subsection>Subsection Title</subsection>`
+            - Paragraphs: `<p>This is a paragraph with **bold** and *italic* text.</p>`
+            - Lists: `<list><item>Item 1</item><item>Item 2</item></list>`
+            - Boxed text: `<boxed_text><p>Special content in a box</p></boxed_text>`
+            - Tables: `<table><table_row><table_cell>Cell 1</table_cell><table_cell>Cell 2</table_cell></table_row></table>`
+            - Definition lists: `<definition_list><definition_item><term>Term</term><definition>Definition text</definition></definition_item></definition_list>`
+
+            Do not include any text, comments, or data outside the root `<page>` element.
             """
 
             logger.debug(f"Generating XML for {display_name}")
@@ -267,6 +312,11 @@ def get_xml_for_page(page_info: tuple) -> str:
                 except ET.ParseError as e:
                     logger.warning(f"Malformed XML detected on page {page_number}: {e}")
                     cleaned_xml = correct_xml_with_gemini(temp_xml, legible_text, page_number, log_dir)
+
+                # Validate XML tags
+                is_valid, unknown_tags = validate_xml_tags(cleaned_xml, page_number)
+                if not is_valid:
+                    raise ValueError(f"Unknown XML tags detected on page {page_number}: {', '.join(unknown_tags)}. Only approved tags are allowed.")
 
             else:
                 raise ValueError("Failed to generate content.")

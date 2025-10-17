@@ -12,6 +12,8 @@ venv/
 # Output
 output/
 pdf_sections/
+tests/test_runs/
+tests/output/
 
 # OS-specific
 .DS_Store

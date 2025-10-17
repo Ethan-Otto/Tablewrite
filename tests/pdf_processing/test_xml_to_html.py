@@ -41,7 +41,7 @@ class TestXMLToHTMLConversion:
         """Test that headings are converted to HTML headings."""
         xml_content = """<test>
             <title>Main Title</title>
-            <heading>Section Heading</heading>
+            <section>Section Heading</section>
         </test>"""
 
         xml_file = test_output_dir / "headings.xml"
@@ -55,7 +55,7 @@ class TestXMLToHTMLConversion:
     def test_xml_to_html_contains_paragraphs(self, test_output_dir):
         """Test that paragraphs are converted to HTML paragraphs."""
         xml_content = """<test>
-            <paragraph>This is a test paragraph.</paragraph>
+            <p>This is a test paragraph.</p>
         </test>"""
 
         xml_file = test_output_dir / "paragraphs.xml"
@@ -259,7 +259,7 @@ class TestEdgeCases:
     def test_xml_with_special_characters(self, test_output_dir):
         """Test XML containing special characters."""
         xml_content = """<root>
-            <paragraph>Text with &amp; ampersand &lt; less than &gt; greater than</paragraph>
+            <p>Text with &amp; ampersand &lt; less than &gt; greater than</p>
         </root>"""
 
         xml_file = test_output_dir / "special_chars.xml"
@@ -274,7 +274,7 @@ class TestEdgeCases:
     def test_very_long_content(self, test_output_dir):
         """Test handling of very long content."""
         # Create XML with many paragraphs
-        paragraphs = "\n".join([f"<paragraph>Paragraph {i}</paragraph>" for i in range(100)])
+        paragraphs = "\n".join([f"<p>Paragraph {i}</p>" for i in range(100)])
         xml_content = f"<root>{paragraphs}</root>"
 
         xml_file = test_output_dir / "long.xml"

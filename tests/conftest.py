@@ -14,6 +14,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 TEST_PDF_PATH = PROJECT_ROOT / "data" / "pdfs" / "Lost_Mine_of_Phandelver_test.pdf"
 FULL_PDF_PATH = PROJECT_ROOT / "data" / "pdfs" / "Lost_Mine_of_Phandelver.pdf"
 TEST_OUTPUT_DIR = PROJECT_ROOT / "tests" / "output"
+TEST_RUNS_DIR = PROJECT_ROOT / "tests" / "test_runs"
 
 
 @pytest.fixture(scope="session")
@@ -59,6 +60,21 @@ def persistent_test_output_dir():
     return TEST_OUTPUT_DIR
 
 
+@pytest.fixture(scope="session")
+def integration_test_output_dir():
+    """
+    Return a persistent output directory for integration tests.
+    Creates a single timestamped directory under tests/test_runs/ for the
+    entire test session to preserve artifacts for inspection.
+    All tests in the session share this directory.
+    """
+    from datetime import datetime
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_dir = TEST_RUNS_DIR / timestamp
+    run_dir.mkdir(parents=True, exist_ok=True)
+    return run_dir
+
+
 @pytest.fixture(scope="function")
 def clean_test_output():
     """
@@ -88,8 +104,8 @@ def sample_xml_content():
     """Return sample XML content for testing."""
     return """<Chapter_01_Introduction>
     <page number="1">
-        <heading>Introduction</heading>
-        <paragraph>This is a test paragraph with some **bold** text and *italic* text.</paragraph>
+        <section>Introduction</section>
+        <p>This is a test paragraph with some **bold** text and *italic* text.</p>
         <list>
             <item>First item</item>
             <item>Second item</item>
