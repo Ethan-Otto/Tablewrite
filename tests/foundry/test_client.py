@@ -61,7 +61,7 @@ class TestJournalOperations:
 
     @patch('requests.put')
     def test_update_journal_entry_success(self, mock_put, mock_client):
-        """Test updating an existing journal entry."""
+        """Test updating an existing journal entry with UUID."""
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
@@ -72,12 +72,17 @@ class TestJournalOperations:
         mock_put.return_value = mock_response
 
         result = mock_client.update_journal_entry(
-            journal_id="journal123",
+            journal_uuid="JournalEntry.journal123",
             content="<p>Updated content</p>"
         )
 
         assert result["_id"] == "journal123"
         mock_put.assert_called_once()
+
+        # Verify UUID is in query parameter (URL is first positional arg)
+        call_args = mock_put.call_args
+        url = call_args[0][0]
+        assert "uuid=JournalEntry.journal123" in url
 
     @patch('requests.get')
     def test_find_journal_by_name(self, mock_get, mock_client):
@@ -146,3 +151,133 @@ class TestJournalOperations:
                 name="Test Journal",
                 content="<p>Test content</p>"
             )
+
+    @patch('requests.delete')
+    def test_delete_journal_entry_success(self, mock_delete, mock_client):
+        """Test deleting a journal entry."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"success": True}
+        mock_delete.return_value = mock_response
+
+        result = mock_client.delete_journal_entry(
+            journal_uuid="JournalEntry.journal123"
+        )
+
+        assert result["success"] is True
+        mock_delete.assert_called_once()
+
+        # Verify UUID is in query parameter (URL is first positional arg)
+        call_args = mock_delete.call_args
+        url = call_args[0][0]
+        assert "uuid=JournalEntry.journal123" in url
+
+    @patch('requests.delete')
+    def test_delete_journal_entry_failure(self, mock_delete, mock_client):
+        """Test journal deletion handles API errors."""
+        mock_response = Mock()
+        mock_response.status_code = 404
+        mock_response.text = "Journal not found"
+        mock_delete.return_value = mock_response
+
+        with pytest.raises(RuntimeError, match="Failed to delete journal"):
+            mock_client.delete_journal_entry(
+                journal_uuid="JournalEntry.nonexistent"
+            )
+
+    @patch('requests.post')
+    @patch('requests.get')
+    def test_create_or_update_creates_when_not_found(self, mock_get, mock_post, mock_client):
+        """Test create_or_update creates new journal when not found."""
+        # Search returns no results
+        mock_search_response = Mock()
+        mock_search_response.status_code = 200
+        mock_search_response.json.return_value = []
+        mock_get.return_value = mock_search_response
+
+        # Create succeeds
+        mock_create_response = Mock()
+        mock_create_response.status_code = 200
+        mock_create_response.json.return_value = {
+            "entity": {"_id": "new123"},
+            "uuid": "JournalEntry.new123"
+        }
+        mock_post.return_value = mock_create_response
+
+        result = mock_client.create_or_update_journal(
+            name="New Journal",
+            content="<p>New content</p>"
+        )
+
+        assert result["entity"]["_id"] == "new123"
+        mock_get.assert_called_once()
+        mock_post.assert_called_once()
+
+    @patch('requests.put')
+    @patch('requests.get')
+    def test_create_or_update_updates_when_found(self, mock_get, mock_put, mock_client):
+        """Test create_or_update updates existing journal when found."""
+        # Search returns existing journal with UUID
+        mock_search_response = Mock()
+        mock_search_response.status_code = 200
+        mock_search_response.json.return_value = [
+            {
+                "name": "Existing Journal",
+                "id": "existing123",
+                "uuid": "JournalEntry.existing123"
+            }
+        ]
+        mock_get.return_value = mock_search_response
+
+        # Update succeeds
+        mock_update_response = Mock()
+        mock_update_response.status_code = 200
+        mock_update_response.json.return_value = {
+            "_id": "existing123",
+            "name": "Existing Journal"
+        }
+        mock_put.return_value = mock_update_response
+
+        result = mock_client.create_or_update_journal(
+            name="Existing Journal",
+            content="<p>Updated content</p>"
+        )
+
+        assert result["_id"] == "existing123"
+        mock_get.assert_called_once()
+        mock_put.assert_called_once()
+
+    @patch('requests.put')
+    @patch('requests.get')
+    def test_create_or_update_constructs_uuid_from_id(self, mock_get, mock_put, mock_client):
+        """Test create_or_update constructs UUID when not provided."""
+        # Search returns journal with id but no uuid
+        mock_search_response = Mock()
+        mock_search_response.status_code = 200
+        mock_search_response.json.return_value = [
+            {
+                "name": "Test Journal",
+                "id": "test456",
+                "_id": "test456"
+            }
+        ]
+        mock_get.return_value = mock_search_response
+
+        # Update succeeds
+        mock_update_response = Mock()
+        mock_update_response.status_code = 200
+        mock_update_response.json.return_value = {"_id": "test456"}
+        mock_put.return_value = mock_update_response
+
+        result = mock_client.create_or_update_journal(
+            name="Test Journal",
+            content="<p>Content</p>"
+        )
+
+        assert result["_id"] == "test456"
+        mock_put.assert_called_once()
+
+        # Verify constructed UUID is used (URL is first positional arg)
+        call_args = mock_put.call_args
+        url = call_args[0][0]
+        assert "uuid=JournalEntry.test456" in url

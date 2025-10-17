@@ -186,7 +186,7 @@ class FoundryClient:
 
     def update_journal_entry(
         self,
-        journal_id: str,
+        journal_uuid: str,
         content: str = None,
         name: str = None
     ) -> Dict[str, Any]:
@@ -194,7 +194,7 @@ class FoundryClient:
         Update an existing journal entry.
 
         Args:
-            journal_id: ID of the journal entry to update
+            journal_uuid: UUID of the journal entry (format: JournalEntry.{id})
             content: New HTML content (optional)
             name: New name (optional)
 
@@ -204,7 +204,7 @@ class FoundryClient:
         Raises:
             RuntimeError: If API request fails
         """
-        url = f"{self.relay_url}/update?clientId={self.client_id}"
+        url = f"{self.relay_url}/update?clientId={self.client_id}&uuid={journal_uuid}"
 
         headers = {
             "x-api-key": self.api_key,
@@ -212,8 +212,6 @@ class FoundryClient:
         }
 
         payload = {
-            "entityType": "JournalEntry",
-            "id": journal_id,
             "data": {}
         }
 
@@ -231,7 +229,7 @@ class FoundryClient:
         if name is not None:
             payload["data"]["name"] = name
 
-        logger.debug(f"Updating journal entry: {journal_id}")
+        logger.debug(f"Updating journal entry: {journal_uuid}")
 
         try:
             response = requests.put(url, json=payload, headers=headers, timeout=30)
@@ -241,12 +239,49 @@ class FoundryClient:
                 raise RuntimeError(f"Failed to update journal: {response.status_code} - {response.text}")
 
             result = response.json()
-            logger.info(f"Updated journal entry: {journal_id}")
+            logger.info(f"Updated journal entry: {journal_uuid}")
             return result
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Update request failed: {e}")
             raise RuntimeError(f"Failed to update journal: {e}") from e
+
+    def delete_journal_entry(self, journal_uuid: str) -> Dict[str, Any]:
+        """
+        Delete a journal entry.
+
+        Args:
+            journal_uuid: UUID of the journal entry (format: JournalEntry.{id})
+
+        Returns:
+            Dict with success status
+
+        Raises:
+            RuntimeError: If API request fails
+        """
+        url = f"{self.relay_url}/delete?clientId={self.client_id}&uuid={journal_uuid}"
+
+        headers = {
+            "x-api-key": self.api_key,
+            "Content-Type": "application/json"
+        }
+
+        logger.debug(f"Deleting journal entry: {journal_uuid}")
+
+        try:
+            response = requests.delete(url, headers=headers, timeout=30)
+
+            if response.status_code != 200:
+                logger.error(f"Delete failed: {response.status_code} - {response.text}")
+                raise RuntimeError(f"Failed to delete journal: {response.status_code} - {response.text}")
+
+            result = response.json()
+            logger.info(f"Deleted journal entry: {journal_uuid}")
+            return result
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Delete request failed: {e}")
+            raise RuntimeError(f"Failed to delete journal: {e}") from e
 
     def create_or_update_journal(
         self,
@@ -255,11 +290,10 @@ class FoundryClient:
         folder: str = None
     ) -> Dict[str, Any]:
         """
-        Create a new journal entry.
+        Create or update a journal entry.
 
-        Note: Currently creates new journals instead of updating existing ones
-        due to undocumented update API behavior. Users should manually delete
-        old journals before re-uploading if they want to replace content.
+        Searches for existing journal by name. If found, updates it.
+        If not found, creates a new journal entry.
 
         Args:
             name: Name of the journal entry
@@ -269,9 +303,30 @@ class FoundryClient:
         Returns:
             Dict containing journal entry data
         """
-        # Skip search/update due to unreliable update API
-        # Always create new journal entries
-        logger.info(f"Creating journal entry: {name}")
+        # Try to find existing journal
+        existing = self.find_journal_by_name(name)
+
+        if existing:
+            # Extract UUID for update
+            # Search results may have 'uuid' field or we construct from 'id'/'_id'
+            journal_uuid = existing.get('uuid')
+            if not journal_uuid:
+                journal_id = existing.get('_id') or existing.get('id')
+                if journal_id:
+                    journal_uuid = f"JournalEntry.{journal_id}"
+
+            if journal_uuid:
+                logger.info(f"Updating existing journal: {name} (UUID: {journal_uuid})")
+                return self.update_journal_entry(
+                    journal_uuid=journal_uuid,
+                    content=content,
+                    name=name
+                )
+            else:
+                logger.warning(f"Found journal but no UUID available, creating new: {name}")
+
+        # Create new journal if not found or no UUID
+        logger.info(f"Creating new journal entry: {name}")
         return self.create_journal_entry(
             name=name,
             content=content,

@@ -122,7 +122,12 @@ def upload_run_to_foundry(
 
             uploaded += 1
             # Extract ID from response (entity._id or uuid)
-            entity_id = result.get('entity', {}).get('_id') or result.get('uuid', 'unknown')
+            # Note: create returns entity as dict, update returns entity as list
+            entity = result.get('entity', {})
+            if isinstance(entity, list):
+                entity_id = entity[0].get('_id') if entity else result.get('uuid', 'unknown')
+            else:
+                entity_id = entity.get('_id') or result.get('uuid', 'unknown')
             logger.info(f"✓ Uploaded: {html_file['name']} (ID: {entity_id})")
 
         except Exception as e:

@@ -25,7 +25,16 @@ This is a D&D module converter that transforms official Dungeons & Dragons PDFs 
 
 3. **Required Configuration**: Create `.env` file at project root with:
    ```
+   # Gemini API
    GeminiImageAPI=<your_gemini_api_key>
+
+   # FoundryVTT Configuration (optional - for journal upload)
+   FOUNDRY_RELAY_URL=https://foundryvtt-rest-api-relay.fly.dev
+   FOUNDRY_LOCAL_URL=http://localhost:30000
+   FOUNDRY_LOCAL_API_KEY=<your_foundry_api_key>
+   FOUNDRY_LOCAL_CLIENT_ID=<your_client_id>
+   FOUNDRY_AUTO_UPLOAD=false
+   FOUNDRY_TARGET=local
    ```
 
 4. **Source PDFs**: Place D&D module PDFs in `data/pdfs/` (default expects `Lost_Mine_of_Phandelver.pdf`)
@@ -63,16 +72,25 @@ uv run src/pdf_processing/pdf_to_xml.py
 # 3. Convert latest XML run to HTML previews
 uv run src/pdf_processing/xml_to_html.py
 
-# 4. Process a single chapter (optional)
+# 4. Upload HTML to FoundryVTT (optional)
+uv run src/foundry/upload_to_foundry.py          # Upload latest run
+uv run src/foundry/upload_to_foundry.py --run-dir output/runs/20241017_123456
+
+# 5. Process and upload in one step (optional)
+uv run scripts/process_and_upload.py             # Convert XML to HTML and upload
+uv run scripts/process_and_upload.py --upload    # Force upload
+uv run scripts/process_and_upload.py --no-upload # Skip upload
+
+# 6. Process a single chapter (optional)
 uv run src/pdf_processing/pdf_to_xml.py --file "01_Introduction.pdf"
 
-# 5. Extract table of contents from PDF (utility)
+# 7. Extract table of contents from PDF (utility)
 uv run src/pdf_processing/get_toc.py
 
-# 6. Check for syntax errors
+# 8. Check for syntax errors
 uv run python -m compileall src
 
-# 7. Run tests
+# 9. Run tests
 uv run pytest                                    # All tests
 uv run pytest -m "not integration and not slow"  # Unit tests only
 uv run pytest -v                                 # Verbose output
@@ -107,6 +125,63 @@ The system follows a three-stage pipeline:
    - Input: Latest run's XML files from `output/runs/<timestamp>/documents/`
    - Output: HTML previews in same directory under `html/`
    - Simple rendering for quick validation
+
+4. **FoundryVTT Upload** (optional, `src/foundry/upload_to_foundry.py`):
+   - Input: HTML files from `output/runs/<timestamp>/documents/html/`
+   - Output: Journal entries in FoundryVTT
+   - Uses ThreeHats REST API module for FoundryVTT integration
+   - Supports create and update (no duplicates on re-upload)
+
+### FoundryVTT Integration
+
+The project includes optional integration with FoundryVTT for uploading generated HTML content as journal entries.
+
+**Architecture:**
+- Uses ThreeHats REST API module (relay server → WebSocket → FoundryVTT)
+- `src/foundry/client.py`: Core API client with CRUD operations
+- `src/foundry/upload_to_foundry.py`: Batch upload script
+- `scripts/process_and_upload.py`: Orchestration script (XML → HTML → upload)
+
+**Key Features:**
+- **Create or Update**: Automatically searches for existing journals by name and updates them instead of creating duplicates
+- **UUID-based Updates**: Uses FoundryVTT's `JournalEntry.{id}` UUID format for updates and deletes
+- **Pages Structure**: Compatible with FoundryVTT v10+ pages architecture
+- **Environment-based Config**: Supports both local FoundryVTT and The Forge
+- **Error Handling**: Graceful handling of search failures, network errors, and API issues
+
+**FoundryClient API:**
+```python
+from foundry.client import FoundryClient
+
+client = FoundryClient(target="local")  # or "forge"
+
+# Create journal entry
+client.create_journal_entry(name="Chapter 1", content="<h1>...</h1>")
+
+# Search for existing journal
+found = client.find_journal_by_name("Chapter 1")
+
+# Update existing journal (requires UUID)
+client.update_journal_entry(journal_uuid="JournalEntry.abc123", content="<h1>Updated</h1>")
+
+# Delete journal
+client.delete_journal_entry(journal_uuid="JournalEntry.abc123")
+
+# Create or update (searches, then creates/updates)
+client.create_or_update_journal(name="Chapter 1", content="<h1>...</h1>")
+```
+
+**API Response Formats:**
+- Create: `{'entity': {...}, 'uuid': 'JournalEntry.{id}'}`
+- Update: `{'entity': [...], 'uuid': 'JournalEntry.{id}'}`  (entity is a list!)
+- Delete: `{'success': True}`
+- Search: `[{'id': '...', 'uuid': 'JournalEntry.{id}', 'name': '...'}]`
+
+**Important Notes:**
+- Update/delete operations require `uuid` as query parameter: `/update?clientId={id}&uuid={uuid}`
+- Update payload is `{"data": {...}}`, NOT `{"entityType": "JournalEntry", "id": "...", "data": {...}}`
+- Search results may return `id` OR `uuid` field; client normalizes to both `_id` and `uuid`
+- FoundryVTT v10+ requires pages structure: `{"pages": [{"name": "...", "type": "text", "text": {"content": "..."}}]}`
 
 ### Key Architecture Patterns
 
@@ -189,6 +264,11 @@ tests/
 │   ├── test_pdf_to_xml.py  # Tests for pdf_to_xml.py
 │   ├── test_get_toc.py     # Tests for get_toc.py (uses FULL PDF)
 │   └── test_xml_to_html.py # Tests for xml_to_html.py
+├── foundry/                 # Tests for src/foundry/
+│   ├── __init__.py
+│   ├── test_client.py       # Tests for FoundryClient API
+│   ├── test_upload_script.py # Tests for upload_to_foundry.py
+│   └── test_xml_to_journal_html.py # Tests for XML to journal HTML converter
 └── output/                  # Persistent test output (not auto-cleaned)
     └── test_runs/           # Timestamped test runs from end-to-end tests
 ```
@@ -273,6 +353,20 @@ uv run pytest -k "test_word_count"
 - Run isolation (separate timestamped runs don't interfere)
 - Error handling throughout pipeline
 - **Integration tests**: Make REAL Gemini API calls for full workflow testing
+
+**FoundryVTT Integration** (`tests/foundry/`):
+- **Client Tests** (`test_client.py`): Unit tests for FoundryClient
+  - Environment-based initialization (local and forge)
+  - Create, search, update, delete journal operations
+  - UUID-based update/delete with query parameters
+  - create_or_update flow (creates new or updates existing)
+  - UUID construction from id when uuid not provided
+  - Error handling for API failures
+- **Upload Script Tests** (`test_upload_script.py`): Upload workflow tests
+  - HTML file reading and batching
+  - Upload statistics tracking
+  - Error handling for failed uploads
+- All tests use mocked HTTP requests (no real API calls to FoundryVTT)
 
 ### Writing New Tests
 
