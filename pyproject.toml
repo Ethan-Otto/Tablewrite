@@ -11,6 +11,7 @@ dependencies = [
     "pytesseract>=0.3.10",
     "pytest>=8.4.2",
     "pytest-anyio>=0.0.0",
+    "requests>=2.31.0",
 ]
 
 [dependency-groups]
