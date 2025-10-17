@@ -30,17 +30,23 @@ class FoundryClient:
         if target == "local":
             self.foundry_url = os.getenv("FOUNDRY_LOCAL_URL")
             self.api_key = os.getenv("FOUNDRY_LOCAL_API_KEY")
+            self.client_id = os.getenv("FOUNDRY_LOCAL_CLIENT_ID")
             if not self.foundry_url:
                 raise ValueError("FOUNDRY_LOCAL_URL not set in environment")
             if not self.api_key:
                 raise ValueError("FOUNDRY_LOCAL_API_KEY not set in environment")
+            if not self.client_id:
+                raise ValueError("FOUNDRY_LOCAL_CLIENT_ID not set in environment")
         elif target == "forge":
             self.foundry_url = os.getenv("FOUNDRY_FORGE_URL")
             self.api_key = os.getenv("FOUNDRY_FORGE_API_KEY")
+            self.client_id = os.getenv("FOUNDRY_FORGE_CLIENT_ID")
             if not self.foundry_url:
                 raise ValueError("FOUNDRY_FORGE_URL not set in environment")
             if not self.api_key:
                 raise ValueError("FOUNDRY_FORGE_API_KEY not set in environment")
+            if not self.client_id:
+                raise ValueError("FOUNDRY_FORGE_CLIENT_ID not set in environment")
         else:
             raise ValueError(f"Invalid target: {target}. Must be 'local' or 'forge'")
 
@@ -66,7 +72,7 @@ class FoundryClient:
         Raises:
             RuntimeError: If API request fails
         """
-        url = f"{self.relay_url}/create"
+        url = f"{self.relay_url}/create?clientId={self.client_id}"
 
         headers = {
             "x-api-key": self.api_key,
@@ -74,7 +80,7 @@ class FoundryClient:
         }
 
         payload = {
-            "type": "JournalEntry",
+            "entityType": "JournalEntry",
             "data": {
                 "name": name,
                 "content": content
@@ -124,8 +130,9 @@ class FoundryClient:
         }
 
         params = {
+            "clientId": self.client_id,
             "type": "JournalEntry",
-            "name": name
+            "query": name
         }
 
         logger.debug(f"Searching for journal: {name}")
@@ -134,17 +141,26 @@ class FoundryClient:
             response = requests.get(url, params=params, headers=headers, timeout=30)
 
             if response.status_code != 200:
-                logger.error(f"Search failed: {response.status_code}")
-                raise RuntimeError(f"Failed to search journals: {response.status_code}")
+                logger.warning(f"Search failed: {response.status_code} - search not available, will create new journal")
+                return None  # Search failed, assume not found
 
             results = response.json()
 
-            if not results:
+            # Check for QuickInsert error (search module not available)
+            if isinstance(results, dict) and results.get("error"):
+                logger.warning(f"Search error: {results['error']} - will create new journal")
+                return None
+
+            # Check for empty results
+            if not results or (isinstance(results, dict) and not results.get("results")):
                 logger.debug(f"No journal found with name: {name}")
                 return None
 
+            # Handle both list and dict response formats
+            search_results = results if isinstance(results, list) else results.get("results", [])
+
             # Return first exact match
-            for journal in results:
+            for journal in search_results:
                 if journal.get("name") == name:
                     logger.debug(f"Found journal: {name} (ID: {journal.get('_id')})")
                     return journal
@@ -152,8 +168,8 @@ class FoundryClient:
             return None
 
         except requests.exceptions.RequestException as e:
-            logger.error(f"Search request failed: {e}")
-            raise RuntimeError(f"Failed to search journals: {e}") from e
+            logger.warning(f"Search request failed: {e} - will create new journal")
+            return None  # Network error, assume not found
 
     def update_journal_entry(
         self,
@@ -175,7 +191,7 @@ class FoundryClient:
         Raises:
             RuntimeError: If API request fails
         """
-        url = f"{self.relay_url}/update"
+        url = f"{self.relay_url}/update?clientId={self.client_id}"
 
         headers = {
             "x-api-key": self.api_key,
@@ -183,7 +199,7 @@ class FoundryClient:
         }
 
         payload = {
-            "type": "JournalEntry",
+            "entityType": "JournalEntry",
             "id": journal_id,
             "data": {}
         }

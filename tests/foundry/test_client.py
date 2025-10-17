@@ -13,24 +13,28 @@ class TestFoundryClientInit:
         """Test client initializes with environment variables."""
         monkeypatch.setenv("FOUNDRY_LOCAL_URL", "http://localhost:30000")
         monkeypatch.setenv("FOUNDRY_LOCAL_API_KEY", "test-api-key")
+        monkeypatch.setenv("FOUNDRY_LOCAL_CLIENT_ID", "test-client-id")
         monkeypatch.setenv("FOUNDRY_RELAY_URL", "https://relay.example.com")
 
         client = FoundryClient(target="local")
 
         assert client.foundry_url == "http://localhost:30000"
         assert client.api_key == "test-api-key"
+        assert client.client_id == "test-client-id"
         assert client.relay_url == "https://relay.example.com"
 
     def test_client_initialization_forge(self, monkeypatch):
         """Test client initializes with forge environment."""
         monkeypatch.setenv("FOUNDRY_FORGE_URL", "https://game.forge-vtt.com")
         monkeypatch.setenv("FOUNDRY_FORGE_API_KEY", "forge-api-key")
+        monkeypatch.setenv("FOUNDRY_FORGE_CLIENT_ID", "forge-client-id")
         monkeypatch.setenv("FOUNDRY_RELAY_URL", "https://relay.example.com")
 
         client = FoundryClient(target="forge")
 
         assert client.foundry_url == "https://game.forge-vtt.com"
         assert client.api_key == "forge-api-key"
+        assert client.client_id == "forge-client-id"
 
     def test_client_raises_on_missing_env_vars(self, monkeypatch):
         """Test client raises ValueError when required env vars missing."""
@@ -51,6 +55,7 @@ class TestJournalOperations:
         """Create a FoundryClient with mocked environment."""
         monkeypatch.setenv("FOUNDRY_LOCAL_URL", "http://localhost:30000")
         monkeypatch.setenv("FOUNDRY_LOCAL_API_KEY", "test-key")
+        monkeypatch.setenv("FOUNDRY_LOCAL_CLIENT_ID", "test-client-id")
         monkeypatch.setenv("FOUNDRY_RELAY_URL", "https://relay.example.com")
         return FoundryClient(target="local")
 
