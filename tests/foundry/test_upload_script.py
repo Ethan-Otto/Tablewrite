@@ -67,14 +67,14 @@ class TestUploadScript:
 
         # Mock client
         mock_client = Mock()
-        mock_client.create_or_update_journal.return_value = {"_id": "journal123"}
+        mock_client.create_or_replace_journal.return_value = {"_id": "journal123"}
         mock_client_class.return_value = mock_client
 
         result = upload_run_to_foundry(str(run_dir), target="local", journal_name="Test Module")
 
         assert result["uploaded"] == 1
         assert result["failed"] == 0
-        mock_client.create_or_update_journal.assert_called_once_with(
+        mock_client.create_or_replace_journal.assert_called_once_with(
             name="Test Module",
             pages=[{"name": "01_Test", "content": "<h1>Test</h1>"}]
         )
@@ -98,7 +98,7 @@ class TestUploadScript:
 
         # Mock client
         mock_client = Mock()
-        mock_client.create_or_update_journal.return_value = {"_id": "journal123"}
+        mock_client.create_or_replace_journal.return_value = {"_id": "journal123"}
         mock_client_class.return_value = mock_client
 
         result = upload_run_to_foundry(str(run_dir), target="local", journal_name="Test Module")
@@ -107,8 +107,8 @@ class TestUploadScript:
         assert result["failed"] == 0
 
         # Verify single journal created with both pages
-        mock_client.create_or_update_journal.assert_called_once()
-        call_args = mock_client.create_or_update_journal.call_args
+        mock_client.create_or_replace_journal.assert_called_once()
+        call_args = mock_client.create_or_replace_journal.call_args
         assert call_args.kwargs["name"] == "Test Module"
         assert len(call_args.kwargs["pages"]) == 2
         assert call_args.kwargs["pages"][0]["name"] == "01_Chapter_One"
