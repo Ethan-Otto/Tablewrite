@@ -266,6 +266,25 @@ def get_xml_for_page(page_info: tuple) -> str:
             - Escape special characters (&, <, >)
             - Preserve the semantic structure of the document
 
+            ## DISTINGUISHING HEADINGS FROM BOLD TEXT
+            **CRITICAL**: `<section>`, `<subsection>`, and `<subsubsection>` tags should ONLY be used for actual headings.
+
+            A heading is text that is:
+            1. **Visually larger** than normal paragraph text (increased font size)
+            2. Usually bold or emphasized
+            3. Stands alone on its own line
+            4. Introduces a new topic or section
+
+            **DO NOT use heading tags for:**
+            - Bold text that is the SAME SIZE as normal text (use `<p>**bold text**</p>` instead)
+            - Labels or terms in definition lists (use `<term>` instead)
+            - Emphasis within paragraphs (use **bold** markdown)
+
+            **Example of correct usage:**
+            - Large heading text → `<section>Combat Encounters</section>`
+            - Bold text same size as paragraph → `<p>**Important:** Do not forget this rule.</p>`
+            - NPC names in lists → `<term>Toblen Stonehill</term>` not `<subsection>`
+
             ## IDENTIFYING HEADERS AND FOOTERS
             - **Footers** are typically small text at the bottom of the page (page numbers, chapter names, copyright info)
             - **Headers** are typically text at the top of the page (chapter titles, section names)
