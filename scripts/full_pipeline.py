@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-Full pipeline orchestration: PDF → XML → FoundryVTT
+Full pipeline orchestration: PDF → XML → FoundryVTT → Export
 
 This script coordinates the complete workflow:
 1. Split PDF into chapter PDFs (split_pdf.py)
 2. Generate XML from chapters using Gemini (pdf_to_xml.py)
 3. Upload XML to FoundryVTT (upload_to_foundry.py)
+4. Export journal from FoundryVTT to HTML (export_from_foundry.py)
 
 Each step can be skipped with flags for resuming interrupted runs.
 """
@@ -139,7 +140,7 @@ def upload_to_foundry(run_dir: Path, target: str = "local", journal_name: str = 
         journal_name: Optional journal name
 
     Returns:
-        Upload statistics dict
+        Upload statistics dict with 'journal_uuid' key
 
     Raises:
         RuntimeError: If upload fails
@@ -175,12 +176,91 @@ def upload_to_foundry(run_dir: Path, target: str = "local", journal_name: str = 
         raise RuntimeError(f"Upload failed: {e}")
 
 
+def export_from_foundry(
+    run_dir: Path,
+    target: str = "local",
+    journal_name: str = None,
+    journal_uuid: str = None
+) -> None:
+    """
+    Export journal from FoundryVTT to HTML in the run directory.
+
+    Args:
+        run_dir: Path to run directory to save export
+        target: Target environment ('local' or 'forge')
+        journal_name: Name of the journal to export (used for filename)
+        journal_uuid: Optional UUID of journal (if provided, skips search)
+
+    Raises:
+        RuntimeError: If export fails
+    """
+    logger.info("=" * 60)
+    logger.info("STEP 4: Exporting from FoundryVTT")
+    logger.info("=" * 60)
+
+    # Import here to avoid circular dependencies
+    from src.foundry.client import FoundryClient
+    from src.foundry.export_from_foundry import export_to_html
+
+    try:
+        # Initialize client
+        client = FoundryClient(target=target)
+
+        # Get journal UUID (either provided or search by name)
+        if journal_uuid:
+            logger.info(f"Using provided journal UUID: {journal_uuid}")
+        else:
+            # Need to search for journal by name
+            if not journal_name:
+                logger.error("Must provide either journal_uuid or journal_name")
+                return
+
+            logger.info(f"Searching for journal: {journal_name}")
+            journal = client.find_journal_by_name(journal_name)
+
+            if not journal:
+                logger.warning(f"Journal not found: {journal_name} - skipping export")
+                return
+
+            # Extract UUID from search result
+            journal_uuid = journal.get('uuid')
+            if not journal_uuid:
+                journal_id = journal.get('_id') or journal.get('id')
+                if journal_id:
+                    journal_uuid = f"JournalEntry.{journal_id}"
+
+            if not journal_uuid:
+                logger.error(f"Could not determine UUID for journal: {journal_name}")
+                return
+
+        # Get full journal data
+        logger.info(f"Retrieving journal data: {journal_uuid}")
+        journal_data = client.get_journal_entry(journal_uuid)
+
+        # Use journal name from data if not provided
+        if not journal_name:
+            data = journal_data.get('data', journal_data)
+            journal_name = data.get('name', 'journal')
+
+        # Export to HTML in run directory
+        export_dir = run_dir / "foundry_export"
+        export_dir.mkdir(exist_ok=True)
+        output_path = export_dir / f"{journal_name}.html"
+
+        export_to_html(journal_data, str(output_path), single_file=True)
+        logger.info(f"✓ Exported journal to: {output_path}")
+
+    except Exception as e:
+        logger.error(f"Export from FoundryVTT failed: {e}")
+        raise RuntimeError(f"Export failed: {e}")
+
+
 def main():
     """Main entry point for full pipeline orchestration."""
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Full pipeline: Split PDF → Generate XML → Upload to FoundryVTT"
+        description="Full pipeline: Split PDF → Generate XML → Upload to FoundryVTT → Export HTML"
     )
     parser.add_argument(
         "--skip-split",
@@ -196,6 +276,11 @@ def main():
         "--skip-upload",
         action="store_true",
         help="Skip FoundryVTT upload"
+    )
+    parser.add_argument(
+        "--skip-export",
+        action="store_true",
+        help="Skip FoundryVTT export"
     )
     parser.add_argument(
         "--chapter-file",
@@ -247,18 +332,36 @@ def main():
             run_dir = run_pdf_to_xml(project_root, chapter_file=args.chapter_file)
 
         # Step 3: Upload to FoundryVTT
+        upload_result = None
         if args.skip_upload:
             logger.info("Skipping FoundryVTT upload (--skip-upload)")
         else:
-            result = upload_to_foundry(
+            upload_result = upload_to_foundry(
                 run_dir,
                 target=args.target,
                 journal_name=args.journal_name
             )
 
-            if result["failed"] > 0 or result.get("errors"):
+            if upload_result["failed"] > 0 or upload_result.get("errors"):
                 logger.warning("Some uploads failed, check logs above")
                 sys.exit(1)
+
+        # Step 4: Export from FoundryVTT
+        if args.skip_export:
+            logger.info("Skipping FoundryVTT export (--skip-export)")
+        elif args.skip_upload:
+            logger.info("Skipping export (upload was skipped)")
+        else:
+            # Use journal UUID from upload result (saves an API search call)
+            journal_uuid = upload_result.get("journal_uuid") if upload_result else None
+            journal_name = upload_result.get("journal_name") if upload_result else (args.journal_name or "D&D Module")
+
+            export_from_foundry(
+                run_dir,
+                target=args.target,
+                journal_name=journal_name,
+                journal_uuid=journal_uuid
+            )
 
         logger.info("=" * 60)
         logger.info("PIPELINE COMPLETE!")

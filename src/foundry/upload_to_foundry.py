@@ -140,24 +140,34 @@ def upload_run_to_foundry(
 
     # Upload as single journal with multiple pages
     try:
-        result = client.create_or_update_journal(
+        result = client.create_or_replace_journal(
             name=journal_name,
             pages=pages
         )
 
-        # Extract ID from response
-        entity = result.get('entity', {})
-        if isinstance(entity, list):
-            entity_id = entity[0].get('_id') if entity else result.get('uuid', 'unknown')
-        else:
-            entity_id = entity.get('_id') or result.get('uuid', 'unknown')
+        # Extract UUID from response
+        journal_uuid = result.get('uuid')
+        if not journal_uuid:
+            # Construct from entity ID if uuid not directly available
+            entity = result.get('entity', {})
+            if isinstance(entity, list):
+                entity_id = entity[0].get('_id') if entity else None
+            else:
+                entity_id = entity.get('_id')
 
-        logger.info(f"✓ Uploaded journal: {journal_name} with {len(pages)} page(s) (ID: {entity_id})")
+            if entity_id:
+                journal_uuid = f"JournalEntry.{entity_id}"
+            else:
+                journal_uuid = 'unknown'
+
+        logger.info(f"✓ Uploaded journal: {journal_name} with {len(pages)} page(s) (UUID: {journal_uuid})")
 
         return {
             "uploaded": len(pages),
             "failed": 0,
-            "errors": []
+            "errors": [],
+            "journal_uuid": journal_uuid,
+            "journal_name": journal_name
         }
 
     except Exception as e:
@@ -166,7 +176,9 @@ def upload_run_to_foundry(
         return {
             "uploaded": 0,
             "failed": len(pages),
-            "errors": [error_msg]
+            "errors": [error_msg],
+            "journal_uuid": None,
+            "journal_name": journal_name
         }
 
 

@@ -290,6 +290,21 @@ def get_xml_for_page(page_info: tuple) -> str:
             - Bold text same size as paragraph → `<p>**Important:** Do not forget this rule.</p>`
             - NPC names in lists → `<term>Toblen Stonehill</term>` not `<subsection>`
 
+            ## HEADING HIERARCHY AND CONTEXT
+            **CRITICAL**: Font size alone does NOT determine hierarchy level. A heading can be LARGER than normal text but still be a subsection or subsubsection based on CONTEXT.
+
+            **Consider the semantic structure:**
+            - If a heading introduces a topic WITHIN an existing section, it's a `<subsection>` (even if larger than body text)
+            - If a heading introduces a detail WITHIN a subsection, it's a `<subsubsection>` (even if larger than body text)
+            - Use `<section>` only for major topic changes or new top-level areas
+
+            **Example:**
+            If you're processing content about "Cragmaw Hideout" (a section), and you encounter:
+            - "1. Cave Mouth" (larger text) → This is a `<subsection>` (a location within the hideout), NOT a new `<section>`
+            - "Treasure" (larger text under "1. Cave Mouth") → This is a `<subsubsection>` (detail within the location)
+
+            **Read the full page context** to understand where you are in the document structure. Don't promote headings to higher levels just because they're visually prominent.
+
             ## IDENTIFYING HEADERS AND FOOTERS
             - **Footers** are typically small text at the bottom of the page (page numbers, chapter names, copyright info)
             - **Headers** are typically text at the top of the page (chapter titles, section names)

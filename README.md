@@ -7,12 +7,14 @@ Utilities for turning official Dungeons & Dragons PDFs into structured assets th
   - `split_pdf.py` – slices `data/pdfs/Lost_Mine_of_Phandelver.pdf` into chapter PDFs under `pdf_sections/`
   - `pdf_to_xml.py` – uploads each chapter page to Gemini (`GEMINI_MODEL_NAME`) and writes XML plus logs to `output/runs/<timestamp>/`
   - `get_toc.py` – extracts table of contents from PDF
-  - `xml_to_html.py` – converts the latest run's XML into browsable HTML inside the same run directory
+  - `xml_to_html.py` – converts XML to browsable HTML (local previews and FoundryVTT uploads)
+  - `valid_xml_tags.py` – XML tag validation utilities
 - `src/foundry/` – FoundryVTT integration:
-  - `client.py` – REST API client with CRUD operations for journal entries
-  - `upload_to_foundry.py` – batch upload script for HTML files
-  - `xml_to_journal_html.py` – XML to journal HTML converter
-- `scripts/process_and_upload.py` – orchestration script for XML → HTML → Foundry workflow
+  - `client.py` – REST API client base class
+  - `journals.py` – `JournalManager` class for journal CRUD operations
+  - `upload_to_foundry.py` – batch upload script for journals
+  - `export_from_foundry.py` – export journals from FoundryVTT to HTML/JSON
+- `scripts/full_pipeline.py` – complete pipeline: split → XML generation → upload → export
 - `src/logging_config.py` – centralized logging configuration
 - `xml_examples/` – reference markup while refining the converters
 - `pdf_sections/` – cache of manually curated chapter PDFs used as input for the XML step
@@ -25,12 +27,25 @@ Utilities for turning official Dungeons & Dragons PDFs into structured assets th
 
 ## Workflow
 
-Using `uv run` (recommended - automatically manages environment):
-1. `uv run src/pdf_processing/split_pdf.py` – refreshes chapter PDFs in `pdf_sections/<module>/`
-2. `uv run src/pdf_processing/pdf_to_xml.py` – generates XML plus per-page artifacts in a timestamped run directory
-3. `uv run src/pdf_processing/xml_to_html.py` – emits HTML previews for the most recent run to speed up spot checks
+**Full Pipeline (recommended):**
+```bash
+# Complete workflow: split → XML → upload → export
+uv run python scripts/full_pipeline.py --journal-name "Lost Mine of Phandelver"
 
-Or activate the virtual environment first (`source .venv/bin/activate`) and use `python src/pdf_processing/...` directly.
+# Skip steps as needed
+uv run python scripts/full_pipeline.py --skip-split --skip-xml  # Only upload + export
+uv run python scripts/full_pipeline.py --skip-export             # Skip final export
+```
+
+**Individual Steps:**
+```bash
+1. uv run src/pdf_processing/split_pdf.py           # Split PDF into chapters
+2. uv run src/pdf_processing/pdf_to_xml.py          # Generate XML via Gemini
+3. uv run src/foundry/upload_to_foundry.py          # Upload to FoundryVTT
+4. uv run src/foundry/export_from_foundry.py "Lost Mine of Phandelver"  # Export HTML
+```
+
+Or activate the virtual environment first (`source .venv/bin/activate`) and use `python ...` directly.
 
 Each run preserves logs, raw model responses, and word-count checks beneath `output/runs/<timestamp>/`; avoid editing outputs in place so history stays intact.
 
@@ -57,31 +72,34 @@ The project includes optional integration for uploading generated HTML content d
    FOUNDRY_TARGET=local
    ```
 
-3. **Upload HTML to FoundryVTT:**
+3. **Upload and Export:**
    ```bash
-   # Manual upload of latest run (local FoundryVTT)
+   # Full pipeline (recommended)
+   uv run python scripts/full_pipeline.py --journal-name "Lost Mine of Phandelver"
+
+   # Manual upload of latest run
    uv run src/foundry/upload_to_foundry.py
 
-   # Upload specific run
-   uv run src/foundry/upload_to_foundry.py --run-dir output/runs/20241017_123456
-
-   # Process XML to HTML and upload in one step
-   uv run scripts/process_and_upload.py --upload
+   # Export journal from FoundryVTT
+   uv run src/foundry/export_from_foundry.py "Lost Mine of Phandelver" --format html
    ```
 
 ### Features
 
-- **Smart Updates**: Automatically searches for existing journals by name and updates them instead of creating duplicates
-- **UUID-based Operations**: Properly handles FoundryVTT's UUID format for updates and deletes
+- **Create or Replace**: Automatically searches for existing journals by name and replaces them (no duplicates)
+- **Export Support**: Download journals from FoundryVTT as HTML or JSON
+- **UUID-based Operations**: Proper UUID handling for all journal operations
 - **Pages Structure**: Compatible with FoundryVTT v10+ pages architecture
 - **Dual Environment Support**: Works with both local FoundryVTT and The Forge
 
 ### Architecture
 
-The integration uses the ThreeHats REST API module with a relay server architecture:
+The integration uses the ThreeHats REST API module with a relay server:
 - Script → HTTP → Relay Server → WebSocket → FoundryVTT Module → FoundryVTT
 
-This allows uploads even when Foundry is behind a firewall.
+**JournalManager Pattern:**
+- `src/foundry/journals.py` - `JournalManager` class handles all journal CRUD operations
+- `src/foundry/client.py` - Base `FoundryClient` delegates to specialized managers
 
 ## Logging
 All scripts use Python's standard `logging` module for structured output:
@@ -158,7 +176,16 @@ GitHub Actions automatically runs the full test suite on all pull requests. See 
 - GitHub Actions runs all tests automatically on pull requests
 
 ### Current Status
-✅ **FoundryVTT Upload Integration**: Implemented with smart update/create logic, UUID-based operations, and support for both local and Forge environments.
+✅ **Full Pipeline**: Complete workflow from PDF → XML → FoundryVTT → HTML export
+✅ **FoundryVTT Integration**: Upload, export, create/replace journals with UUID-based operations
+✅ **Bug Fixes**: Mixed XML content handling, improved heading hierarchy detection
+
+### Recent Updates
+- **Full Pipeline Script** (`scripts/full_pipeline.py`): Orchestrates all 4 stages with skip flags
+- **Journal Export**: Download journals from FoundryVTT as HTML or JSON
+- **JournalManager Refactor**: Specialized manager class for journal operations
+- **XML Mixed Content Fix**: Properly handles bare text + child elements in definitions
+- **Improved Prompts**: Better heading hierarchy detection (context over font size)
 
 ### Future Work
 - Normalize XML schema for consistent journal structure

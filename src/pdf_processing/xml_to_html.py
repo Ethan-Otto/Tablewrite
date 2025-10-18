@@ -130,8 +130,19 @@ def xml_to_html_content(xml_path, include_footers=False):
                 text = convert_markdown_to_html(elem.text if elem.text else "")
                 result += f'  <dt>{text}</dt>\n'
             elif elem.tag == 'definition':
-                text = convert_markdown_to_html(elem.text if elem.text else "")
-                result += f'  <dd>{text}</dd>\n'
+                result += '  <dd>\n'
+                # Handle bare text content before first child element (if present)
+                if elem.text and elem.text.strip():
+                    text = convert_markdown_to_html(elem.text.strip())
+                    result += f'    <p>{text}</p>\n'
+                # Process child elements and their tail text
+                for child in elem:
+                    result += '    ' + process_element(child, depth + 1).replace('\n', '\n    ')
+                    # Handle tail text after child elements
+                    if child.tail and child.tail.strip():
+                        tail_text = convert_markdown_to_html(child.tail.strip())
+                        result += f'    <p>{tail_text}</p>\n'
+                result += '  </dd>\n'
             # Skip structural/metadata tags that shouldn't be rendered
             elif elem.tag in ['page', 'footer', 'header', 'page_number']:
                 for child in elem:

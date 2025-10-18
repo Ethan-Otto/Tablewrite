@@ -188,8 +188,8 @@ class TestJournalOperations:
 
     @patch('requests.post')
     @patch('requests.get')
-    def test_create_or_update_creates_when_not_found(self, mock_get, mock_post, mock_client):
-        """Test create_or_update creates new journal when not found."""
+    def test_create_or_replace_creates_when_not_found(self, mock_get, mock_post, mock_client):
+        """Test create_or_replace creates new journal when not found."""
         # Search returns no results
         mock_search_response = Mock()
         mock_search_response.status_code = 200
@@ -205,7 +205,7 @@ class TestJournalOperations:
         }
         mock_post.return_value = mock_create_response
 
-        result = mock_client.create_or_update_journal(
+        result = mock_client.create_or_replace_journal(
             name="New Journal",
             content="<p>New content</p>"
         )
@@ -214,10 +214,11 @@ class TestJournalOperations:
         mock_get.assert_called_once()
         mock_post.assert_called_once()
 
-    @patch('requests.put')
+    @patch('requests.delete')
+    @patch('requests.post')
     @patch('requests.get')
-    def test_create_or_update_updates_when_found(self, mock_get, mock_put, mock_client):
-        """Test create_or_update updates existing journal when found."""
+    def test_create_or_replace_replaces_when_found(self, mock_get, mock_post, mock_delete, mock_client):
+        """Test create_or_replace deletes existing journal and creates new one."""
         # Search returns existing journal with UUID
         mock_search_response = Mock()
         mock_search_response.status_code = 200
@@ -230,28 +231,36 @@ class TestJournalOperations:
         ]
         mock_get.return_value = mock_search_response
 
-        # Update succeeds
-        mock_update_response = Mock()
-        mock_update_response.status_code = 200
-        mock_update_response.json.return_value = {
-            "_id": "existing123",
-            "name": "Existing Journal"
-        }
-        mock_put.return_value = mock_update_response
+        # Delete succeeds
+        mock_delete_response = Mock()
+        mock_delete_response.status_code = 200
+        mock_delete_response.json.return_value = {"success": True}
+        mock_delete.return_value = mock_delete_response
 
-        result = mock_client.create_or_update_journal(
+        # Create succeeds
+        mock_create_response = Mock()
+        mock_create_response.status_code = 200
+        mock_create_response.json.return_value = {
+            "entity": {"_id": "new456"},
+            "uuid": "JournalEntry.new456"
+        }
+        mock_post.return_value = mock_create_response
+
+        result = mock_client.create_or_replace_journal(
             name="Existing Journal",
             content="<p>Updated content</p>"
         )
 
-        assert result["_id"] == "existing123"
+        assert result["entity"]["_id"] == "new456"
         mock_get.assert_called_once()
-        mock_put.assert_called_once()
+        mock_delete.assert_called_once()
+        mock_post.assert_called_once()
 
-    @patch('requests.put')
+    @patch('requests.delete')
+    @patch('requests.post')
     @patch('requests.get')
-    def test_create_or_update_constructs_uuid_from_id(self, mock_get, mock_put, mock_client):
-        """Test create_or_update constructs UUID when not provided."""
+    def test_create_or_replace_constructs_uuid_from_id(self, mock_get, mock_post, mock_delete, mock_client):
+        """Test create_or_replace constructs UUID when not provided."""
         # Search returns journal with id but no uuid
         mock_search_response = Mock()
         mock_search_response.status_code = 200
@@ -264,22 +273,31 @@ class TestJournalOperations:
         ]
         mock_get.return_value = mock_search_response
 
-        # Update succeeds
-        mock_update_response = Mock()
-        mock_update_response.status_code = 200
-        mock_update_response.json.return_value = {"_id": "test456"}
-        mock_put.return_value = mock_update_response
+        # Delete succeeds
+        mock_delete_response = Mock()
+        mock_delete_response.status_code = 200
+        mock_delete_response.json.return_value = {"success": True}
+        mock_delete.return_value = mock_delete_response
 
-        result = mock_client.create_or_update_journal(
+        # Create succeeds
+        mock_create_response = Mock()
+        mock_create_response.status_code = 200
+        mock_create_response.json.return_value = {
+            "entity": {"_id": "new789"},
+            "uuid": "JournalEntry.new789"
+        }
+        mock_post.return_value = mock_create_response
+
+        result = mock_client.create_or_replace_journal(
             name="Test Journal",
             content="<p>Content</p>"
         )
 
-        assert result["_id"] == "test456"
-        mock_put.assert_called_once()
+        assert result["entity"]["_id"] == "new789"
+        mock_delete.assert_called_once()
 
         # Verify constructed UUID is used (URL is first positional arg)
-        call_args = mock_put.call_args
+        call_args = mock_delete.call_args
         url = call_args[0][0]
         assert "uuid=JournalEntry.test456" in url
 
@@ -473,13 +491,13 @@ class TestFoundryIntegration:
     @pytest.mark.skip(reason="Disabled to conserve API calls - enable when needed")
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_create_or_update_workflow(self, real_client):
-        """Test create_or_update creates on first call, updates on second call."""
-        journal_name = "Integration Test Create or Update"
+    def test_create_or_replace_workflow(self, real_client):
+        """Test create_or_replace creates on first call, deletes and creates on second call."""
+        journal_name = "Integration Test Create or Replace"
 
         try:
             # First call should CREATE
-            result1 = real_client.create_or_update_journal(
+            result1 = real_client.create_or_replace_journal(
                 name=journal_name,
                 content="<h1>First Version</h1><p>Initial content</p>"
             )
@@ -493,25 +511,25 @@ class TestFoundryIntegration:
 
             assert id1 is not None, "Failed to extract ID from first call"
 
-            # Second call should UPDATE (same ID)
-            result2 = real_client.create_or_update_journal(
+            # Second call should DELETE old journal and CREATE new one (different ID)
+            result2 = real_client.create_or_replace_journal(
                 name=journal_name,
                 content="<h1>Second Version</h1><p>Updated content!</p>"
             )
 
-            # Extract ID from update response (entity is a list for updates)
+            # Extract ID from create response
             entity2 = result2.get('entity', {})
             if isinstance(entity2, list):
                 id2 = entity2[0].get('_id') if entity2 else None
             else:
                 id2 = entity2.get('_id')
 
-            # Should be same journal (updated, not duplicated)
-            assert id2 == id1, f"Second call created duplicate journal: {id1} vs {id2}"
+            # Should be different journal (replaced, not updated)
+            assert id2 != id1, f"Second call should create new journal with different ID: {id1} vs {id2}"
 
             # Verify only one journal exists with this name
             found = real_client.find_journal_by_name(journal_name)
-            assert found is not None, "Journal not found after create_or_update"
+            assert found is not None, "Journal not found after create_or_replace"
 
         finally:
             # Clean up - delete the test journal
