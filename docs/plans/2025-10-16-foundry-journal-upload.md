@@ -188,7 +188,247 @@ git commit -m "feat: create foundry module structure"
 
 ---
 
-## Task 4: Implement FoundryClient Configuration (TDD)
+## Task 4: Create XML to Journal HTML Converter (TDD)
+
+**Files:**
+- Create: `src/foundry/xml_to_journal_html.py`
+- Create: `tests/foundry/test_xml_to_journal_html.py`
+
+**Step 1: Write failing test for XML to journal conversion**
+
+`tests/foundry/test_xml_to_journal_html.py`:
+
+```python
+"""Tests for XML to Journal HTML converter."""
+
+import pytest
+from pathlib import Path
+from src.foundry.xml_to_journal_html import convert_xml_to_journal_data
+
+
+class TestXMLToJournalConverter:
+    """Tests for XML to Journal HTML conversion."""
+
+    def test_convert_single_xml_file(self, tmp_path):
+        """Test converting a single XML file to journal data."""
+        xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+<chapter>
+    <title>Test Chapter</title>
+    <section>
+        <heading>Introduction</heading>
+        <paragraph>This is a test paragraph.</paragraph>
+    </section>
+</chapter>"""
+
+        xml_file = tmp_path / "01_Test_Chapter.xml"
+        xml_file.write_text(xml_content)
+
+        result = convert_xml_to_journal_data(str(xml_file))
+
+        assert result["name"] == "01_Test_Chapter"
+        assert "<h1>Test Chapter</h1>" in result["html"]
+        assert "<h2>Introduction</h2>" in result["html"]
+        assert "<p>This is a test paragraph.</p>" in result["html"]
+        assert "metadata" in result
+        assert result["metadata"]["source_file"] == str(xml_file)
+
+    def test_convert_multiple_xml_files(self, tmp_path):
+        """Test converting multiple XML files."""
+        xml_dir = tmp_path / "documents"
+        xml_dir.mkdir()
+
+        # Create test XML files
+        for i in range(1, 4):
+            xml_content = f"""<?xml version="1.0" encoding="UTF-8"?>
+<chapter>
+    <title>Chapter {i}</title>
+    <paragraph>Content for chapter {i}.</paragraph>
+</chapter>"""
+            (xml_dir / f"0{i}_Chapter_{i}.xml").write_text(xml_content)
+
+        from src.foundry.xml_to_journal_html import convert_xml_directory_to_journals
+
+        results = convert_xml_directory_to_journals(str(xml_dir))
+
+        assert len(results) == 3
+        assert all("name" in r and "html" in r for r in results)
+        assert results[0]["name"] == "01_Chapter_1"
+```
+
+**Step 2: Run test to verify it fails**
+
+```bash
+uv run pytest tests/foundry/test_xml_to_journal_html.py -v
+```
+
+Expected: FAIL with "cannot import name 'convert_xml_to_journal_data'"
+
+**Step 3: Implement XML to journal converter**
+
+`src/foundry/xml_to_journal_html.py`:
+
+```python
+"""Convert XML documents to FoundryVTT journal-ready HTML."""
+
+import os
+import sys
+from pathlib import Path
+from typing import Dict, Any, List
+import xml.etree.ElementTree as ET
+
+# Add parent to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def xml_to_html(xml_element: ET.Element, level: int = 0) -> str:
+    """
+    Convert XML element to HTML recursively.
+
+    Reuses logic from xml_to_html.py but returns string instead of writing file.
+
+    Args:
+        xml_element: XML element to convert
+        level: Current heading level for nested sections
+
+    Returns:
+        HTML string
+    """
+    html_parts = []
+
+    tag = xml_element.tag
+    text = (xml_element.text or "").strip()
+
+    # Map XML tags to HTML
+    tag_map = {
+        "chapter": ("", ""),  # Container, no HTML tag
+        "title": (f"<h{min(level + 1, 6)}>", f"</h{min(level + 1, 6)}>"),
+        "heading": (f"<h{min(level + 2, 6)}>", f"</h{min(level + 2, 6)}>"),
+        "paragraph": ("<p>", "</p>"),
+        "section": ("", ""),  # Container
+        "list": ("<ul>", "</ul>"),
+        "item": ("<li>", "</li>"),
+        "emphasis": ("<em>", "</em>"),
+        "strong": ("<strong>", "</strong>"),
+    }
+
+    open_tag, close_tag = tag_map.get(tag, ("", ""))
+
+    if text and open_tag:
+        html_parts.append(f"{open_tag}{text}{close_tag}")
+    elif text:
+        html_parts.append(text)
+
+    # Process children
+    for child in xml_element:
+        child_level = level + 1 if tag in ["chapter", "section"] else level
+        html_parts.append(xml_to_html(child, child_level))
+
+    return "\n".join(html_parts)
+
+
+def convert_xml_to_journal_data(xml_file_path: str) -> Dict[str, Any]:
+    """
+    Convert an XML file to journal-ready data structure.
+
+    Args:
+        xml_file_path: Path to XML file
+
+    Returns:
+        Dictionary with journal entry data:
+        {
+            "name": "Chapter_Name",
+            "html": "<h1>...</h1><p>...</p>",
+            "metadata": {
+                "source_file": "/path/to/file.xml",
+                "chapter_number": "01",
+                ...
+            }
+        }
+    """
+    xml_path = Path(xml_file_path)
+
+    # Parse XML
+    tree = ET.parse(xml_file_path)
+    root = tree.getroot()
+
+    # Convert to HTML
+    html_content = xml_to_html(root)
+
+    # Extract metadata from filename
+    filename = xml_path.stem  # Without extension
+
+    # Parse chapter number if present (e.g., "01_Chapter_Name" -> "01")
+    parts = filename.split("_", 1)
+    chapter_number = parts[0] if parts[0].isdigit() or (len(parts[0]) == 2 and parts[0][0].isdigit()) else None
+
+    metadata = {
+        "source_file": str(xml_path),
+        "chapter_number": chapter_number,
+        "filename": filename,
+    }
+
+    return {
+        "name": filename,
+        "html": html_content,
+        "metadata": metadata,
+    }
+
+
+def convert_xml_directory_to_journals(xml_dir_path: str) -> List[Dict[str, Any]]:
+    """
+    Convert all XML files in a directory to journal data.
+
+    Args:
+        xml_dir_path: Path to directory containing XML files
+
+    Returns:
+        List of journal data dictionaries
+    """
+    xml_dir = Path(xml_dir_path)
+
+    if not xml_dir.exists():
+        raise ValueError(f"Directory does not exist: {xml_dir_path}")
+
+    journals = []
+
+    for xml_file in sorted(xml_dir.glob("*.xml")):
+        journal_data = convert_xml_to_journal_data(str(xml_file))
+        journals.append(journal_data)
+
+    return journals
+```
+
+**Step 4: Run tests to verify they pass**
+
+```bash
+uv run pytest tests/foundry/test_xml_to_journal_html.py -v
+```
+
+Expected: All tests PASS
+
+**Step 5: Update module __init__ to export converter**
+
+Add to `src/foundry/__init__.py`:
+
+```python
+"""FoundryVTT API integration module."""
+
+from .client import FoundryClient
+from .xml_to_journal_html import convert_xml_to_journal_data, convert_xml_directory_to_journals
+
+__all__ = ["FoundryClient", "convert_xml_to_journal_data", "convert_xml_directory_to_journals"]
+```
+
+**Step 6: Commit journal converter**
+
+```bash
+git add src/foundry/xml_to_journal_html.py tests/foundry/test_xml_to_journal_html.py src/foundry/__init__.py
+git commit -m "feat: add XML to journal HTML converter"
+```
+
+---
+
+## Task 5: Implement FoundryClient Configuration (TDD)
 
 **Files:**
 - Create: `tests/foundry/__init__.py`

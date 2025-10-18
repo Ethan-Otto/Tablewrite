@@ -95,10 +95,16 @@ def xml_to_html_content(xml_path, include_footers=False):
                     result += f"  <li>{item_text}</li>\n"
                 result += "</ul>\n"
             elif elem.tag == 'boxed_text':
-                result += '<div class="boxed-text">\n'
+                result += '<aside style="position: relative; background: #fef9e7; padding: 20px 50px; margin: 20px 0; box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);">\n'
+                # Left decorative bar
+                result += '    <span style="position: absolute; left: 15px; top: 10px; bottom: 10px; width: 4px; background: linear-gradient(to bottom, #5c3317 0%, #8b4513 20%, #5c3317 50%, #8b4513 80%, #5c3317 100%); border-radius: 2px;"></span>\n'
+                # Right decorative bar
+                result += '    <span style="position: absolute; right: 15px; top: 10px; bottom: 10px; width: 4px; background: linear-gradient(to bottom, #5c3317 0%, #8b4513 20%, #5c3317 50%, #8b4513 80%, #5c3317 100%); border-radius: 2px;"></span>\n'
+                # Content
+                result += '    \n'
                 for child in elem:
-                    result += process_element(child, depth + 1)
-                result += '</div>\n'
+                    result += '    ' + process_element(child, depth + 1).replace('\n', '\n    ')
+                result += '</aside>\n'
             elif elem.tag == 'table':
                 result += '<table border="1">\n'
                 for child in elem:
@@ -112,6 +118,31 @@ def xml_to_html_content(xml_path, include_footers=False):
             elif elem.tag == 'table_cell':
                 text = convert_markdown_to_html(elem.text if elem.text else "")
                 result += f'    <td>{text}</td>\n'
+            elif elem.tag == 'definition_list':
+                result += '<dl>\n'
+                for child in elem:
+                    result += process_element(child, depth + 1)
+                result += '</dl>\n'
+            elif elem.tag == 'definition_item':
+                for child in elem:
+                    result += process_element(child, depth + 1)
+            elif elem.tag == 'term':
+                text = convert_markdown_to_html(elem.text if elem.text else "")
+                result += f'  <dt>{text}</dt>\n'
+            elif elem.tag == 'definition':
+                result += '  <dd>\n'
+                # Handle bare text content before first child element (if present)
+                if elem.text and elem.text.strip():
+                    text = convert_markdown_to_html(elem.text.strip())
+                    result += f'    <p>{text}</p>\n'
+                # Process child elements and their tail text
+                for child in elem:
+                    result += '    ' + process_element(child, depth + 1).replace('\n', '\n    ')
+                    # Handle tail text after child elements
+                    if child.tail and child.tail.strip():
+                        tail_text = convert_markdown_to_html(child.tail.strip())
+                        result += f'    <p>{tail_text}</p>\n'
+                result += '  </dd>\n'
             # Skip structural/metadata tags that shouldn't be rendered
             elif elem.tag in ['page', 'footer', 'header', 'page_number']:
                 for child in elem:
@@ -155,6 +186,9 @@ def generate_html_page(xml_path, nav_links, output_path, include_footers=False):
         .boxed-text { background-color: #f9f9f9; border: 2px solid #ddd; padding: 1em; margin: 1em 0; }
         table { border-collapse: collapse; margin: 1em 0; }
         table td { padding: 0.5em; }
+        dl { margin: 1em 0; }
+        dt { font-weight: bold; margin-top: 0.5em; }
+        dd { margin-left: 2em; margin-bottom: 0.5em; }
     </style>"""
 
     full_html = f"""<!DOCTYPE html>

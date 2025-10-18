@@ -261,10 +261,49 @@ def get_xml_for_page(page_info: tuple) -> str:
             ## FORMATTING RULES
             - The root element must be `<page>`
             - Do not wrap the XML in markdown fences like ```xml
-            - For styling, use Markdown syntax (*text* for italics, **text** for bold)
+            - **PRESERVE ALL FORMATTING from the source PDF:**
+              - If text is italicized in the PDF, use Markdown: `*italic text*`
+              - If text is bold in the PDF, use Markdown: `**bold text**`
+              - If text is both bold AND italic, use: `***bold italic***`
             - All XML tags must be properly closed
             - Escape special characters (&, <, >)
             - Preserve the semantic structure of the document
+
+            **CRITICAL**: Do NOT omit italics or bold formatting. Every word that appears italic or bold in the PDF must be preserved in the XML output using Markdown syntax.
+
+            ## DISTINGUISHING HEADINGS FROM BOLD TEXT
+            **CRITICAL**: `<section>`, `<subsection>`, and `<subsubsection>` tags should ONLY be used for actual headings.
+
+            A heading is text that is:
+            1. **Visually larger** than normal paragraph text (increased font size)
+            2. Usually bold or emphasized
+            3. Stands alone on its own line
+            4. Introduces a new topic or section
+
+            **DO NOT use heading tags for:**
+            - Bold text that is the SAME SIZE as normal text (use `<p>**bold text**</p>` instead)
+            - Labels or terms in definition lists (use `<term>` instead)
+            - Emphasis within paragraphs (use **bold** markdown)
+
+            **Example of correct usage:**
+            - Large heading text → `<section>Combat Encounters</section>`
+            - Bold text same size as paragraph → `<p>**Important:** Do not forget this rule.</p>`
+            - NPC names in lists → `<term>Toblen Stonehill</term>` not `<subsection>`
+
+            ## HEADING HIERARCHY AND CONTEXT
+            **CRITICAL**: Font size alone does NOT determine hierarchy level. A heading can be LARGER than normal text but still be a subsection or subsubsection based on CONTEXT.
+
+            **Consider the semantic structure:**
+            - If a heading introduces a topic WITHIN an existing section, it's a `<subsection>` (even if larger than body text)
+            - If a heading introduces a detail WITHIN a subsection, it's a `<subsubsection>` (even if larger than body text)
+            - Use `<section>` only for major topic changes or new top-level areas
+
+            **Example:**
+            If you're processing content about "Cragmaw Hideout" (a section), and you encounter:
+            - "1. Cave Mouth" (larger text) → This is a `<subsection>` (a location within the hideout), NOT a new `<section>`
+            - "Treasure" (larger text under "1. Cave Mouth") → This is a `<subsubsection>` (detail within the location)
+
+            **Read the full page context** to understand where you are in the document structure. Don't promote headings to higher levels just because they're visually prominent.
 
             ## IDENTIFYING HEADERS AND FOOTERS
             - **Footers** are typically small text at the bottom of the page (page numbers, chapter names, copyright info)
@@ -546,7 +585,8 @@ def main(input_dir: str, base_output_dir: str, single_file: str = None):
 
     # Reconfigure logger to write to run directory
     global logger
-    logger = get_run_logger("pdf_to_xml", run_dir)
+    from pathlib import Path
+    logger = get_run_logger("pdf_to_xml", Path(run_dir))
 
     all_errors = {}
     if single_file:
