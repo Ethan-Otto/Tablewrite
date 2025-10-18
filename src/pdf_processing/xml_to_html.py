@@ -95,10 +95,16 @@ def xml_to_html_content(xml_path, include_footers=False):
                     result += f"  <li>{item_text}</li>\n"
                 result += "</ul>\n"
             elif elem.tag == 'boxed_text':
-                result += '<div class="boxed-text">\n'
+                result += '<aside style="position: relative; background: #fef9e7; padding: 20px 50px; margin: 20px 0; box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);">\n'
+                # Left decorative bar
+                result += '    <span style="position: absolute; left: 15px; top: 10px; bottom: 10px; width: 4px; background: linear-gradient(to bottom, #5c3317 0%, #8b4513 20%, #5c3317 50%, #8b4513 80%, #5c3317 100%); border-radius: 2px;"></span>\n'
+                # Right decorative bar
+                result += '    <span style="position: absolute; right: 15px; top: 10px; bottom: 10px; width: 4px; background: linear-gradient(to bottom, #5c3317 0%, #8b4513 20%, #5c3317 50%, #8b4513 80%, #5c3317 100%); border-radius: 2px;"></span>\n'
+                # Content
+                result += '    \n'
                 for child in elem:
-                    result += process_element(child, depth + 1)
-                result += '</div>\n'
+                    result += '    ' + process_element(child, depth + 1).replace('\n', '\n    ')
+                result += '</aside>\n'
             elif elem.tag == 'table':
                 result += '<table border="1">\n'
                 for child in elem:
