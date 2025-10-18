@@ -261,10 +261,15 @@ def get_xml_for_page(page_info: tuple) -> str:
             ## FORMATTING RULES
             - The root element must be `<page>`
             - Do not wrap the XML in markdown fences like ```xml
-            - For styling, use Markdown syntax (*text* for italics, **text** for bold)
+            - **PRESERVE ALL FORMATTING from the source PDF:**
+              - If text is italicized in the PDF, use Markdown: `*italic text*`
+              - If text is bold in the PDF, use Markdown: `**bold text**`
+              - If text is both bold AND italic, use: `***bold italic***`
             - All XML tags must be properly closed
             - Escape special characters (&, <, >)
             - Preserve the semantic structure of the document
+
+            **CRITICAL**: Do NOT omit italics or bold formatting. Every word that appears italic or bold in the PDF must be preserved in the XML output using Markdown syntax.
 
             ## DISTINGUISHING HEADINGS FROM BOLD TEXT
             **CRITICAL**: `<section>`, `<subsection>`, and `<subsubsection>` tags should ONLY be used for actual headings.
