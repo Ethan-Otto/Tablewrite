@@ -112,6 +112,20 @@ def xml_to_html_content(xml_path, include_footers=False):
             elif elem.tag == 'table_cell':
                 text = convert_markdown_to_html(elem.text if elem.text else "")
                 result += f'    <td>{text}</td>\n'
+            elif elem.tag == 'definition_list':
+                result += '<dl>\n'
+                for child in elem:
+                    result += process_element(child, depth + 1)
+                result += '</dl>\n'
+            elif elem.tag == 'definition_item':
+                for child in elem:
+                    result += process_element(child, depth + 1)
+            elif elem.tag == 'term':
+                text = convert_markdown_to_html(elem.text if elem.text else "")
+                result += f'  <dt>{text}</dt>\n'
+            elif elem.tag == 'definition':
+                text = convert_markdown_to_html(elem.text if elem.text else "")
+                result += f'  <dd>{text}</dd>\n'
             # Skip structural/metadata tags that shouldn't be rendered
             elif elem.tag in ['page', 'footer', 'header', 'page_number']:
                 for child in elem:
@@ -155,6 +169,9 @@ def generate_html_page(xml_path, nav_links, output_path, include_footers=False):
         .boxed-text { background-color: #f9f9f9; border: 2px solid #ddd; padding: 1em; margin: 1em 0; }
         table { border-collapse: collapse; margin: 1em 0; }
         table td { padding: 0.5em; }
+        dl { margin: 1em 0; }
+        dt { font-weight: bold; margin-top: 0.5em; }
+        dd { margin-left: 2em; margin-bottom: 0.5em; }
     </style>"""
 
     full_html = f"""<!DOCTYPE html>
