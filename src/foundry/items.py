@@ -25,9 +25,9 @@ class ItemManager:
         self.api_key = api_key
         self.client_id = client_id
 
-    def search_items(self, name: str) -> List[Dict[str, Any]]:
+    def get_all_items_by_name(self, name: str) -> List[Dict[str, Any]]:
         """
-        Search for items by name across all compendiums.
+        Get all items matching the given name across all compendiums.
 
         Args:
             name: Name of the item to search for
@@ -76,9 +76,9 @@ class ItemManager:
             logger.error(f"Failed to search for item '{name}': {e}")
             raise RuntimeError(f"Failed to search for item: {e}") from e
 
-    def find_item_by_name(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_item_by_name(self, name: str) -> Optional[Dict[str, Any]]:
         """
-        Find a single item by name.
+        Get first item matching the given name.
 
         Args:
             name: Name of the item to find
@@ -89,13 +89,13 @@ class ItemManager:
         Raises:
             RuntimeError: If API request fails
         """
-        results = self.search_items(name)
+        results = self.get_all_items_by_name(name)
 
         if not results:
             logger.debug(f"No item found with name: {name}")
             return None
 
-        # Return first match (results already have uuid, name, etc.)
+        # Return first match
         item = results[0]
         logger.debug(f"Found item: {item.get('name', 'unknown')} (UUID: {item.get('uuid', 'unknown')})")
         return item

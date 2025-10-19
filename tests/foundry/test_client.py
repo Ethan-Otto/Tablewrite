@@ -86,7 +86,7 @@ class TestJournalOperations:
         assert "uuid=JournalEntry.journal123" in url
 
     @patch('requests.get')
-    def test_find_journal_by_name(self, mock_get, mock_client):
+    def test_get_journal_by_name(self, mock_get, mock_client):
         """Test finding a journal entry by name."""
         mock_response = Mock()
         mock_response.status_code = 200
@@ -96,21 +96,21 @@ class TestJournalOperations:
         ]
         mock_get.return_value = mock_response
 
-        result = mock_client.find_journal_by_name("Test Journal")
+        result = mock_client.get_journal_by_name("Test Journal")
 
         assert result is not None
         assert result["_id"] == "journal123"
         assert result["name"] == "Test Journal"
 
     @patch('requests.get')
-    def test_find_journal_by_name_not_found(self, mock_get, mock_client):
+    def test_get_journal_by_name_not_found(self, mock_get, mock_client):
         """Test finding returns None when journal doesn't exist."""
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = []
         mock_get.return_value = mock_response
 
-        result = mock_client.find_journal_by_name("Nonexistent")
+        result = mock_client.get_journal_by_name("Nonexistent")
 
         assert result is None
 
@@ -457,7 +457,7 @@ class TestFoundryIntegration:
         assert entity_id != 'unknown', "Failed to extract entity ID from create response"
 
         # 2. SEARCH
-        found = real_client.find_journal_by_name(journal_name)
+        found = real_client.get_journal_by_name(journal_name)
         assert found is not None, "Failed to find newly created journal"
         assert found['name'] == journal_name
 
@@ -474,10 +474,10 @@ class TestFoundryIntegration:
         assert update_result is not None, "Update operation failed"
 
         # 4. VERIFY UPDATE
-        found_updated = real_client.find_journal_by_name(f"{journal_name} (Updated)")
+        found_updated = real_client.get_journal_by_name(f"{journal_name} (Updated)")
         if not found_updated:
             # Name update might be delayed, try old name
-            found_updated = real_client.find_journal_by_name(journal_name)
+            found_updated = real_client.get_journal_by_name(journal_name)
         assert found_updated is not None, "Failed to find journal after update"
 
         # 5. DELETE
@@ -485,7 +485,7 @@ class TestFoundryIntegration:
         assert delete_result.get('success') is True, "Delete operation did not return success"
 
         # 6. VERIFY DELETION
-        found_deleted = real_client.find_journal_by_name(journal_name)
+        found_deleted = real_client.get_journal_by_name(journal_name)
         assert found_deleted is None, "Journal still exists after deletion"
 
     @pytest.mark.skip(reason="Disabled to conserve API calls - enable when needed")
@@ -528,12 +528,12 @@ class TestFoundryIntegration:
             assert id2 != id1, f"Second call should create new journal with different ID: {id1} vs {id2}"
 
             # Verify only one journal exists with this name
-            found = real_client.find_journal_by_name(journal_name)
+            found = real_client.get_journal_by_name(journal_name)
             assert found is not None, "Journal not found after create_or_replace"
 
         finally:
             # Clean up - delete the test journal
-            found = real_client.find_journal_by_name(journal_name)
+            found = real_client.get_journal_by_name(journal_name)
             if found:
                 journal_uuid = found.get('uuid') or f"JournalEntry.{found.get('_id') or found.get('id')}"
                 real_client.delete_journal_entry(journal_uuid=journal_uuid)

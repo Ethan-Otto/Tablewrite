@@ -216,7 +216,7 @@ def export_from_foundry(
                 return
 
             logger.info(f"Searching for journal: {journal_name}")
-            journal = client.find_journal_by_name(journal_name)
+            journal = client.get_journal_by_name(journal_name)
 
             if not journal:
                 logger.warning(f"Journal not found: {journal_name} - skipping export")
@@ -235,7 +235,7 @@ def export_from_foundry(
 
         # Get full journal data
         logger.info(f"Retrieving journal data: {journal_uuid}")
-        journal_data = client.get_journal_entry(journal_uuid)
+        journal_data = client.get_journal(journal_uuid)
 
         # Use journal name from data if not provided
         if not journal_name:

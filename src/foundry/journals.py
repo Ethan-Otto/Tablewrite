@@ -115,18 +115,15 @@ class JournalManager:
             logger.error(f"Request failed: {e}")
             raise RuntimeError(f"Failed to create journal entry: {e}") from e
 
-    def find_journal_by_name(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_all_journals_by_name(self, name: str) -> list[Dict[str, Any]]:
         """
-        Find a journal entry by name.
+        Get all journals matching the given name.
 
         Args:
-            name: Name of the journal entry to find
+            name: Name of the journal to search for
 
         Returns:
-            Journal entry dict if found, None otherwise
-
-        Raises:
-            RuntimeError: If API request fails
+            List of matching journal dicts (empty list if none found)
         """
         url = f"{self.relay_url}/search"
 
@@ -147,40 +144,63 @@ class JournalManager:
             response = requests.get(url, params=params, headers=headers, timeout=30)
 
             if response.status_code != 200:
-                logger.warning(f"Search failed: {response.status_code} - search not available, will create new journal")
-                return None  # Search failed, assume not found
+                logger.warning(f"Search failed: {response.status_code} - search not available")
+                return []  # Search failed, return empty list
 
             results = response.json()
 
             # Check for QuickInsert error (search module not available)
             if isinstance(results, dict) and results.get("error"):
-                logger.warning(f"Search error: {results['error']} - will create new journal")
-                return None
+                logger.warning(f"Search error: {results['error']}")
+                return []
 
             # Check for empty results
             if not results or (isinstance(results, dict) and not results.get("results")):
-                logger.debug(f"No journal found with name: {name}")
-                return None
+                logger.debug(f"No journals found with name: {name}")
+                return []
 
             # Handle both list and dict response formats
             search_results = results if isinstance(results, list) else results.get("results", [])
 
-            # Return first exact match
+            # Normalize all results (convert 'id' to '_id')
+            normalized = []
             for journal in search_results:
-                if journal.get("name") == name:
-                    # Search results use 'id' field, normalize to '_id' for consistency
-                    if 'id' in journal and '_id' not in journal:
-                        journal['_id'] = journal['id']
-                    logger.debug(f"Found journal: {name} (ID: {journal.get('_id') or journal.get('id')})")
-                    return journal
+                if 'id' in journal and '_id' not in journal:
+                    journal['_id'] = journal['id']
+                normalized.append(journal)
 
-            return None
+            logger.debug(f"Found {len(normalized)} journal(s) matching: {name}")
+            return normalized
 
         except requests.exceptions.RequestException as e:
-            logger.warning(f"Search request failed: {e} - will create new journal")
-            return None  # Network error, assume not found
+            logger.warning(f"Search request failed: {e}")
+            return []  # Network error, return empty list
 
-    def get_journal_entry(self, journal_uuid: str) -> Dict[str, Any]:
+    def get_journal_by_name(self, name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get first journal matching the given name.
+
+        Args:
+            name: Name of the journal to find
+
+        Returns:
+            Journal dict if found, None otherwise
+        """
+        results = self.get_all_journals_by_name(name)
+
+        if not results:
+            logger.debug(f"No journal found with name: {name}")
+            return None
+
+        # Return first exact name match
+        for journal in results:
+            if journal.get("name") == name:
+                logger.debug(f"Found journal: {name} (ID: {journal.get('_id') or journal.get('id')})")
+                return journal
+
+        return None
+
+    def get_journal(self, journal_uuid: str) -> Dict[str, Any]:
         """
         Get a journal entry by UUID.
 
@@ -363,7 +383,7 @@ class JournalManager:
             raise ValueError("Must provide either 'pages' or 'content'")
 
         # Try to find existing journal
-        existing = self.find_journal_by_name(name)
+        existing = self.get_journal_by_name(name)
 
         if existing:
             # Extract UUID for deletion

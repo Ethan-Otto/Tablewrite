@@ -82,13 +82,17 @@ class FoundryClient:
         """Create a new journal entry in FoundryVTT."""
         return self.journals.create_journal_entry(name, pages, content, folder)
 
-    def find_journal_by_name(self, name: str) -> Optional[Dict[str, Any]]:
-        """Find a journal entry by name."""
-        return self.journals.find_journal_by_name(name)
+    def get_all_journals_by_name(self, name: str) -> list[Dict[str, Any]]:
+        """Get all journals matching the given name."""
+        return self.journals.get_all_journals_by_name(name)
 
-    def get_journal_entry(self, journal_uuid: str) -> Dict[str, Any]:
-        """Get a journal entry by UUID."""
-        return self.journals.get_journal_entry(journal_uuid)
+    def get_journal_by_name(self, name: str) -> Optional[Dict[str, Any]]:
+        """Get first journal matching the given name."""
+        return self.journals.get_journal_by_name(name)
+
+    def get_journal(self, journal_uuid: str) -> Dict[str, Any]:
+        """Get a journal by UUID."""
+        return self.journals.get_journal(journal_uuid)
 
     def update_journal_entry(
         self,
@@ -113,3 +117,17 @@ class FoundryClient:
     ) -> Dict[str, Any]:
         """Create or replace a journal entry."""
         return self.journals.create_or_replace_journal(name, pages, content, folder)
+
+    # Item operations (delegated to ItemManager)
+
+    def get_all_items_by_name(self, name: str) -> list[Dict[str, Any]]:
+        """Get all items matching the given name."""
+        return self.items.get_all_items_by_name(name)
+
+    def get_item_by_name(self, name: str) -> Optional[Dict[str, Any]]:
+        """Get first item matching the given name."""
+        return self.items.get_item_by_name(name)
+
+    def get_item(self, item_uuid: str) -> Dict[str, Any]:
+        """Get an item by UUID."""
+        return self.items.get_item(item_uuid)

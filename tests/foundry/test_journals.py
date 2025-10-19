@@ -134,7 +134,7 @@ class TestJournalManagerOperations:
             )
 
     @patch('requests.get')
-    def test_find_journal_by_name_success(self, mock_get, manager):
+    def test_get_journal_by_name_success(self, mock_get, manager):
         """Test finding a journal entry by name."""
         mock_response = Mock()
         mock_response.status_code = 200
@@ -144,27 +144,27 @@ class TestJournalManagerOperations:
         ]
         mock_get.return_value = mock_response
 
-        result = manager.find_journal_by_name("Test Journal")
+        result = manager.get_journal_by_name("Test Journal")
 
         assert result is not None
         assert result["_id"] == "journal123"  # id normalized to _id
         assert result["name"] == "Test Journal"
 
     @patch('requests.get')
-    def test_find_journal_by_name_not_found(self, mock_get, manager):
-        """Test that find_journal_by_name returns None when not found."""
+    def test_get_journal_by_name_not_found(self, mock_get, manager):
+        """Test that get_journal_by_name returns None when not found."""
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = []
         mock_get.return_value = mock_response
 
-        result = manager.find_journal_by_name("Nonexistent")
+        result = manager.get_journal_by_name("Nonexistent")
 
         assert result is None
 
     @patch('requests.get')
-    def test_find_journal_by_name_handles_dict_response(self, mock_get, manager):
-        """Test that find_journal_by_name handles dict response format."""
+    def test_get_journal_by_name_handles_dict_response(self, mock_get, manager):
+        """Test that get_journal_by_name handles dict response format."""
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
@@ -174,25 +174,25 @@ class TestJournalManagerOperations:
         }
         mock_get.return_value = mock_response
 
-        result = manager.find_journal_by_name("Test Journal")
+        result = manager.get_journal_by_name("Test Journal")
 
         assert result is not None
         assert result["_id"] == "journal123"
 
     @patch('requests.get')
-    def test_find_journal_by_name_handles_search_error(self, mock_get, manager):
-        """Test that find_journal_by_name returns None on search error."""
+    def test_get_journal_by_name_handles_search_error(self, mock_get, manager):
+        """Test that get_journal_by_name returns None on search error."""
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"error": "QuickInsert module not available"}
         mock_get.return_value = mock_response
 
-        result = manager.find_journal_by_name("Test")
+        result = manager.get_journal_by_name("Test")
 
         assert result is None
 
     @patch('requests.get')
-    def test_get_journal_entry_success(self, mock_get, manager):
+    def test_get_journal_success(self, mock_get, manager):
         """Test getting a journal entry by UUID."""
         mock_response = Mock()
         mock_response.status_code = 200
@@ -204,7 +204,7 @@ class TestJournalManagerOperations:
         }
         mock_get.return_value = mock_response
 
-        result = manager.get_journal_entry("JournalEntry.journal123")
+        result = manager.get_journal("JournalEntry.journal123")
 
         assert result["data"]["name"] == "Test Journal"
         assert len(result["data"]["pages"]) == 1
@@ -215,15 +215,15 @@ class TestJournalManagerOperations:
         assert "uuid=JournalEntry.journal123" in url
 
     @patch('requests.get')
-    def test_get_journal_entry_handles_error(self, mock_get, manager):
-        """Test that get_journal_entry raises on API error."""
+    def test_get_journal_handles_error(self, mock_get, manager):
+        """Test that get_journal raises on API error."""
         mock_response = Mock()
         mock_response.status_code = 404
         mock_response.text = "Journal not found"
         mock_get.return_value = mock_response
 
         with pytest.raises(RuntimeError, match="Failed to get journal"):
-            manager.get_journal_entry("JournalEntry.nonexistent")
+            manager.get_journal("JournalEntry.nonexistent")
 
     @patch('requests.put')
     def test_update_journal_entry_with_pages(self, mock_put, manager):
