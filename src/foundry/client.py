@@ -6,6 +6,7 @@ import requests
 from typing import Literal, Dict, Any, Optional
 
 from .journals import JournalManager
+from .items import ItemManager
 
 logger = logging.getLogger(__name__)
 
@@ -52,8 +53,15 @@ class FoundryClient:
         else:
             raise ValueError(f"Invalid target: {target}. Must be 'local' or 'forge'")
 
-        # Initialize journal manager
+        # Initialize managers
         self.journals = JournalManager(
+            relay_url=self.relay_url,
+            foundry_url=self.foundry_url,
+            api_key=self.api_key,
+            client_id=self.client_id
+        )
+
+        self.items = ItemManager(
             relay_url=self.relay_url,
             foundry_url=self.foundry_url,
             api_key=self.api_key,
