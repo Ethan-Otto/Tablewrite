@@ -6,6 +6,7 @@ and adds only FoundryVTT-specific modifications if needed.
 
 import os
 import sys
+import re
 from pathlib import Path
 from typing import Dict, Any, List
 
@@ -86,3 +87,65 @@ def convert_xml_directory_to_journals(xml_dir_path: str) -> List[Dict[str, Any]]
         journals.append(journal_data)
 
     return journals
+
+
+def add_uuid_links(html: str, entity_refs: Dict[str, str]) -> str:
+    """
+    Replace entity mentions in HTML with @UUID links to FoundryVTT entities.
+
+    This function searches for entity names in the HTML and replaces them with
+    clickable @UUID links. Works for ANY FoundryVTT entity type: Items, Actors,
+    Scenes, Journals, RollTables, etc.
+
+    Args:
+        html: Journal HTML content
+        entity_refs: Dictionary mapping entity names to their UUIDs
+                     Works for any entity type:
+                     - Items: {"Hat of Disguise": "Compendium.dnd5e.items.abc123"}
+                     - Actors: {"Klarg": "Actor.xyz789"}
+                     - Scenes: {"Cragmaw Cave": "Scene.map456"}
+                     - Journals: {"Chapter 1": "JournalEntry.abc"}
+
+    Returns:
+        HTML with entity mentions replaced by @UUID[uuid]{name} links
+
+    Example:
+        >>> html = "<p>You find a Hat of Disguise and meet Klarg.</p>"
+        >>> entity_refs = {
+        ...     "Hat of Disguise": "Compendium.dnd5e.items.abc123",
+        ...     "Klarg": "Actor.xyz789"
+        ... }
+        >>> add_uuid_links(html, entity_refs)
+        '<p>You find a @UUID[Compendium.dnd5e.items.abc123]{Hat of Disguise} and meet @UUID[Actor.xyz789]{Klarg}.</p>'
+
+    Notes:
+        - Links are case-sensitive
+        - Longer entity names are processed first to avoid partial matches
+        - Entities are only linked once per occurrence (no double-linking)
+        - Existing @UUID links are preserved
+        - Works for all FoundryVTT entity types (Items, Actors, Scenes, etc.)
+    """
+    if not entity_refs:
+        return html
+
+    # Sort entities by length (longest first) to avoid partial matches
+    # e.g., "Longsword +1" before "Longsword"
+    sorted_entities = sorted(entity_refs.items(), key=lambda x: len(x[0]), reverse=True)
+
+    modified_html = html
+
+    for entity_name, uuid in sorted_entities:
+        # Escape special regex characters in entity name
+        escaped_name = re.escape(entity_name)
+
+        # Pattern to match entity name NOT already inside @UUID[...]
+        # Negative lookbehind: not preceded by @UUID[...
+        # Negative lookahead: not followed by ...] or inside {...}
+        pattern = rf'(?<!@UUID\[)(?<!\{{)\b({escaped_name})\b(?!\}})'
+
+        # Replace with @UUID link
+        replacement = rf'@UUID[{uuid}]{{\1}}'
+
+        modified_html = re.sub(pattern, replacement, modified_html)
+
+    return modified_html
