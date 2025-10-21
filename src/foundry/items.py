@@ -29,11 +29,14 @@ class ItemManager:
         """
         Get all items matching the given name across all compendiums.
 
+        Uses the QuickInsert module via the /search endpoint with filter="Item".
+        Limited to 200 results maximum (hardcoded in FoundryVTT module).
+
         Args:
             name: Name of the item to search for
 
         Returns:
-            List of matching item dicts (empty list if none found)
+            List of matching item dicts (empty list if none found, max 200 items)
 
         Raises:
             RuntimeError: If API request fails
@@ -47,7 +50,7 @@ class ItemManager:
 
         params = {
             "clientId": self.client_id,
-            "type": "Item",
+            "filter": "Item",  # Filters to documentType:Item (via QuickInsert module)
             "query": name
         }
 

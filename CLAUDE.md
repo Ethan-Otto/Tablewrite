@@ -191,6 +191,27 @@ client.journals.delete_journal(journal_uuid="JournalEntry.abc123")
 - FoundryVTT v10+ requires pages structure: `{"pages": [{"name": "...", "type": "text", "text": {"content": "..."}}]}`
 - `create_or_replace_journal` returns the journal UUID for efficient subsequent operations
 
+**Search API (via QuickInsert module):**
+
+The `/search` endpoint uses the QuickInsert module on FoundryVTT and has specific behavior:
+
+- **Hard 200-result limit**: Hardcoded in the FoundryVTT module (`src/ts/network/routers/search.ts:54`)
+- **No pagination or bulk endpoints**: Cannot retrieve all compendium items in one call
+- **Correct parameter is `filter`, NOT `type`**:
+  - ❌ `type=Item` - ignored, just echoed back as metadata
+  - ✅ `filter=Item` - filters to Items only (shorthand for `documentType:Item`)
+  - ✅ `filter=documentType:Item,package:dnd5e.items` - multi-property filtering
+  - ✅ `filter=documentType:Item,folder:abc123` - filter by folder
+
+- **Filter syntax**:
+  - Simple: `filter="Item"` → `{documentType: "Item"}`
+  - Property-based: `filter="key:value,key2:value2"` → multiple filters
+  - Supported properties: `documentType`, `package`, `folder`, `resultType`, or any item property
+
+- **Request flow**: HTTP → Relay Server → WebSocket → FoundryVTT → QuickInsert → Response
+
+- **Recommended approach for bulk operations**: Build a local cache by querying with common terms ("a", "of", "the") and specific compendium packs, then perform lookups locally
+
 ### Key Architecture Patterns
 
 **pdf_to_xml.py** (main conversion engine):
