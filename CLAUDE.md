@@ -212,6 +212,34 @@ The `/search` endpoint uses the QuickInsert module on FoundryVTT and has specifi
 
 - **Recommended approach for bulk operations**: Build a local cache by querying with common terms ("a", "of", "the") and specific compendium packs, then perform lookups locally
 
+**FoundryVTT Item Types:**
+
+In FoundryVTT, "Item" is a broad document type that includes character options, spells, and physical items. Filter by `subType` to narrow down:
+
+- **Physical Items** (treasure/loot):
+  - `equipment` - armor, wondrous items, accessories, rings, cloaks
+  - `weapon` - weapons (mundane and magical)
+  - `consumable` - potions, scrolls, ammunition
+  - `container` - bags of holding, chests, backpacks
+  - `loot` - treasure, gems, art objects, trade goods
+
+- **Character Options** (NOT physical items):
+  - `spell` - spells (Aid, Fireball, etc.)
+  - `feat` - feats and features (Alert, Action Surge, etc.)
+  - `subclass` - subclass features
+  - `background` - background features
+  - `race` - racial traits
+
+**Magic Item Identification:**
+- Magic items span multiple subTypes: `equipment`, `weapon`, `consumable`, `container`
+- No direct filter for "magic only" - must fetch full item data and check `system.properties` for `'mgc'`
+- Example: Hat of Disguise has `system.properties: ['mgc']`, `system.rarity: 'uncommon'`, `system.attunement: 'required'`
+
+**Caching Strategy for Physical Items:**
+- Search alphabet (a-z) for each physical subType separately (API only supports AND filtering, not OR)
+- 5 subTypes × 26 letters = 130 API calls for comprehensive coverage of all physical items
+- Deduplicate by UUID (items appear in multiple compendiums like `dnd5e.items` and `dnd5e.equipment24`)
+
 ### Key Architecture Patterns
 
 **pdf_to_xml.py** (main conversion engine):
