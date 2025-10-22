@@ -100,7 +100,7 @@ def upload_to_foundry(html_dir: Path, target: str = "local") -> dict:
     logger.info(f"Uploading to FoundryVTT ({target})...")
 
     # Import here to avoid circular dependencies
-    from src.foundry.upload_to_foundry import upload_run_to_foundry
+    from src.foundry.upload_journal_to_foundry import upload_run_to_foundry
 
     try:
         result = upload_run_to_foundry(str(html_dir), target=target)

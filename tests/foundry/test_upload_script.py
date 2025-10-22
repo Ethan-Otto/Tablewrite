@@ -1,9 +1,9 @@
-"""Tests for upload_to_foundry script."""
+"""Tests for upload_journal_to_foundry script."""
 
 import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
-from src.foundry.upload_to_foundry import (
+from src.foundry.upload_journal_to_foundry import (
     find_latest_run,
     find_xml_directory,
     upload_run_to_foundry
@@ -50,8 +50,8 @@ class TestUploadScript:
         with pytest.raises(ValueError, match="No XML files found"):
             find_xml_directory(str(run_dir))
 
-    @patch('src.foundry.upload_to_foundry.convert_xml_directory_to_journals')
-    @patch('src.foundry.upload_to_foundry.FoundryClient')
+    @patch('src.foundry.upload_journal_to_foundry.convert_xml_directory_to_journals')
+    @patch('src.foundry.upload_journal_to_foundry.FoundryClient')
     def test_upload_run_to_foundry(self, mock_client_class, mock_convert, tmp_path):
         """Test uploading XML files to Foundry as single journal with multiple pages."""
         # Create run directory with XML files
@@ -79,8 +79,8 @@ class TestUploadScript:
             pages=[{"name": "01_Test", "content": "<h1>Test</h1>"}]
         )
 
-    @patch('src.foundry.upload_to_foundry.convert_xml_directory_to_journals')
-    @patch('src.foundry.upload_to_foundry.FoundryClient')
+    @patch('src.foundry.upload_journal_to_foundry.convert_xml_directory_to_journals')
+    @patch('src.foundry.upload_journal_to_foundry.FoundryClient')
     def test_upload_run_to_foundry_multiple_pages(self, mock_client_class, mock_convert, tmp_path):
         """Test uploading multiple XML files as pages in single journal."""
         # Create run directory with XML files

@@ -150,7 +150,7 @@ def upload_to_foundry(run_dir: Path, target: str = "local", journal_name: str = 
     logger.info("=" * 60)
 
     # Import here to avoid circular dependencies
-    from src.foundry.upload_to_foundry import upload_run_to_foundry
+    from src.foundry.upload_journal_to_foundry import upload_run_to_foundry
 
     try:
         result = upload_run_to_foundry(

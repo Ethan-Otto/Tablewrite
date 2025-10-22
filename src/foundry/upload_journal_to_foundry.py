@@ -182,6 +182,44 @@ def upload_run_to_foundry(
         }
 
 
+def upload_file_to_foundry(
+    local_path: str,
+    target_path: str,
+    target: str = "local",
+    overwrite: bool = True
+) -> Dict[str, Any]:
+    """
+    Upload a file to FoundryVTT.
+
+    Convenience wrapper around FoundryClient.upload_file() for use in pipelines.
+
+    Args:
+        local_path: Path to local file
+        target_path: Target path in FoundryVTT (e.g., "worlds/my-world/assets/image.png")
+        target: Target environment ('local' or 'forge')
+        overwrite: Whether to overwrite existing files (default: True)
+
+    Returns:
+        Upload response dict
+
+    Raises:
+        RuntimeError: If upload fails
+    """
+    logger.info(f"Uploading file to FoundryVTT ({target})")
+    logger.debug(f"  Local:  {local_path}")
+    logger.debug(f"  Target: {target_path}")
+
+    client = FoundryClient(target=target)
+
+    try:
+        result = client.upload_file(local_path, target_path, overwrite=overwrite)
+        logger.info(f"✓ File uploaded successfully")
+        return result
+    except Exception as e:
+        logger.error(f"File upload failed: {e}")
+        raise
+
+
 def main():
     """Main entry point for upload script."""
     import argparse

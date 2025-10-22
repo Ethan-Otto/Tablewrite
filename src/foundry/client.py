@@ -131,3 +131,69 @@ class FoundryClient:
     def get_item(self, item_uuid: str) -> Dict[str, Any]:
         """Get an item by UUID."""
         return self.items.get_item(item_uuid)
+
+    # File operations
+
+    def upload_file(self, local_path: str, target_path: str, overwrite: bool = True) -> Dict[str, Any]:
+        """
+        Upload a file to FoundryVTT.
+
+        Args:
+            local_path: Path to local file
+            target_path: Target path in FoundryVTT (e.g., "worlds/my-world/assets/image.png")
+            overwrite: Whether to overwrite existing files (default: True)
+
+        Returns:
+            Upload response dict
+
+        Raises:
+            RuntimeError: If upload fails
+        """
+        from pathlib import Path
+        import mimetypes
+
+        endpoint = f"{self.relay_url}/upload"
+
+        # Split target_path into directory path and filename
+        path_obj = Path(target_path)
+        directory = str(path_obj.parent)
+        filename = path_obj.name
+
+        # Detect MIME type
+        mime_type, _ = mimetypes.guess_type(filename)
+        if not mime_type:
+            mime_type = "application/octet-stream"
+
+        # API expects x-api-key header, binary data in body, and separate path/filename parameters
+        headers = {
+            "x-api-key": self.api_key,
+            "Content-Type": "application/octet-stream"
+        }
+
+        params = {
+            "clientId": self.client_id,
+            "path": directory,
+            "filename": filename,
+            "mimeType": mime_type,
+            "overwrite": str(overwrite).lower()
+        }
+
+        logger.debug(f"Uploading {local_path} → {target_path}")
+
+        # Read file as binary data for request body
+        try:
+            with open(local_path, 'rb') as f:
+                file_data = f.read()
+        except IOError as e:
+            logger.error(f"Failed to read local file '{local_path}': {e}")
+            raise RuntimeError(f"Failed to read file: {e}") from e
+
+        try:
+            response = requests.post(endpoint, headers=headers, params=params, data=file_data, timeout=60)
+            response.raise_for_status()
+            result = response.json()
+            logger.debug(f"Upload successful: {filename}")
+            return result
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to upload file '{filename}': {e}")
+            raise RuntimeError(f"Failed to upload file: {e}") from e
