@@ -454,6 +454,12 @@ Run unit tests only for fast feedback: `uv run pytest -m "not integration and no
 
 ## Coding Conventions
 
+**General Principles:**
+- **Write clean, concise code**: Prioritize readability and simplicity over cleverness
+- **Keep functions focused**: Each function should do one thing well
+- **Avoid unnecessary complexity**: Use straightforward solutions unless performance requires otherwise
+- **Clear is better than compact**: Favor explicit, readable code over terse one-liners
+
 From AGENTS.md:
 
 - **Style**: PEP 8 with 4-space indentation, snake_case names, UPPER_SNAKE_CASE for constants
