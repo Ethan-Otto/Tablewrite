@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-Full pipeline orchestration: PDF → XML → FoundryVTT → Export
+Full pipeline orchestration: PDF → XML → Scene Art → FoundryVTT → Export
 
 This script coordinates the complete workflow:
 1. Split PDF into chapter PDFs (split_pdf.py)
 2. Generate XML from chapters using Gemini (pdf_to_xml.py)
+2.5. Generate scene artwork from XML (generate_scene_art.py)
 3. Upload XML to FoundryVTT (upload_to_foundry.py)
 4. Export journal from FoundryVTT to HTML (export_from_foundry.py)
 
@@ -128,6 +129,70 @@ def run_pdf_to_xml(project_root: Path, chapter_file: str = None) -> Path:
     except Exception as e:
         logger.error(f"Failed to run pdf_to_xml.py: {e}")
         raise
+
+
+def run_scene_artwork_generation(
+    run_dir: Path,
+    style_prompt: str = None,
+    continue_on_error: bool = False
+) -> None:
+    """
+    Generate scene artwork from chapter XML files.
+
+    Args:
+        run_dir: Run directory containing documents/ folder
+        style_prompt: Optional custom style prompt for image generation
+        continue_on_error: Continue processing other chapters if one fails
+
+    Raises:
+        RuntimeError: If scene generation fails and continue_on_error is False
+    """
+    logger.info("=" * 60)
+    logger.info("STEP 2.5: Generating scene artwork")
+    logger.info("=" * 60)
+
+    output_dir = run_dir / "scene_artwork"
+
+    try:
+        # Import scene generation functions
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
+        from generate_scene_art import process_chapter, sanitize_filename
+
+        # Find XML files to process
+        xml_files = list((run_dir / "documents").glob("*.xml"))
+
+        if not xml_files:
+            logger.warning("No XML files found, skipping scene artwork generation")
+            return
+
+        logger.info(f"Processing {len(xml_files)} chapter file(s)...")
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        total_scenes = 0
+        total_images = 0
+        failed_chapters = []
+
+        for xml_file in xml_files:
+            try:
+                stats = process_chapter(xml_file, output_dir, style_prompt)
+                total_scenes += stats["scenes_found"]
+                total_images += stats["images_generated"]
+                logger.info(f"  ✓ {xml_file.name}: {stats['scenes_found']} scenes, {stats['images_generated']} images")
+            except Exception as e:
+                logger.error(f"Failed to process {xml_file.name}: {e}")
+                failed_chapters.append(xml_file.name)
+                if not continue_on_error:
+                    raise
+
+        logger.info("✓ Scene artwork generation completed")
+        logger.info(f"  Total scenes: {total_scenes}, Images: {total_images}")
+
+        if failed_chapters:
+            logger.warning(f"  Failed chapters: {', '.join(failed_chapters)}")
+
+    except Exception as e:
+        logger.error(f"Scene artwork generation failed: {e}")
+        raise RuntimeError(f"Scene artwork generation failed: {e}") from e
 
 
 def upload_to_foundry(run_dir: Path, target: str = "local", journal_name: str = None) -> dict:
@@ -283,6 +348,11 @@ def main():
         help="Skip FoundryVTT export"
     )
     parser.add_argument(
+        "--skip-scenes",
+        action="store_true",
+        help="Skip scene artwork generation"
+    )
+    parser.add_argument(
         "--chapter-file",
         help="Process only a specific chapter file (e.g., '01_Introduction.pdf')"
     )
@@ -330,6 +400,18 @@ def main():
             logger.info(f"Using latest run: {run_dir.name}")
         else:
             run_dir = run_pdf_to_xml(project_root, chapter_file=args.chapter_file)
+
+        # Step 2.5: Generate scene artwork (optional)
+        if args.skip_scenes:
+            logger.info("Skipping scene artwork generation (--skip-scenes)")
+        else:
+            try:
+                # Get style prompt from environment variable if not in args
+                style_prompt = os.getenv("IMAGE_STYLE_PROMPT")
+                run_scene_artwork_generation(run_dir, style_prompt=style_prompt, continue_on_error=True)
+            except Exception as e:
+                logger.error(f"Scene artwork generation failed: {e}")
+                logger.warning("Continuing with pipeline despite scene generation failure")
 
         # Step 3: Upload to FoundryVTT
         upload_result = None
