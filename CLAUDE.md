@@ -85,6 +85,10 @@ uv run src/foundry/upload_to_foundry.py --run-dir output/runs/20241017_123456
 uv run src/foundry/export_from_foundry.py "Lost Mine of Phandelver"
 uv run src/foundry/export_from_foundry.py "Lost Mine of Phandelver" --format json
 
+# Scene Artwork Generation
+uv run python scripts/generate_scene_art.py --run-dir output/runs/20241023_123456
+uv run python scripts/generate_scene_art.py --xml-file output/runs/latest/documents/chapter_01.xml --style "top-down battle map"
+
 # Utilities
 uv run src/pdf_processing/pdf_to_xml.py --file "01_Introduction.pdf"  # Single chapter
 uv run src/pdf_processing/get_toc.py                                   # Extract TOC
@@ -120,6 +124,12 @@ The system follows a four-stage pipeline (orchestrated by `scripts/full_pipeline
    - Input: Chapter PDFs from `pdf_sections/`
    - Output: Timestamped run in `output/runs/<YYYYMMDD_HHMMSS>/documents/`
    - Core AI-powered extraction engine using Gemini 2.5 Pro
+
+2.5. **Scene Artwork Generation** (`scripts/generate_scene_art.py`):
+   - Input: Chapter XML from `output/runs/<timestamp>/documents/`
+   - Output: Scene images and gallery HTML in `output/runs/<timestamp>/scene_artwork/`
+   - Post-processing workflow using Gemini for context extraction and scene identification
+   - Gemini Imagen for artwork generation
 
 3. **FoundryVTT Upload** (`src/foundry/upload_to_foundry.py`):
    - Input: XML files from run directory (converted to HTML on-the-fly)
