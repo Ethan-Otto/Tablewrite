@@ -5,7 +5,7 @@ import os
 import sys
 import logging
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from dotenv import load_dotenv
 
 # Add parent directory to path for imports
@@ -75,6 +75,63 @@ def find_xml_directory(run_dir: str) -> str:
     raise ValueError(f"No XML files found in run directory: {run_dir}")
 
 
+def upload_scene_gallery(client: FoundryClient, run_dir: Path) -> Optional[Dict[str, Any]]:
+    """
+    Upload scene artwork and create gallery journal page.
+
+    Args:
+        client: FoundryClient instance
+        run_dir: Run directory (Path object)
+
+    Returns:
+        Gallery page dict or None if no scene gallery found
+    """
+    scene_artwork_dir = run_dir / "scene_artwork"
+    images_dir = scene_artwork_dir / "images"
+    gallery_file = scene_artwork_dir / "scene_gallery.html"
+
+    if not gallery_file.exists():
+        logger.info("No scene gallery found, skipping")
+        return None
+
+    logger.info("Uploading scene artwork...")
+
+    # Upload images to FoundryVTT
+    image_path_mapping = {}
+    if images_dir.exists():
+        image_files = list(images_dir.glob("*.png")) + list(images_dir.glob("*.jpg")) + list(images_dir.glob("*.jpeg"))
+
+        for image_file in image_files:
+            # Upload to worlds/<client-id>/images/
+            target_path = f"worlds/{client.client_id}/images/{image_file.name}"
+
+            try:
+                client.upload_file(str(image_file), target_path)
+                # Map local path format to FoundryVTT path
+                image_path_mapping[f"images/{image_file.name}"] = target_path
+                logger.debug(f"  Uploaded {image_file.name}")
+            except Exception as e:
+                logger.error(f"Failed to upload {image_file.name}: {e}")
+
+    # Update gallery HTML with FoundryVTT paths
+    gallery_html = gallery_file.read_text()
+    for old_path, new_path in image_path_mapping.items():
+        gallery_html = gallery_html.replace(old_path, new_path)
+
+    # Create gallery page dict
+    gallery_page = {
+        "name": "Scene Gallery",
+        "type": "text",
+        "text": {
+            "content": gallery_html,
+            "format": 1
+        }
+    }
+
+    logger.info(f"✓ Scene gallery page created ({len(image_path_mapping)} images)")
+    return gallery_page
+
+
 def upload_run_to_foundry(
     run_dir: str,
     target: str = "local",
@@ -87,6 +144,7 @@ def upload_run_to_foundry(
     1. Finds XML files in the run directory
     2. Converts them to journal HTML using xml_to_journal_html module
     3. Uploads to FoundryVTT using client module
+    4. Optionally uploads scene gallery if present
 
     Args:
         run_dir: Path to run directory (contains documents/ with XML files)
@@ -135,6 +193,12 @@ def upload_run_to_foundry(
         }
         for journal in journals
     ]
+
+    # Add scene gallery page if present
+    run_path = Path(run_dir)
+    gallery_page = upload_scene_gallery(client, run_path)
+    if gallery_page:
+        pages.append(gallery_page)
 
     logger.info(f"Uploading journal '{journal_name}' with {len(pages)} page(s)")
 
