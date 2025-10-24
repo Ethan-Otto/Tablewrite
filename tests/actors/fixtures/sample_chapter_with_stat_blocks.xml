@@ -1,0 +1,40 @@
+<!-- tests/actors/fixtures/sample_chapter_with_stat_blocks.xml -->
+<Chapter_01_Introduction>
+    <page number="1">
+        <section>Goblin Ambush</section>
+        <p>The party encounters goblins on the road.</p>
+
+        <stat_block name="Goblin">
+GOBLIN
+Small humanoid (goblinoid), neutral evil
+
+Armor Class 15 (leather armor, shield)
+Hit Points 7 (2d6)
+Speed 30 ft.
+
+STR     DEX     CON     INT     WIS     CHA
+8 (-1)  14 (+2) 10 (+0) 10 (+0) 8 (-1)  8 (-1)
+
+Challenge 1/4 (50 XP)
+        </stat_block>
+    </page>
+
+    <page number="2">
+        <section>Cragmaw Hideout</section>
+        <p>Area 1 contains the goblin boss Klarg.</p>
+
+        <stat_block name="Goblin Boss">
+GOBLIN BOSS
+Small humanoid (goblinoid), neutral evil
+
+Armor Class 17 (chain shirt, shield)
+Hit Points 21 (6d6)
+Speed 30 ft.
+
+STR     DEX     CON     INT     WIS     CHA
+10 (+0) 14 (+2) 10 (+0) 10 (+0) 8 (-1)  10 (+0)
+
+Challenge 1 (200 XP)
+        </stat_block>
+    </page>
+</Chapter_01_Introduction>
