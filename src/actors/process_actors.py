@@ -97,7 +97,7 @@ def process_actors_for_run(
 
     # Step 3: Create/lookup creature actors
     logger.info("Step 3: Creating creature actors in FoundryVTT")
-    creature_uuid_map = {}  # Map creature name → UUID
+    creature_uuid_map = {}  # Map creature name (lowercase) → UUID
 
     for stat_block in all_stat_blocks:
         try:
@@ -106,13 +106,13 @@ def process_actors_for_run(
 
             if existing_uuid:
                 logger.info(f"Found existing actor in compendium: {stat_block.name}")
-                creature_uuid_map[stat_block.name] = existing_uuid
+                creature_uuid_map[stat_block.name.lower()] = existing_uuid
                 stats["stat_blocks_reused"] += 1
             else:
                 # Create new actor
                 logger.info(f"Creating new creature actor: {stat_block.name}")
                 new_uuid = foundry_client.create_creature_actor(stat_block)
-                creature_uuid_map[stat_block.name] = new_uuid
+                creature_uuid_map[stat_block.name.lower()] = new_uuid
                 stats["stat_blocks_created"] += 1
 
         except Exception as e:
@@ -124,8 +124,8 @@ def process_actors_for_run(
 
     for npc in all_npcs:
         try:
-            # Get stat block UUID if available
-            stat_block_uuid = creature_uuid_map.get(npc.creature_stat_block_name)
+            # Get stat block UUID if available (case-insensitive lookup)
+            stat_block_uuid = creature_uuid_map.get(npc.creature_stat_block_name.lower())
 
             if not stat_block_uuid:
                 # Try searching compendium for the creature type
