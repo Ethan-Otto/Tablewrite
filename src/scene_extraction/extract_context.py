@@ -3,7 +3,6 @@
 import logging
 import json
 import os
-from typing import Dict, Any
 import google.generativeai as genai
 
 from .models import ChapterContext
@@ -64,10 +63,17 @@ Return ONLY valid JSON, no markdown formatting:
 
         # Remove markdown code blocks if present
         if response_text.startswith("```"):
+            # Remove opening ```json or ``` and closing ```
             lines = response_text.split("\n")
-            response_text = "\n".join(lines[1:-1])  # Remove first and last lines
-            if response_text.startswith("json"):
-                response_text = response_text[4:].strip()
+            # Remove first line (``` or ```json)
+            lines = lines[1:]
+            # Remove last line (```)
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            # If first line is "json", remove it
+            if lines and lines[0].strip() == "json":
+                lines = lines[1:]
+            response_text = "\n".join(lines).strip()
 
         try:
             context_data = json.loads(response_text)

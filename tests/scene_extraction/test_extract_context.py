@@ -81,3 +81,52 @@ class TestExtractChapterContext:
 
             with pytest.raises(ValueError, match="Failed to parse.*JSON"):
                 extract_chapter_context("<chapter></chapter>")
+
+    def test_extract_context_handles_markdown_json_same_line(self):
+        """Test parsing when json identifier is on same line as backticks: ```json"""
+        with patch('src.scene_extraction.extract_context.genai.GenerativeModel') as mock_model:
+            mock_response = MagicMock()
+            mock_response.text = '''```json
+{"environment_type": "forest", "lighting": "dappled sunlight"}
+```'''
+            mock_instance = MagicMock()
+            mock_instance.generate_content.return_value = mock_response
+            mock_model.return_value = mock_instance
+
+            context = extract_chapter_context("<chapter></chapter>")
+
+            assert context.environment_type == "forest"
+            assert context.lighting == "dappled sunlight"
+
+    def test_extract_context_handles_markdown_json_separate_line(self):
+        """Test parsing when json identifier is on separate line after backticks."""
+        with patch('src.scene_extraction.extract_context.genai.GenerativeModel') as mock_model:
+            mock_response = MagicMock()
+            mock_response.text = '''```
+json
+{"environment_type": "underground", "atmosphere": "oppressive"}
+```'''
+            mock_instance = MagicMock()
+            mock_instance.generate_content.return_value = mock_response
+            mock_model.return_value = mock_instance
+
+            context = extract_chapter_context("<chapter></chapter>")
+
+            assert context.environment_type == "underground"
+            assert context.atmosphere == "oppressive"
+
+    def test_extract_context_handles_markdown_no_json_identifier(self):
+        """Test parsing when there's no json identifier, just backticks."""
+        with patch('src.scene_extraction.extract_context.genai.GenerativeModel') as mock_model:
+            mock_response = MagicMock()
+            mock_response.text = '''```
+{"environment_type": "urban", "terrain": "cobblestone streets"}
+```'''
+            mock_instance = MagicMock()
+            mock_instance.generate_content.return_value = mock_response
+            mock_model.return_value = mock_instance
+
+            context = extract_chapter_context("<chapter></chapter>")
+
+            assert context.environment_type == "urban"
+            assert context.terrain == "cobblestone streets"
