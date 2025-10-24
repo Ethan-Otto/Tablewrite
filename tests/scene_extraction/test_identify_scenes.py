@@ -87,3 +87,55 @@ class TestIdentifySceneLocations:
             scenes = identify_scene_locations("<xml></xml>", sample_context)
 
             assert scenes == []
+
+    def test_identify_scenes_handles_markdown_json_same_line(self, sample_context):
+        """Test parsing when json identifier is on same line as backticks: ```json"""
+        with patch('src.scene_extraction.identify_scenes.genai.GenerativeModel') as mock_model:
+            mock_response = MagicMock()
+            mock_response.text = '''```json
+[{"section_path": "Ch1", "name": "Forest Clearing", "description": "A sunlit clearing"}]
+```'''
+            mock_instance = MagicMock()
+            mock_instance.generate_content.return_value = mock_response
+            mock_model.return_value = mock_instance
+
+            scenes = identify_scene_locations("<xml></xml>", sample_context)
+
+            assert len(scenes) == 1
+            assert scenes[0].name == "Forest Clearing"
+            assert scenes[0].description == "A sunlit clearing"
+
+    def test_identify_scenes_handles_markdown_json_separate_line(self, sample_context):
+        """Test parsing when json identifier is on separate line after backticks."""
+        with patch('src.scene_extraction.identify_scenes.genai.GenerativeModel') as mock_model:
+            mock_response = MagicMock()
+            mock_response.text = '''```
+json
+[{"section_path": "Ch2", "name": "Underground Chamber", "description": "A dark stone chamber"}]
+```'''
+            mock_instance = MagicMock()
+            mock_instance.generate_content.return_value = mock_response
+            mock_model.return_value = mock_instance
+
+            scenes = identify_scene_locations("<xml></xml>", sample_context)
+
+            assert len(scenes) == 1
+            assert scenes[0].name == "Underground Chamber"
+            assert scenes[0].description == "A dark stone chamber"
+
+    def test_identify_scenes_handles_markdown_no_json_identifier(self, sample_context):
+        """Test parsing when there's no json identifier, just backticks."""
+        with patch('src.scene_extraction.identify_scenes.genai.GenerativeModel') as mock_model:
+            mock_response = MagicMock()
+            mock_response.text = '''```
+[{"section_path": "Ch3", "name": "City Street", "description": "Cobblestone street"}]
+```'''
+            mock_instance = MagicMock()
+            mock_instance.generate_content.return_value = mock_response
+            mock_model.return_value = mock_instance
+
+            scenes = identify_scene_locations("<xml></xml>", sample_context)
+
+            assert len(scenes) == 1
+            assert scenes[0].name == "City Street"
+            assert scenes[0].description == "Cobblestone street"
