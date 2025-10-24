@@ -37,40 +37,45 @@ class TestSceneProcessingWorkflow:
         output_dir = tmp_path / "output"
         output_dir.mkdir()
 
-        # Create mock responses that will be used sequentially
-        # Mock for context extraction
-        mock_context_response = MagicMock()
-        mock_context_response.text = '{"environment_type": "forest", "lighting": "dappled sunlight"}'
-
-        # Mock for scene identification
-        mock_scenes_response = MagicMock()
-        mock_scenes_response.text = '[{"section_path": "Test Chapter → Area 1", "name": "Forest Clearing", "description": "A dark forest clearing", "xml_section_id": "area_1"}]'
-
-        # Mock for image generation
-        mock_image_response = MagicMock()
-        mock_image_response._result = MagicMock()
-        mock_image_response._result.candidates = [MagicMock()]
-        mock_image_response._result.candidates[0].content = MagicMock()
-        mock_image_response._result.candidates[0].content.parts = [MagicMock()]
-        mock_image_response._result.candidates[0].content.parts[0].inline_data = MagicMock()
-        mock_image_response._result.candidates[0].content.parts[0].inline_data.data = b"fake_png_data"
-
         # Patch each module's genai import separately
         with patch('src.scene_extraction.extract_context.genai.GenerativeModel') as mock_context_model, \
              patch('src.scene_extraction.identify_scenes.genai.GenerativeModel') as mock_scenes_model, \
              patch('src.scene_extraction.generate_artwork.genai.GenerativeModel') as mock_image_model:
 
             # Set up context extraction mock
+            mock_context_response = MagicMock()
+            mock_context_response.text = '{"environment_type": "forest", "lighting": "dappled sunlight"}'
             mock_context_instance = MagicMock()
             mock_context_instance.generate_content.return_value = mock_context_response
             mock_context_model.return_value = mock_context_instance
 
+            # Debug: verify mock setup and usage
+            print(f"DEBUG: mock_context_model = {mock_context_model}")
+            print(f"DEBUG: mock_context_model.return_value = {mock_context_model.return_value}")
+            print(f"DEBUG: mock_context_response.text = {mock_context_response.text}")
+
+            # Test that calling the model returns the instance
+            test_instance = mock_context_model("gemini-2.0-flash-exp")
+            print(f"DEBUG: Calling mock_context_model('gemini-2.0-flash-exp') returns: {test_instance}")
+            print(f"DEBUG: Is it the same as mock_context_instance? {test_instance is mock_context_instance}")
+            test_response = test_instance.generate_content("test")
+            print(f"DEBUG: test_response.text = {test_response.text}")
+
             # Set up scene identification mock
+            mock_scenes_response = MagicMock()
+            mock_scenes_response.text = '[{"section_path": "Test Chapter → Area 1", "name": "Forest Clearing", "description": "A dark forest clearing", "xml_section_id": "area_1"}]'
             mock_scenes_instance = MagicMock()
             mock_scenes_instance.generate_content.return_value = mock_scenes_response
             mock_scenes_model.return_value = mock_scenes_instance
 
             # Set up image generation mock
+            mock_image_response = MagicMock()
+            mock_image_response._result = MagicMock()
+            mock_image_response._result.candidates = [MagicMock()]
+            mock_image_response._result.candidates[0].content = MagicMock()
+            mock_image_response._result.candidates[0].content.parts = [MagicMock()]
+            mock_image_response._result.candidates[0].content.parts[0].inline_data = MagicMock()
+            mock_image_response._result.candidates[0].content.parts[0].inline_data.data = b"fake_png_data"
             mock_image_instance = MagicMock()
             mock_image_instance.generate_content.return_value = mock_image_response
             mock_image_model.return_value = mock_image_instance

@@ -197,3 +197,47 @@ class FoundryClient:
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to upload file '{filename}': {e}")
             raise RuntimeError(f"Failed to upload file: {e}") from e
+
+    def download_file(self, target_path: str, local_path: str) -> None:
+        """
+        Download a file from FoundryVTT.
+
+        Args:
+            target_path: Full path to file in FoundryVTT (e.g., "worlds/my-world/assets/image.png")
+            local_path: Local path to save downloaded file
+
+        Raises:
+            RuntimeError: If download fails
+        """
+        from pathlib import Path
+
+        endpoint = f"{self.relay_url}/download"
+
+        headers = {
+            "x-api-key": self.api_key
+        }
+
+        # Download endpoint expects full file path in "path" parameter (no separate filename)
+        params = {
+            "clientId": self.client_id,
+            "path": target_path
+        }
+
+        logger.debug(f"Downloading {target_path} → {local_path}")
+
+        try:
+            response = requests.get(endpoint, headers=headers, params=params, timeout=60)
+            response.raise_for_status()
+
+            # Write binary response to file
+            with open(local_path, 'wb') as f:
+                f.write(response.content)
+
+            logger.debug(f"Download successful: {target_path}")
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to download file '{target_path}': {e}")
+            raise RuntimeError(f"Failed to download file: {e}") from e
+        except IOError as e:
+            logger.error(f"Failed to write to local file '{local_path}': {e}")
+            raise RuntimeError(f"Failed to write file: {e}") from e

@@ -561,3 +561,56 @@ class TestFoundryIntegration:
                 journal_uuid=fake_uuid,
                 content="<h1>Test</h1>"
             )
+
+    @pytest.mark.integration
+    @pytest.mark.slow
+    def test_upload_and_download_file(self, real_client, tmp_path):
+        """Test uploading a file to FoundryVTT and downloading it back.
+
+        Note: File will remain on server as there's no delete endpoint in the API.
+        Files are uploaded to worlds/{world}/test_uploads/ for manual cleanup.
+        """
+        import os
+        import time
+        from dotenv import load_dotenv
+        load_dotenv()
+
+        # Create a test file with timestamp
+        timestamp = time.time()
+        test_content = f"Integration test file content\nTimestamp: {timestamp}\nTest run marker"
+
+        upload_file = tmp_path / "test_upload.txt"
+        upload_file.write_text(test_content)
+
+        # Get world name from env
+        world_name = os.getenv("FOUNDRY_WORLD_NAME", "testing-world")
+
+        # Upload file to test directory
+        target_path = f"worlds/{world_name}/test_uploads/integration_test.txt"
+
+        # Upload the file
+        upload_result = real_client.upload_file(
+            local_path=str(upload_file),
+            target_path=target_path,
+            overwrite=True
+        )
+
+        # Verify upload succeeded
+        assert upload_result is not None, "Upload did not return a result"
+
+        # Download the file back
+        download_file = tmp_path / "test_download.txt"
+        real_client.download_file(
+            target_path=target_path,
+            local_path=str(download_file)
+        )
+
+        # Verify downloaded file exists and content matches
+        assert download_file.exists(), "Downloaded file does not exist"
+        downloaded_content = download_file.read_text()
+        assert downloaded_content == test_content, "Downloaded content does not match uploaded content"
+        assert str(timestamp) in downloaded_content, "Timestamp not found in downloaded content"
+
+        # Note: No delete endpoint available in FoundryVTT relay API
+        # File at worlds/{world}/test_uploads/integration_test.txt should be manually cleaned up
+        # or will be overwritten on next test run

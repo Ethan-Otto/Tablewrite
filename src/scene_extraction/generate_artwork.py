@@ -3,9 +3,13 @@
 import logging
 import os
 from typing import Optional
+from dotenv import load_dotenv
 import google.generativeai as genai
 
 from .models import Scene, ChapterContext
+
+# Load environment variables
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
