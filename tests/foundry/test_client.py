@@ -561,3 +561,88 @@ class TestFoundryIntegration:
                 journal_uuid=fake_uuid,
                 content="<h1>Test</h1>"
             )
+
+
+@pytest.mark.unit
+class TestActorOperations:
+    """Tests for actor operations via FoundryClient."""
+
+    @pytest.fixture
+    def mock_client(self, monkeypatch):
+        """Create a FoundryClient with mocked environment."""
+        monkeypatch.setenv("FOUNDRY_LOCAL_URL", "http://localhost:30000")
+        monkeypatch.setenv("FOUNDRY_LOCAL_API_KEY", "test-key")
+        monkeypatch.setenv("FOUNDRY_LOCAL_CLIENT_ID", "test-client-id")
+        monkeypatch.setenv("FOUNDRY_RELAY_URL", "https://relay.example.com")
+        return FoundryClient(target="local")
+
+    def test_client_initializes_actor_manager(self, mock_client):
+        """Test client creates ActorManager instance."""
+        assert hasattr(mock_client, 'actors')
+        assert mock_client.actors is not None
+
+    @patch('requests.get')
+    def test_client_search_actor_delegates(self, mock_get, mock_client):
+        """Test client.search_actor delegates to ActorManager."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = [
+            {"uuid": "Actor.abc123", "name": "Goblin"}
+        ]
+        mock_get.return_value = mock_response
+
+        uuid = mock_client.search_actor("Goblin")
+
+        assert uuid == "Actor.abc123"
+        mock_get.assert_called_once()
+
+    @patch('requests.post')
+    def test_client_create_creature_actor_delegates(self, mock_post, mock_client):
+        """Test client.create_creature_actor delegates to ActorManager."""
+        from src.actors.models import StatBlock
+
+        stat_block = StatBlock(
+            name="Goblin",
+            raw_text="Goblin text",
+            armor_class=15,
+            hit_points=7,
+            challenge_rating=0.25
+        )
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "entity": {"_id": "abc123"},
+            "uuid": "Actor.abc123"
+        }
+        mock_post.return_value = mock_response
+
+        uuid = mock_client.create_creature_actor(stat_block)
+
+        assert uuid == "Actor.abc123"
+        mock_post.assert_called_once()
+
+    @patch('requests.post')
+    def test_client_create_npc_actor_delegates(self, mock_post, mock_client):
+        """Test client.create_npc_actor delegates to ActorManager."""
+        from src.actors.models import NPC
+
+        npc = NPC(
+            name="Klarg",
+            creature_stat_block_name="Goblin Boss",
+            description="Leader",
+            plot_relevance="Guards supplies"
+        )
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "entity": {"_id": "xyz789"},
+            "uuid": "Actor.xyz789"
+        }
+        mock_post.return_value = mock_response
+
+        uuid = mock_client.create_npc_actor(npc, stat_block_uuid="Actor.boss123")
+
+        assert uuid == "Actor.xyz789"
+        mock_post.assert_called_once()
