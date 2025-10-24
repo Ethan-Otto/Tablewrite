@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from pathlib import Path
-from src.scene_extraction.generate_artwork import generate_scene_image
+from src.scene_extraction.generate_artwork import generate_scene_image, save_scene_image
 from src.scene_extraction.models import Scene, ChapterContext
 
 
@@ -80,3 +80,52 @@ class TestGenerateSceneImage:
             prompt = call_args[0][0]
             assert "cave" in prompt.lower()
             assert "underground" in prompt.lower()
+
+
+class TestSaveSceneImage:
+    """Tests for save_scene_image helper function."""
+
+    def test_save_image_creates_file(self, tmp_path):
+        """Test that save_scene_image saves bytes to file correctly."""
+        # Setup
+        test_data = b"fake_image_data_12345"
+        output_path = tmp_path / "test_image.png"
+
+        # Execute
+        save_scene_image(test_data, str(output_path))
+
+        # Verify
+        assert output_path.exists()
+        assert output_path.read_bytes() == test_data
+
+    def test_save_image_creates_directory(self, tmp_path):
+        """Test that save_scene_image creates parent directories."""
+        # Setup
+        test_data = b"test_data"
+        output_path = tmp_path / "nested" / "directories" / "image.png"
+
+        # Verify parent doesn't exist yet
+        assert not output_path.parent.exists()
+
+        # Execute
+        save_scene_image(test_data, str(output_path))
+
+        # Verify
+        assert output_path.parent.exists()
+        assert output_path.exists()
+        assert output_path.read_bytes() == test_data
+
+    def test_save_image_handles_write_error(self, tmp_path):
+        """Test that save_scene_image properly handles IOError."""
+        # Setup - create a read-only directory
+        readonly_dir = tmp_path / "readonly"
+        readonly_dir.mkdir()
+        readonly_dir.chmod(0o444)  # Read-only
+        output_path = readonly_dir / "image.png"
+
+        # Execute and verify
+        with pytest.raises(IOError):
+            save_scene_image(b"data", str(output_path))
+
+        # Cleanup - restore permissions so pytest can clean up
+        readonly_dir.chmod(0o755)
