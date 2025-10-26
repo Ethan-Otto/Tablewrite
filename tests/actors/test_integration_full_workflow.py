@@ -277,21 +277,128 @@ class TestFullActorExtractionWorkflow:
 @pytest.mark.slow
 class TestEndToEndWithRealPDF:
     """
-    End-to-end tests that could process real PDFs (if available).
+    End-to-end tests that process real PDFs with Gemini API.
 
     These tests are marked as slow and require both Gemini API and test PDFs.
+    Uses the Appendix B: Monsters PDF which contains 20+ stat blocks.
     """
 
-    def test_xml_has_stat_block_tags(self, check_api_key):
+    def test_xml_has_stat_block_tags(self, check_api_key, tmp_path):
         """
         Test that XML generation includes stat block tags.
 
-        This verifies the XML prompt update is working.
-        Note: This test would need to actually run pdf_to_xml.py with a test PDF.
-        """
-        # This is a placeholder - actual implementation would:
-        # 1. Run pdf_to_xml.py on a test PDF with stat blocks
-        # 2. Verify <stat_block name="..."> tags are present in output
-        # 3. Verify raw stat block text is preserved
+        Uses Appendix B: Monsters PDF which contains stat blocks for:
+        - Goblin, Ghoul, Giant Spider, Grick, Hobgoblin
+        - Owlbear, Ogre, Spectator, Stirge, Wolf
+        - Young Green Dragon, Zombie, Cultist, Doppelganger
+        - And more (20+ total stat blocks)
 
-        pytest.skip("Requires running pdf_to_xml.py with test PDF - manual verification needed")
+        This verifies:
+        1. pdf_to_xml.py processes the PDF successfully
+        2. <stat_block name="..."> tags are present in output XML
+        3. Raw stat block text is preserved inside tags
+        4. Multiple stat blocks are detected
+        """
+        import sys
+        import os
+        import re
+        import glob
+        from pathlib import Path
+
+        # Path to monsters PDF directory
+        monsters_pdf_dir = Path("/Users/ethanotto/Documents/Projects/dnd_module_gen/pdf_sections/Lost_Mine_of_Phandelver")
+        monsters_pdf_name = "08_Appendix_B_Monsters.pdf"
+        monsters_pdf = monsters_pdf_dir / monsters_pdf_name
+
+        if not monsters_pdf.exists():
+            pytest.skip(f"Monsters PDF not found: {monsters_pdf}")
+
+        # Add src to path for importing pdf_to_xml
+        project_root = Path(__file__).parent.parent.parent
+        sys.path.insert(0, str(project_root / "src"))
+
+        # Import the PDF processing main function
+        from pdf_processing.pdf_to_xml import main, configure_gemini
+
+        # Create output directory
+        output_dir = tmp_path / "monsters_output"
+        output_dir.mkdir(parents=True)
+
+        # Process the monsters PDF
+        print(f"\nProcessing monsters PDF: {monsters_pdf}")
+        print(f"Output directory: {output_dir}")
+
+        try:
+            # Configure Gemini API
+            configure_gemini()
+
+            # Process the PDF (this will make real Gemini API calls)
+            # main() expects:
+            #   - input_dir: directory containing PDFs
+            #   - base_output_dir: where to create timestamped run
+            #   - single_file: name of the PDF file to process
+            main(
+                input_dir=str(monsters_pdf_dir),
+                base_output_dir=str(output_dir),
+                single_file=monsters_pdf_name
+            )
+
+            # Find the generated XML in the timestamped run directory
+            # The structure is: output_dir/<timestamp>/documents/08_Appendix_B_Monsters.xml
+            run_dirs = sorted(glob.glob(str(output_dir / "*")))
+            assert len(run_dirs) > 0, "No run directory created"
+
+            latest_run = run_dirs[-1]
+            xml_output_path = Path(latest_run) / "documents" / "08_Appendix_B_Monsters.xml"
+
+            assert xml_output_path.exists(), f"XML output not created: {xml_output_path}"
+
+            # Read the generated XML
+            with open(xml_output_path, 'r') as f:
+                xml_content = f.read()
+
+            # Verify stat blocks are tagged
+            stat_block_pattern = r'<stat_block name="([^"]+)">(.*?)</stat_block>'
+            stat_blocks = re.findall(stat_block_pattern, xml_content, re.DOTALL)
+
+            print(f"\nFound {len(stat_blocks)} stat blocks in generated XML:")
+            for name, _ in stat_blocks[:5]:  # Show first 5
+                print(f"  - {name}")
+            if len(stat_blocks) > 5:
+                print(f"  ... and {len(stat_blocks) - 5} more")
+
+            # Assertions
+            assert len(stat_blocks) >= 5, \
+                f"Expected at least 5 stat blocks, found {len(stat_blocks)}"
+
+            # Check for some expected creatures
+            stat_block_names = [name.upper() for name, _ in stat_blocks]
+            expected_creatures = ["GOBLIN", "GHOUL", "GIANT SPIDER", "OGRE", "WOLF"]
+
+            found_expected = []
+            for expected in expected_creatures:
+                if any(expected in name for name in stat_block_names):
+                    found_expected.append(expected)
+
+            print(f"\nExpected creatures found: {found_expected}")
+
+            assert len(found_expected) >= 2, \
+                f"Expected to find at least 2 of {expected_creatures}, found {found_expected}"
+
+            # Verify raw text is preserved (check one stat block)
+            if stat_blocks:
+                first_name, first_content = stat_blocks[0]
+                assert len(first_content.strip()) > 50, \
+                    f"Stat block '{first_name}' content too short: {len(first_content)} chars"
+
+                # Should contain typical stat block elements
+                typical_elements = ["Armor Class", "Hit Points", "Speed", "STR", "DEX"]
+                found_elements = [elem for elem in typical_elements if elem in first_content]
+
+                assert len(found_elements) >= 2, \
+                    f"Stat block should contain typical elements, found {found_elements}"
+
+            print("\n✅ XML stat block tagging verification passed!")
+
+        except Exception as e:
+            pytest.fail(f"Failed to process PDF or verify output: {e}")
