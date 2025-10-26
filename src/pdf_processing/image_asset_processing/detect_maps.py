@@ -84,6 +84,60 @@ Ignore: character portraits, item illustrations, decorative art, page decoration
                 return MapDetectionResult(has_map=False, type=None, name=None)
 
 
+async def is_map_image_async(client: genai.Client, image_bytes: bytes, width: int, height: int) -> bool:
+    """Asynchronously check if an image is a map using Gemini Vision.
+
+    This is a simpler version of detect_single_page for classifying
+    individual extracted images from PyMuPDF.
+
+    Args:
+        client: Gemini client instance
+        image_bytes: Image as bytes (PNG/JPEG format)
+        width: Image width in pixels
+        height: Image height in pixels
+
+    Returns:
+        True if the image is a navigation or battle map, False otherwise
+    """
+    prompt = """Is this image a D&D navigation map or battle map?
+
+Navigation maps show dungeon layouts, wilderness areas, floor plans, or geographical features.
+Battle maps show tactical grids, encounter areas, or combat spaces.
+
+Respond with JSON: {"is_map": true} or {"is_map": false}
+
+Ignore: background textures, decorative borders, character portraits, item art."""
+
+    try:
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=[
+                types.Part.from_bytes(data=image_bytes, mime_type="image/png"),
+                prompt
+            ]
+        )
+
+        import json
+        response_text = response.text.strip()
+
+        # Remove markdown code blocks if present
+        if response_text.startswith("```"):
+            response_text = response_text.split("```")[1]
+            if response_text.startswith("json"):
+                response_text = response_text[4:]
+            response_text = response_text.strip()
+
+        result = json.loads(response_text)
+        is_map = result.get("is_map", False)
+
+        logger.debug(f"Image classification ({width}x{height}): is_map={is_map}")
+        return is_map
+
+    except Exception as e:
+        logger.warning(f"Image classification failed: {e}")
+        return False
+
+
 async def detect_maps_async(pdf_path: str) -> List[MapDetectionResult]:
     """Detect maps in all pages of PDF using async Gemini Vision calls.
 
