@@ -68,12 +68,11 @@ class TestRealAPIIntegration:
         for scene in scenes:
             print(f"  - {scene.name}: {scene.description[:50]}...")
 
-    @pytest.mark.skip(reason="Imagen-3.0 model not currently available via generativeai API")
     def test_generate_image_real_api(self, sample_xml, tmp_path):
-        """Test image generation with real Gemini Imagen API."""
-        # NOTE: This test is skipped because imagen-3.0-generate-001 is not available
-        # through the current Gemini API. When Imagen becomes available, this test
-        # will verify the image generation functionality.
+        """Test image generation with real Gemini Imagen API.
+
+        This test MUST fail if the Imagen API is unavailable.
+        """
 
         # Get context and scenes first
         context = extract_chapter_context(sample_xml)
@@ -81,12 +80,17 @@ class TestRealAPIIntegration:
 
         # Generate image for first scene
         scene = scenes[0]
-        image_bytes = generate_scene_image(scene, context)
+        image_bytes, prompt = generate_scene_image(scene, context)
 
         # Verify we got image data
         assert image_bytes is not None
         assert len(image_bytes) > 0
         assert isinstance(image_bytes, bytes)
+
+        # Verify we got prompt
+        assert prompt is not None
+        assert len(prompt) > 0
+        assert isinstance(prompt, str)
 
         print(f"✓ Generated image: {len(image_bytes)} bytes")
 
@@ -116,9 +120,12 @@ class TestRealAPIIntegration:
 
         print(f"✓ Generated gallery HTML: {len(html)} characters")
 
-    def test_workflow_without_image_generation(self, sample_xml, tmp_path):
-        """Test workflow without image generation (Imagen API not available)."""
-        print("\n=== WORKFLOW TEST (without image generation) ===")
+    def test_full_workflow_integration(self, sample_xml, tmp_path):
+        """Test complete workflow including image generation.
+
+        This test MUST fail if any component (context, scenes, or images) fails.
+        """
+        print("\n=== FULL WORKFLOW INTEGRATION TEST ===")
 
         # Step 1: Extract context
         print("Step 1: Extracting chapter context...")
@@ -132,8 +139,8 @@ class TestRealAPIIntegration:
         assert len(scenes) > 0
         print(f"  ✓ Found {len(scenes)} scene(s)")
 
-        # Step 3: Create mock image paths (simulating saved images)
-        print("Step 3: Creating gallery with mock image paths...")
+        # Step 3: Generate images for all scenes
+        print("Step 3: Generating scene images...")
         images_dir = tmp_path / "images"
         images_dir.mkdir()
         image_paths = {}
@@ -141,10 +148,16 @@ class TestRealAPIIntegration:
         for i, scene in enumerate(scenes, start=1):
             image_filename = f"scene_{i:03d}_{scene.name.lower().replace(' ', '_')}.png"
             image_path = images_dir / image_filename
-            # Create placeholder file
-            image_path.write_bytes(b"fake_image_data")
+
+            # CRITICAL: Actually attempt image generation - test MUST fail if this fails
+            image_bytes, prompt = generate_scene_image(scene, context)
+            assert image_bytes is not None, f"Image generation failed for scene: {scene.name}"
+            assert len(image_bytes) > 0, f"Image data is empty for scene: {scene.name}"
+            assert prompt is not None, f"Prompt is None for scene: {scene.name}"
+
+            save_scene_image(image_bytes, str(image_path))
             image_paths[scene.name] = str(image_path)
-            print(f"  ✓ Mock image: {image_filename}")
+            print(f"  ✓ Generated and saved: {image_filename} ({len(image_bytes)} bytes)")
 
         # Step 4: Create gallery
         print("Step 4: Creating scene gallery HTML...")
@@ -157,10 +170,8 @@ class TestRealAPIIntegration:
         print(f"  ✓ Gallery saved: {gallery_file} ({len(html)} characters)")
 
         # Final verification
-        print("\n=== WORKFLOW COMPLETE (without Imagen) ===")
+        print("\n=== WORKFLOW COMPLETE ===")
         print(f"✓ Scenes extracted: {len(scenes)}")
-        print(f"✓ Mock images created: {len(image_paths)}")
+        print(f"✓ Images generated: {len(image_paths)}")
         print(f"✓ Gallery HTML created: {gallery_file.exists()}")
         print(f"✓ All files saved to: {tmp_path}")
-        print(f"\nNOTE: Image generation skipped (Imagen API not available)")
-        print(f"      Context extraction and scene identification tested with real API ✓")

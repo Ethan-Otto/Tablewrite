@@ -250,6 +250,76 @@ In FoundryVTT, "Item" is a broad document type that includes character options, 
 - 5 subTypes × 26 letters = 130 API calls for comprehensive coverage of all physical items
 - Deduplicate by UUID (items appear in multiple compendiums like `dnd5e.items` and `dnd5e.equipment24`)
 
+### Scene Extraction & Artwork Generation
+
+The project includes AI-powered scene extraction and artwork generation for creating visual galleries of D&D module locations.
+
+**Architecture:**
+- `src/scene_extraction/models.py`: Pydantic models for Scene and ChapterContext
+- `src/scene_extraction/extract_context.py`: Chapter-level environmental context extraction using Gemini
+- `src/scene_extraction/identify_scenes.py`: Scene location identification using Gemini 2.0 Flash
+- `src/scene_extraction/generate_artwork.py`: AI image generation using Gemini Imagen
+- `src/scene_extraction/create_gallery.py`: HTML gallery generation with collapsible prompts
+- `scripts/generate_scene_art.py`: Main orchestration script with parallel image generation
+
+**Processing Workflow:**
+1. **Context Extraction**: Analyzes chapter XML to determine environment type (underground/outdoor/interior), lighting, terrain, atmosphere
+2. **Scene Identification**: Extracts physical locations from XML, filtering out NPCs, monsters, and plot details
+3. **Image Generation**: Creates AI artwork for each scene using Gemini Imagen (parallel processing with 5 workers)
+4. **Gallery Creation**: Generates HTML gallery with images, descriptions, and collapsible Gemini prompts
+
+**Key Features:**
+- **Location-Specific Context**: Each scene tagged with location_type (underground, outdoor, interior) for accurate image generation
+- **Parallel Generation**: Uses ThreadPoolExecutor with 5 concurrent workers for fast processing
+- **Prompt Transparency**: Collapsible boxes in gallery show full Gemini prompt used for each image
+- **Image Constraints**: Automatically enforces no text in images, no specific named creatures
+- **Model**: Uses `imagen-3.0-generate-002` (no rate limit issues with parallel generation)
+
+**Scene Model:**
+```python
+class Scene(BaseModel):
+    section_path: str        # e.g., "Chapter 2 → The Cragmaw Hideout → Area 1"
+    name: str               # "Twin Pools Cave"
+    description: str        # Physical environment only (no NPCs/monsters)
+    location_type: str      # "underground", "outdoor", "interior", "underwater"
+    xml_section_id: Optional[str] = None
+```
+
+**Usage:**
+```bash
+# Generate artwork for all chapters in a run
+uv run python scripts/generate_scene_art.py --run-dir output/runs/20241023_123456
+
+# Generate artwork for single chapter
+uv run python scripts/generate_scene_art.py --xml-file output/runs/latest/documents/02_Part_1_Goblin_Arrows.xml
+
+# Custom style prompt
+uv run python scripts/generate_scene_art.py --xml-file chapter.xml --style "dark fantasy, grimdark, oil painting"
+
+# Custom output directory
+uv run python scripts/generate_scene_art.py --xml-file chapter.xml --output-dir custom_output/
+```
+
+**Output Structure:**
+```
+output/runs/<timestamp>/scene_artwork/
+├── images/
+│   ├── scene_001_cave_mouth.png
+│   ├── scene_002_goblin_blind.png
+│   └── ...
+└── scene_gallery.html  # Gallery with collapsible prompts
+```
+
+**Performance:**
+- Typical chapter: 10-17 scenes
+- Generation speed: ~2-3 seconds per image with parallel processing
+- Total time: ~20-30 seconds for full chapter
+- Image size: ~1-2 MB per PNG
+
+**Integration with Full Pipeline:**
+- Can be integrated into `scripts/full_pipeline.py` as optional step
+- Scene gallery HTML can be uploaded to FoundryVTT as journal page
+
 ### Key Architecture Patterns
 
 **pdf_to_xml.py** (main conversion engine):

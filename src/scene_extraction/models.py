@@ -10,6 +10,7 @@ class Scene(BaseModel):
     section_path: str  # e.g., "Chapter 2 → The Cragmaw Hideout → Area 1"
     name: str
     description: str  # Physical environment description only (no NPCs/monsters)
+    location_type: str  # e.g., "underground", "outdoor", "interior", "underwater"
     xml_section_id: Optional[str] = None  # Reference to XML section element
 
     @field_validator('name')

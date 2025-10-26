@@ -8,13 +8,14 @@ from .models import Scene
 logger = logging.getLogger(__name__)
 
 
-def create_scene_gallery_html(scenes: List[Scene], image_paths: Dict[str, str]) -> str:
+def create_scene_gallery_html(scenes: List[Scene], image_paths: Dict[str, str], prompts: Dict[str, str] = None) -> str:
     """
     Create HTML for a FoundryVTT journal page with scene gallery.
 
     Args:
         scenes: List of Scene objects
         image_paths: Dict mapping scene name to image file path (relative to FoundryVTT)
+        prompts: Optional dict mapping scene name to full Gemini prompt used for image generation
 
     Returns:
         HTML string for journal page
@@ -33,7 +34,39 @@ def create_scene_gallery_html(scenes: List[Scene], image_paths: Dict[str, str]) 
 <p>This chapter contains no scene artwork.</p>
 """
 
-    html_parts = ["<h1>Scene Gallery</h1>"]
+    html_parts = [
+        "<h1>Scene Gallery</h1>",
+        # Add CSS for collapsible details
+        """<style>
+        details {
+            margin-top: 1em;
+            padding: 0.5em;
+            background-color: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 4px;
+        }
+        summary {
+            cursor: pointer;
+            font-weight: bold;
+            color: #888;
+            padding: 0.5em;
+            user-select: none;
+        }
+        summary:hover {
+            color: #aaa;
+        }
+        .prompt-content {
+            margin-top: 0.5em;
+            padding: 0.5em;
+            background-color: #0d0d0d;
+            border-left: 3px solid #444;
+            font-family: monospace;
+            font-size: 0.85em;
+            white-space: pre-wrap;
+            color: #ccc;
+        }
+        </style>"""
+    ]
 
     for scene in scenes:
         # Section header
@@ -51,6 +84,14 @@ def create_scene_gallery_html(scenes: List[Scene], image_paths: Dict[str, str]) 
 
         # Scene description
         html_parts.append(f'<p style="margin-top: 1em;">{scene.description}</p>')
+
+        # Collapsible prompt (if available)
+        if prompts and scene.name in prompts:
+            prompt_text = prompts[scene.name].replace('<', '&lt;').replace('>', '&gt;')
+            html_parts.append(f'''<details>
+    <summary>View Full Gemini Prompt</summary>
+    <div class="prompt-content">{prompt_text}</div>
+</details>''')
 
         # Divider
         html_parts.append('<hr style="margin: 2em 0; border: none; border-top: 1px solid #333;" />')

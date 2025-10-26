@@ -2,9 +2,13 @@
 
 import logging
 import os
+import time
 from typing import Optional
 from dotenv import load_dotenv
-import google.generativeai as genai
+from google import genai
+from google.genai import types
+from google.api_core import exceptions as google_exceptions
+from io import BytesIO
 
 from .models import Scene, ChapterContext
 
@@ -15,18 +19,52 @@ logger = logging.getLogger(__name__)
 
 # Configure Gemini API
 GEMINI_API_KEY = os.getenv("GeminiImageAPI")
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
 
-IMAGEN_MODEL_NAME = "imagen-3.0-generate-001"
+IMAGEN_MODEL_NAME = "imagen-3.0-generate-002"
 DEFAULT_STYLE_PROMPT = "fantasy illustration, D&D 5e art style, detailed environment, high quality"
+
+
+def construct_image_prompt(
+    scene: Scene,
+    chapter_context: ChapterContext,
+    style_prompt: Optional[str] = None
+) -> str:
+    """
+    Construct the full prompt for image generation.
+
+    Args:
+        scene: Scene object with description and location_type
+        chapter_context: Chapter environmental context
+        style_prompt: Optional custom style prompt
+
+    Returns:
+        Complete prompt string for Gemini Imagen
+    """
+    style = style_prompt or DEFAULT_STYLE_PROMPT
+
+    return f"""
+{scene.description}
+
+Location Type: {scene.location_type}
+Lighting: {chapter_context.lighting or 'natural'}
+Terrain: {chapter_context.terrain or 'varied'}
+Atmosphere: {chapter_context.atmosphere or 'neutral'}
+
+Style: {style}
+
+IMPORTANT CONSTRAINTS:
+- Do NOT include any text, words, letters, signs, or writing in the image
+- Do NOT depict specific named creatures or characters (generic mobs or background townsfolk are acceptable if needed for atmosphere)
+- Focus on the physical environment and location details only
+- If location_type is "underground", ensure the scene clearly shows it is inside a cave/dungeon with stone walls, dim lighting, and enclosed space
+"""
 
 
 def generate_scene_image(
     scene: Scene,
     chapter_context: ChapterContext,
     style_prompt: Optional[str] = None
-) -> bytes:
+) -> tuple[bytes, str]:
     """
     Generate artwork for a scene using Gemini Imagen.
 
@@ -36,39 +74,44 @@ def generate_scene_image(
         style_prompt: Optional custom style prompt (uses default if not provided)
 
     Returns:
-        Image data as bytes (PNG format)
+        Tuple of (image_bytes, prompt_text)
+        - image_bytes: Image data as bytes (PNG format)
+        - prompt_text: Full prompt sent to Gemini
 
     Raises:
         RuntimeError: If image generation fails
     """
     logger.info(f"Generating artwork for scene: {scene.name}")
 
-    style = style_prompt or DEFAULT_STYLE_PROMPT
-
     # Construct comprehensive prompt
-    prompt = f"""
-{scene.description}
-
-Environment: {chapter_context.environment_type}
-Lighting: {chapter_context.lighting or 'natural'}
-Terrain: {chapter_context.terrain or 'varied'}
-Atmosphere: {chapter_context.atmosphere or 'neutral'}
-
-Style: {style}
-"""
+    prompt = construct_image_prompt(scene, chapter_context, style_prompt)
 
     logger.debug(f"Image generation prompt: {prompt}")
 
     try:
-        model = genai.GenerativeModel(IMAGEN_MODEL_NAME)
-        response = model.generate_content(prompt)
+        # Create client with API key
+        client = genai.Client(api_key=GEMINI_API_KEY)
 
-        # Extract image data from response
-        # Gemini Imagen returns image in response.candidates[0].content.parts[0].inline_data
-        image_data = response._result.candidates[0].content.parts[0].inline_data.data
+        # Generate image using new Imagen API
+        response = client.models.generate_images(
+            model=IMAGEN_MODEL_NAME,
+            prompt=prompt,
+            config=types.GenerateImagesConfig(
+                number_of_images=1,
+            )
+        )
+
+        # Extract image from response
+        generated_image = response.generated_images[0]
+
+        # The image object has a _pil_image attribute with the actual PIL Image
+        # Convert to bytes (PNG format)
+        image_buffer = BytesIO()
+        generated_image.image._pil_image.save(image_buffer, format='PNG')
+        image_data = image_buffer.getvalue()
 
         logger.info(f"Generated image for '{scene.name}' ({len(image_data)} bytes)")
-        return image_data
+        return (image_data, prompt)
 
     except Exception as e:
         logger.error(f"Failed to generate image for scene '{scene.name}': {e}")

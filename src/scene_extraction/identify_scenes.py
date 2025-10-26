@@ -59,6 +59,7 @@ For each physical location, extract:
 - section_path: Full section hierarchy (e.g., "Chapter 2 → The Cragmaw Hideout → Area 1")
 - name: Short descriptive name for the location
 - description: Physical environment description ONLY (no NPCs, no monsters, no plot - just the physical space)
+- location_type: Specific location type - must be one of: "underground" (caves, dungeons, tunnels), "outdoor" (forest, plains, mountains), "interior" (buildings, structures), "underwater", or "other"
 - xml_section_id: The 'id' attribute from the XML section element (or null if not present)
 
 Return ONLY a JSON array of scene objects. If no physical locations found, return [].

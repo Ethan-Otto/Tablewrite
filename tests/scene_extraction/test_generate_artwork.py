@@ -13,7 +13,8 @@ def sample_scene():
     return Scene(
         section_path="Chapter 1 → Area 1",
         name="Cave Entrance",
-        description="A dark cave with rough stone walls and moss-covered rocks"
+        description="A dark cave with rough stone walls and moss-covered rocks",
+        location_type="underground"
     )
 
 
@@ -48,7 +49,7 @@ class TestGenerateSceneImage:
             mock_model.return_value = mock_instance
 
             # Call function
-            image_bytes = generate_scene_image(sample_scene, sample_context, style_prompt="fantasy art")
+            image_bytes, prompt = generate_scene_image(sample_scene, sample_context, style_prompt="fantasy art")
 
             # Verify Gemini called
             mock_model.assert_called_once()
@@ -57,6 +58,8 @@ class TestGenerateSceneImage:
             # Verify result
             assert isinstance(image_bytes, bytes)
             assert image_bytes == b"fake_image_data"
+            assert isinstance(prompt, str)
+            assert len(prompt) > 0
 
     def test_generate_image_constructs_prompt_with_context(self, sample_scene, sample_context):
         """Test that prompt includes scene description and chapter context."""

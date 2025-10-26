@@ -9,12 +9,19 @@ Utilities for turning official Dungeons & Dragons PDFs into structured assets th
   - `get_toc.py` – extracts table of contents from PDF
   - `xml_to_html.py` – converts XML to browsable HTML (local previews and FoundryVTT uploads)
   - `valid_xml_tags.py` – XML tag validation utilities
+- `src/scene_extraction/` – AI-powered scene extraction and artwork generation:
+  - `models.py` – Pydantic models for Scene and ChapterContext
+  - `extract_context.py` – chapter environmental context extraction using Gemini
+  - `identify_scenes.py` – scene location identification using Gemini
+  - `generate_artwork.py` – AI image generation using Gemini Imagen
+  - `create_gallery.py` – HTML gallery generation with collapsible prompts
 - `src/foundry/` – FoundryVTT integration:
   - `client.py` – REST API client base class
   - `journals.py` – `JournalManager` class for journal CRUD operations
   - `upload_to_foundry.py` – batch upload script for journals
   - `export_from_foundry.py` – export journals from FoundryVTT to HTML/JSON
 - `scripts/full_pipeline.py` – complete pipeline: split → XML generation → upload → export
+- `scripts/generate_scene_art.py` – scene artwork generation orchestration script
 - `src/logging_config.py` – centralized logging configuration
 - `xml_examples/` – reference markup while refining the converters
 - `pdf_sections/` – cache of manually curated chapter PDFs used as input for the XML step
@@ -101,6 +108,78 @@ The integration uses the ThreeHats REST API module with a relay server:
 - `src/foundry/journals.py` - `JournalManager` class handles all journal CRUD operations
 - `src/foundry/client.py` - Base `FoundryClient` delegates to specialized managers
 
+## Scene Artwork Generation
+
+The project includes AI-powered scene extraction and artwork generation for creating visual galleries of D&D module locations using Gemini AI.
+
+### Features
+
+- **Automatic Scene Identification**: Extracts physical locations from chapter XML while filtering out NPCs, monsters, and plot details
+- **Context-Aware Generation**: Each scene tagged with location type (underground, outdoor, interior) for accurate image generation
+- **Parallel Processing**: Generates multiple images concurrently for fast processing (5 workers)
+- **Prompt Transparency**: HTML gallery includes collapsible boxes showing the exact Gemini prompt used for each image
+- **No Text/Characters**: Automatically enforces constraints to exclude text and specific named creatures from images
+- **Gemini Imagen**: Uses `imagen-3.0-generate-002` model for high-quality fantasy artwork
+
+### Usage
+
+```bash
+# Generate artwork for all chapters in a run
+uv run python scripts/generate_scene_art.py --run-dir output/runs/20241023_123456
+
+# Generate artwork for single chapter
+uv run python scripts/generate_scene_art.py --xml-file output/runs/latest/documents/02_Part_1_Goblin_Arrows.xml
+
+# Custom style prompt
+uv run python scripts/generate_scene_art.py --xml-file chapter.xml --style "dark fantasy, grimdark, oil painting"
+
+# Custom output directory
+uv run python scripts/generate_scene_art.py --xml-file chapter.xml --output-dir custom_output/
+```
+
+### Output
+
+Scene artwork is saved to `output/runs/<timestamp>/scene_artwork/`:
+- `images/` - Generated PNG images (~1-2 MB each)
+- `scene_gallery.html` - Interactive HTML gallery with collapsible prompts
+
+**Gallery Features:**
+- Scene hierarchy breadcrumbs (Chapter → Location → Area)
+- High-resolution AI-generated artwork
+- Physical environment descriptions
+- Collapsible "View Full Gemini Prompt" boxes for each image
+
+### Performance
+
+- **Processing Speed**: ~2-3 seconds per image with parallel generation
+- **Typical Chapter**: 10-17 scenes in ~20-30 seconds
+- **Model**: `imagen-3.0-generate-002` (no rate limit issues)
+
+### Architecture
+
+**Modules:**
+- `src/scene_extraction/models.py` - Pydantic models (Scene, ChapterContext)
+- `src/scene_extraction/extract_context.py` - Chapter environmental context extraction
+- `src/scene_extraction/identify_scenes.py` - Scene location identification
+- `src/scene_extraction/generate_artwork.py` - Gemini Imagen image generation
+- `src/scene_extraction/create_gallery.py` - HTML gallery creation
+- `scripts/generate_scene_art.py` - Main orchestration script
+
+**Processing Flow:**
+1. Extract chapter context (environment, lighting, terrain)
+2. Identify physical locations (rooms, areas, outdoor locations)
+3. Generate artwork in parallel (5 concurrent workers)
+4. Create HTML gallery with collapsible prompts
+
+**Scene Model:**
+```python
+class Scene(BaseModel):
+    section_path: str      # "Chapter 2 → The Cragmaw Hideout → Area 1"
+    name: str             # "Twin Pools Cave"
+    description: str      # Physical environment only
+    location_type: str    # "underground", "outdoor", "interior", "underwater"
+```
+
 ## Logging
 All scripts use Python's standard `logging` module for structured output:
 - **DEBUG**: Detailed processing steps (page uploads, file creation)
@@ -123,6 +202,12 @@ tests/
 │   ├── test_pdf_to_xml.py  # XML generation tests
 │   ├── test_get_toc.py     # TOC extraction tests
 │   └── test_xml_to_html.py # HTML conversion tests
+├── scene_extraction/        # Tests for scene extraction and artwork
+│   ├── test_extract_context.py    # Context extraction tests
+│   ├── test_identify_scenes.py    # Scene identification tests
+│   ├── test_generate_artwork.py   # Image generation tests
+│   ├── test_create_gallery.py     # Gallery HTML generation tests
+│   └── test_real_api.py            # Real API integration tests (Gemini & Imagen)
 └── foundry/                 # Tests for FoundryVTT integration
     ├── test_client.py       # FoundryClient API tests
     ├── test_upload_script.py # Upload script tests
@@ -178,9 +263,13 @@ GitHub Actions automatically runs the full test suite on all pull requests. See 
 ### Current Status
 ✅ **Full Pipeline**: Complete workflow from PDF → XML → FoundryVTT → HTML export
 ✅ **FoundryVTT Integration**: Upload, export, create/replace journals with UUID-based operations
+✅ **Scene Artwork Generation**: AI-powered scene extraction and image generation with Gemini Imagen
 ✅ **Bug Fixes**: Mixed XML content handling, improved heading hierarchy detection
 
 ### Recent Updates
+- **Scene Artwork Generation** (`scripts/generate_scene_art.py`): AI-powered scene extraction, image generation with Gemini Imagen, and HTML gallery creation with collapsible prompts
+- **Location-Aware Context**: Each scene tagged with location type (underground/outdoor/interior) for accurate image generation
+- **Parallel Image Processing**: ThreadPoolExecutor with 5 workers for fast concurrent generation
 - **Full Pipeline Script** (`scripts/full_pipeline.py`): Orchestrates all 4 stages with skip flags
 - **Journal Export**: Download journals from FoundryVTT as HTML or JSON
 - **JournalManager Refactor**: Specialized manager class for journal operations

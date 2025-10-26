@@ -20,6 +20,7 @@ import argparse
 import logging
 from pathlib import Path
 from dotenv import load_dotenv
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -84,15 +85,19 @@ def process_chapter(
     images_dir = output_dir / "images"
     images_dir.mkdir(parents=True, exist_ok=True)
 
-    # Step 3: Generate images
-    logger.info("Step 3: Generating scene artwork...")
+    # Step 3: Generate images in parallel
+    logger.info("Step 3: Generating scene artwork (in parallel)...")
     image_paths = {}
-    for i, scene in enumerate(scenes, start=1):
-        logger.info(f"  [{i}/{len(scenes)}] Generating image for: {scene.name}")
+    prompts = {}
 
+    def generate_and_save_image(scene_data):
+        """Helper function to generate and save a single image."""
+        i, scene = scene_data
         try:
-            # Generate image
-            image_bytes = generate_scene_image(scene, context, style_prompt)
+            logger.info(f"  [{i}/{len(scenes)}] Generating image for: {scene.name}")
+
+            # Generate image (returns tuple of bytes and prompt)
+            image_bytes, prompt = generate_scene_image(scene, context, style_prompt)
 
             # Save image
             safe_name = sanitize_filename(scene.name)
@@ -100,16 +105,32 @@ def process_chapter(
             image_path = images_dir / image_filename
             save_scene_image(image_bytes, str(image_path))
 
-            # Store relative path for FoundryVTT (will be updated during upload)
-            image_paths[scene.name] = f"images/{image_filename}"
-
+            # Return scene name, relative path, and prompt
+            return (scene.name, f"images/{image_filename}", prompt)
         except Exception as e:
             logger.error(f"Failed to generate image for '{scene.name}': {e}")
-            # Continue with other scenes
+            return None
+
+    # Use ThreadPoolExecutor for parallel image generation
+    # Using 5 workers with imagen-3.0-generate-002 for faster generation
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        # Submit all tasks
+        future_to_scene = {
+            executor.submit(generate_and_save_image, (i, scene)): scene
+            for i, scene in enumerate(scenes, start=1)
+        }
+
+        # Collect results as they complete
+        for future in as_completed(future_to_scene):
+            result = future.result()
+            if result:
+                scene_name, image_path, prompt = result
+                image_paths[scene_name] = image_path
+                prompts[scene_name] = prompt
 
     # Step 4: Create gallery HTML
     logger.info("Step 4: Creating scene gallery HTML...")
-    gallery_html = create_scene_gallery_html(scenes, image_paths)
+    gallery_html = create_scene_gallery_html(scenes, image_paths, prompts)
 
     # Save gallery HTML
     gallery_file = output_dir / "scene_gallery.html"
