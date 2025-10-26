@@ -80,9 +80,45 @@ def segment_with_imagen(page_image: bytes, map_type: str, output_path: str) -> N
 
     client = genai.Client(api_key=api_key)
 
-    # Construct prompt for red perimeter
+    # Construct detailed prompt for red perimeter
     map_type_readable = map_type.replace("_", " ")
-    prompt = f"Add a precise 5-pixel red border (RGB 255,0,0) around the {map_type_readable} in this image. Do not modify anything else. The border should be exactly on the edge of the map."
+
+    if map_type == "navigation_map":
+        map_description = """a dungeon or wilderness map showing:
+- Rooms, corridors, caves, or outdoor terrain
+- Walls, doors, pathways, or geographical features
+- Often includes a compass rose
+- May show tactical grid or scale
+- The actual geographic/floor plan content, NOT decorative page borders or text headers"""
+    else:  # battle_map
+        map_description = """a tactical battle map showing:
+- Combat grid or encounter area
+- Room layouts or terrain features
+- Tactical positioning spaces
+- The actual combat map content, NOT decorative page borders or text"""
+
+    prompt = f"""Look at this D&D module page and identify the LARGEST {map_type_readable}.
+
+The {map_type_readable} is {map_description}
+
+Your task:
+1. Find the LARGEST map diagram on the page (ignore small inset diagrams or thumbnails)
+2. Add a precise 5-pixel red border (RGB 255,0,0) around it
+3. The border should outline ONLY the map illustration - the actual drawn terrain/rooms/layout
+
+What to INCLUDE in the red border:
+- The full map illustration showing terrain, rooms, or tactical spaces
+- Any compass rose or scale that is part of the map
+- Grid lines if present
+
+What to EXCLUDE from the red border:
+- Decorative page borders or frames
+- Text labels, titles, or headers above/below the map
+- Corner ornaments or flourishes
+- Page numbers or margins
+- Any text that says "EXAMPLE" or describes the map
+
+The red border should tightly fit around the largest map illustration on the page."""
 
     for attempt in range(MAX_RETRIES):
         try:
@@ -135,15 +171,33 @@ def segment_with_imagen(page_image: bytes, map_type: str, output_path: str) -> N
 
             logger.info(f"Validation passed: {red_pixel_count} red pixels, bbox area {bbox_area}px²")
 
-            # Step 5: Crop original image (inset 5px to remove red border)
+            # Step 5: Scale bounding box back to original resolution
+            # Gemini downscales images, so we need to scale coordinates back up
             original_img = Image.open(io.BytesIO(page_image))
+            generated_img_pil = Image.open(io.BytesIO(generated_image_bytes))
+
+            scale_x = original_img.width / generated_img_pil.width
+            scale_y = original_img.height / generated_img_pil.height
+
+            logger.debug(f"Scaling bbox from {generated_img_pil.width}x{generated_img_pil.height} to {original_img.width}x{original_img.height}")
+            logger.debug(f"Scale factors: x={scale_x:.2f}, y={scale_y:.2f}")
+
             x_min, y_min, x_max, y_max = bbox
 
-            # Inset by 5 pixels
-            x_min = max(0, x_min + 5)
-            y_min = max(0, y_min + 5)
-            x_max = min(original_img.width, x_max - 5)
-            y_max = min(original_img.height, y_max - 5)
+            # Scale to original resolution
+            x_min = int(x_min * scale_x)
+            y_min = int(y_min * scale_y)
+            x_max = int(x_max * scale_x)
+            y_max = int(y_max * scale_y)
+
+            logger.debug(f"Scaled bbox: ({x_min}, {y_min}) to ({x_max}, {y_max})")
+
+            # Inset by 5 pixels (scaled)
+            inset = int(5 * max(scale_x, scale_y))
+            x_min = max(0, x_min + inset)
+            y_min = max(0, y_min + inset)
+            x_max = min(original_img.width, x_max - inset)
+            y_max = min(original_img.height, y_max - inset)
 
             cropped = original_img.crop((x_min, y_min, x_max, y_max))
 
