@@ -25,3 +25,4 @@ tests/output/
 api_keys.env.rtf
 Lost_Mine_of_Phandelver_Part1.xml
 temp_chunk_*.pdf
+dev_output/
