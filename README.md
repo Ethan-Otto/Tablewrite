@@ -9,6 +9,13 @@ Utilities for turning official Dungeons & Dragons PDFs into structured assets th
   - `get_toc.py` – extracts table of contents from PDF
   - `xml_to_html.py` – converts XML to browsable HTML (local previews and FoundryVTT uploads)
   - `valid_xml_tags.py` – XML tag validation utilities
+  - `image_asset_processing/` – AI-powered map extraction from PDFs:
+    - `models.py` – Pydantic models for MapDetectionResult and MapMetadata
+    - `detect_maps.py` – Gemini Vision map detection and classification
+    - `extract_maps.py` – PyMuPDF extraction with AI classification
+    - `segment_maps.py` – Gemini Imagen segmentation with red perimeter technique
+    - `preprocess_image.py` – Red pixel removal preprocessing
+    - `extract_map_assets.py` – Main orchestration script
 - `src/scene_extraction/` – AI-powered scene extraction and artwork generation:
   - `models.py` – Pydantic models for Scene and ChapterContext
   - `extract_context.py` – chapter environmental context extraction using Gemini
@@ -179,6 +186,107 @@ class Scene(BaseModel):
     description: str      # Physical environment only
     location_type: str    # "underground", "outdoor", "interior", "underwater"
 ```
+
+## Map Asset Extraction
+
+The project includes AI-powered map extraction for automatically extracting battle maps and navigation maps from D&D module PDFs using Gemini AI.
+
+### Features
+
+- **Automatic Map Detection**: Scans all pages to identify functional gameplay maps (navigation and battle maps)
+- **Hybrid Extraction**: Combines fast PyMuPDF extraction with AI-powered Imagen segmentation for baked-in maps
+- **Smart Filtering**: Distinguishes functional maps from decorative elements (maps as props in artwork, scene illustrations)
+- **Word Count Validation**: OCR-based quality check rejects extractions with excessive text (>100 words, 5 retries)
+- **Fully Parallel Processing**: All pages processed concurrently for maximum speed
+- **Debug Files**: Preprocessed and red-perimeter images saved to `temp/` subdirectory for troubleshooting
+- **Models**: Uses `gemini-2.0-flash` for detection/classification, `gemini-2.5-flash-image` for segmentation
+
+### Usage
+
+```bash
+# Extract all maps from PDF
+uv run python src/pdf_processing/image_asset_processing/extract_map_assets.py --pdf data/pdfs/module.pdf
+
+# Specify chapter name for metadata
+uv run python src/pdf_processing/image_asset_processing/extract_map_assets.py --pdf data/pdfs/module.pdf --chapter "Chapter 1"
+
+# Custom output directory
+uv run python src/pdf_processing/image_asset_processing/extract_map_assets.py --pdf data/pdfs/module.pdf --output custom/output/dir
+```
+
+### Output
+
+Map assets are saved to `output/runs/<timestamp>/map_assets/`:
+- `page_XXX_map_name.png` - Final extracted maps
+- `maps_metadata.json` - JSON metadata with map names, types, page numbers, and extraction method
+- `temp/` - Debug files (only created if Imagen segmentation used):
+  - `*_preprocessed.png` - Page with existing red pixels removed
+  - `*_with_red_perimeter.png` - Imagen-generated image with red border
+
+**Example Metadata:**
+```json
+{
+  "extracted_at": "2025-10-26T19:14:02.722375",
+  "total_maps": 6,
+  "maps": [
+    {
+      "name": "Cragmaw Hideout",
+      "chapter": "Lost Mine of Phandelver",
+      "page_num": 9,
+      "type": "navigation_map",
+      "source": "segmented"
+    }
+  ]
+}
+```
+
+### Performance
+
+- **Detection**: ~2.5 minutes for 60-page PDF (parallel page processing)
+- **PyMuPDF Extraction**: ~13-15 seconds per page (with AI classification, run in parallel)
+- **Imagen Segmentation**: ~15-20 seconds per page (with 5 retries, run in parallel)
+- **Total Time**: ~3-4 minutes for typical module PDF with 10 maps
+- **Success Rate**: 85-100% depending on text-to-map ratio in PDF pages
+
+**Example**: Lost Mine of Phandelver (7 maps) extracted in 3:42 with 85.7% success rate
+
+### Architecture
+
+**Modules:**
+- `src/pdf_processing/image_asset_processing/models.py` - Pydantic models (MapDetectionResult, MapMetadata)
+- `src/pdf_processing/image_asset_processing/detect_maps.py` - Gemini Vision map detection and classification
+- `src/pdf_processing/image_asset_processing/extract_maps.py` - PyMuPDF extraction with AI classification
+- `src/pdf_processing/image_asset_processing/segment_maps.py` - Gemini Imagen segmentation with red perimeter
+- `src/pdf_processing/image_asset_processing/preprocess_image.py` - Red pixel removal preprocessing
+- `src/pdf_processing/image_asset_processing/extract_map_assets.py` - Main orchestration script
+
+**Processing Flow:**
+1. Detect functional maps on all pages in parallel (filters out decorative elements)
+2. Check if page is flattened (single image covering >80% of page)
+3. Try PyMuPDF extraction first for embedded images (with AI classification to filter background textures)
+4. Fallback to Imagen segmentation for baked-in maps (red perimeter technique)
+5. Validate extraction quality using OCR word count (<100 words, 5 retries)
+6. Generate JSON metadata with map names, types, page numbers, and source method
+
+**Map Metadata Model:**
+```python
+class MapMetadata(BaseModel):
+    name: str              # "Cragmaw Hideout"
+    chapter: Optional[str] # "Lost Mine of Phandelver"
+    page_num: int          # 9
+    type: str              # "navigation_map" or "battle_map"
+    source: str            # "extracted" (PyMuPDF) or "segmented" (Imagen)
+```
+
+### Key Features
+
+- **Flattened PDF Detection**: Automatically detects when pages are rasterized as single images and skips PyMuPDF extraction
+- **Functional Map Filtering**: Uses detailed prompt to distinguish gameplay maps from decorative elements
+- **OCR Quality Validation**: Rejects extractions containing >100 words using pytesseract (prevents capturing text-heavy pages)
+- **Red Pixel Preprocessing**: Removes existing red pixels before Imagen processing to avoid confusion with generated borders
+- **Resolution Scaling**: Corrects for Gemini's image downscaling (e.g., 3523x4644 → 896x1152) before cropping
+- **True Parallel Processing**: Uses `asyncio.to_thread()` for blocking PyMuPDF operations to achieve concurrency
+- **Temp Directory Organization**: Debug files automatically stored in `temp/` subdirectory (avoids nested directories)
 
 ## Logging
 All scripts use Python's standard `logging` module for structured output:

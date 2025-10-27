@@ -29,8 +29,15 @@ async def detect_single_page(client: genai.Client, page_image: bytes, page_num: 
     Returns:
         MapDetectionResult with detection results
     """
-    prompt = """Analyze this D&D module page. Does it contain a navigation map (dungeon/wilderness overview)
+    prompt = """Analyze this D&D module page. Does it contain a FUNCTIONAL navigation map (dungeon/wilderness overview)
 or battle map (tactical grid/encounter area)?
+
+FUNCTIONAL MAP = The primary content is a usable map for gameplay (floor plans, terrain, tactical grids)
+
+NOT A MAP:
+- Maps shown as props in artwork (character holding a map, map on a table)
+- Maps as decorative elements in scene illustrations
+- Character portraits, item illustrations, decorative art, page decorations
 
 If yes, respond with JSON:
 {
@@ -44,9 +51,7 @@ If no map, respond with JSON:
   "has_map": false,
   "type": null,
   "name": null
-}
-
-Ignore: character portraits, item illustrations, decorative art, page decorations."""
+}"""
 
     for attempt in range(MAX_RETRIES):
         try:
@@ -99,14 +104,18 @@ async def is_map_image_async(client: genai.Client, image_bytes: bytes, width: in
     Returns:
         True if the image is a navigation or battle map, False otherwise
     """
-    prompt = """Is this image a D&D navigation map or battle map?
+    prompt = """Is this image a FUNCTIONAL D&D navigation map or battle map?
 
-Navigation maps show dungeon layouts, wilderness areas, floor plans, or geographical features.
-Battle maps show tactical grids, encounter areas, or combat spaces.
+FUNCTIONAL MAP = The image is a usable map for gameplay:
+- Navigation maps: dungeon layouts, wilderness areas, floor plans, geographical features
+- Battle maps: tactical grids, encounter areas, combat spaces
 
-Respond with JSON: {"is_map": true} or {"is_map": false}
+NOT A MAP:
+- Maps shown as props in artwork (character holding map, map on table)
+- Maps as decorative elements in illustrations
+- Background textures, decorative borders, character portraits, item art
 
-Ignore: background textures, decorative borders, character portraits, item art."""
+Respond with JSON: {"is_map": true} or {"is_map": false}"""
 
     try:
         response = client.models.generate_content(

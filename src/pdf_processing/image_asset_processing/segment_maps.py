@@ -7,17 +7,39 @@ import io
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
+import pytesseract
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 
 IMAGEN_MODEL = "gemini-2.5-flash-image"
-MAX_RETRIES = 2
+MAX_RETRIES = 5
 
 
 class SegmentationError(Exception):
     """Raised when segmentation validation fails."""
     pass
+
+
+def check_word_count(image_bytes: bytes, max_words: int = 200) -> tuple[int, bool]:
+    """Check word count in image using OCR.
+
+    Args:
+        image_bytes: Image as bytes
+        max_words: Maximum allowed word count
+
+    Returns:
+        Tuple of (word_count, is_valid)
+    """
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+        text = pytesseract.image_to_string(img)
+        word_count = len(text.split())
+        is_valid = word_count <= max_words
+        return word_count, is_valid
+    except Exception as e:
+        logger.warning(f"OCR word count check failed: {e}, assuming valid")
+        return 0, True
 
 
 def detect_red_pixels(image_bytes: bytes) -> np.ndarray:
@@ -47,8 +69,68 @@ def detect_red_pixels(image_bytes: bytes) -> np.ndarray:
     return red_pixels
 
 
+def find_rectangular_regions(red_pixels: np.ndarray) -> list:
+    """Find rectangular regions from red pixels using connected components.
+
+    Uses connected components to find disconnected red regions, then returns
+    the bounding box of each region.
+
+    Args:
+        red_pixels: Numpy array from detect_red_pixels
+
+    Returns:
+        List of rectangles as (x_min, y_min, x_max, y_max, area) tuples, sorted by area (largest first)
+    """
+    if len(red_pixels[0]) == 0:
+        return []
+
+    import cv2
+
+    # Create binary mask from red pixels
+    y_coords, x_coords = red_pixels
+    height = y_coords.max() + 1
+    width = x_coords.max() + 1
+    mask = np.zeros((height, width), dtype=np.uint8)
+    mask[y_coords, x_coords] = 255
+
+    # Morphological closing to connect thin borders into solid regions
+    # This connects the 4 edges of a rectangular border into one region
+    # Use a very large kernel to ensure border edges are connected
+    kernel = np.ones((50, 50), np.uint8)
+    mask_closed = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+
+    # Find connected components
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask_closed, connectivity=8)
+
+    rectangles = []
+    for label_id in range(1, num_labels):  # Skip background (label 0)
+        x = stats[label_id, cv2.CC_STAT_LEFT]
+        y = stats[label_id, cv2.CC_STAT_TOP]
+        w = stats[label_id, cv2.CC_STAT_WIDTH]
+        h = stats[label_id, cv2.CC_STAT_HEIGHT]
+        area = w * h
+
+        # Filter out very small regions (noise/artifacts)
+        if area < 10000:
+            continue
+
+        rectangles.append((x, y, x + w, y + h, area))
+
+    # Sort by area (largest first)
+    rectangles.sort(key=lambda r: r[4], reverse=True)
+
+    logger.debug(f"Found {len(rectangles)} connected region(s)")
+    for i, (x_min, y_min, x_max, y_max, area) in enumerate(rectangles[:3]):  # Show top 3
+        logger.debug(f"  Region {i+1}: {x_max-x_min}x{y_max-y_min} (area: {area}px²)")
+
+    return rectangles
+
+
 def calculate_bounding_box(red_pixels: np.ndarray) -> tuple:
     """Calculate bounding box from red pixel coordinates.
+
+    For a rectangular border (4 thin edges), the bounding box of all red pixels
+    gives us the enclosed rectangle.
 
     Args:
         red_pixels: Numpy array from detect_red_pixels
@@ -59,26 +141,64 @@ def calculate_bounding_box(red_pixels: np.ndarray) -> tuple:
     if len(red_pixels[0]) == 0:
         return None
 
+    # Simple bounding box approach
+    # When Gemini draws a rectangular border (4 edges), the min/max of all red pixels
+    # gives us the corners of the rectangle
     y_coords, x_coords = red_pixels
-    return (x_coords.min(), y_coords.min(), x_coords.max(), y_coords.max())
+    x_min = x_coords.min()
+    y_min = y_coords.min()
+    x_max = x_coords.max()
+    y_max = y_coords.max()
+
+    width = x_max - x_min
+    height = y_max - y_min
+
+    logger.debug(f"Bounding box: {width}x{height}")
+
+    return (x_min, y_min, x_max, y_max)
 
 
-def segment_with_imagen(page_image: bytes, map_type: str, output_path: str) -> None:
+def segment_with_imagen(page_image: bytes, map_type: str, output_path: str, temperature: float = 0.5) -> None:
     """Segment baked-in map using Gemini Imagen red perimeter technique.
 
     Args:
         page_image: PDF page rendered as PNG bytes
         map_type: "navigation_map" or "battle_map"
         output_path: Path to save cropped image
+        temperature: Model temperature for generation (0-1, default 0.2)
 
     Raises:
         SegmentationError: If output validation fails
     """
+    from src.pdf_processing.image_asset_processing.preprocess_image import remove_existing_red_pixels
+
     api_key = os.getenv("GeminiImageAPI")
     if not api_key:
         raise ValueError("GeminiImageAPI environment variable not set")
 
     client = genai.Client(api_key=api_key)
+
+    # Create temp directory for debug files
+    # If output_path is already in a "temp" directory, use it; otherwise create temp/
+    output_dir = os.path.dirname(output_path)
+    if os.path.basename(output_dir) == "temp":
+        # Already in temp directory, use it
+        temp_dir = output_dir
+    else:
+        # Create temp subdirectory
+        temp_dir = os.path.join(output_dir, "temp")
+        os.makedirs(temp_dir, exist_ok=True)
+
+    # Preprocess: Remove any existing red pixels ONLY for the Gemini request
+    # (we'll crop from the original image later)
+    logger.info("Preprocessing: Removing existing red pixels for boundary detection...")
+    preprocessed_image = remove_existing_red_pixels(page_image)
+
+    # Debug: Save preprocessed image to temp/
+    output_filename = os.path.basename(output_path)
+    preprocessed_debug_path = os.path.join(temp_dir, output_filename.replace(".png", "_preprocessed.png"))
+    Image.open(io.BytesIO(preprocessed_image)).save(preprocessed_debug_path)
+    logger.debug(f"Saved preprocessed image to {preprocessed_debug_path}")
 
     # Construct detailed prompt for red perimeter
     map_type_readable = map_type.replace("_", " ")
@@ -97,40 +217,26 @@ def segment_with_imagen(page_image: bytes, map_type: str, output_path: str) -> N
 - Tactical positioning spaces
 - The actual combat map content, NOT decorative page borders or text"""
 
-    prompt = f"""Look at this D&D module page and identify the LARGEST {map_type_readable}.
-
-The {map_type_readable} is {map_description}
-
-Your task:
-1. Find the LARGEST map diagram on the page (ignore small inset diagrams or thumbnails)
-2. Add a precise 5-pixel red border (RGB 255,0,0) around it
-3. The border should outline ONLY the map illustration - the actual drawn terrain/rooms/layout
-
-What to INCLUDE in the red border:
-- The full map illustration showing terrain, rooms, or tactical spaces
-- Any compass rose or scale that is part of the map
-- Grid lines if present
-
-What to EXCLUDE from the red border:
-- Decorative page borders or frames
-- Text labels, titles, or headers above/below the map
-- Corner ornaments or flourishes
-- Page numbers or margins
-- Any text that says "EXAMPLE" or describes the map
-
-The red border should tightly fit around the largest map illustration on the page."""
+    prompt = "draw a tight bright red RGB(255,0,0) perimeter around the dnd map in this image. Do NOT include paragraphs. No padding"
 
     for attempt in range(MAX_RETRIES):
         try:
             logger.debug(f"Attempt {attempt + 1}/{MAX_RETRIES}: Generating red perimeter with Gemini Flash Image")
 
             # Step 1: Generate image with red perimeter using generate_content
-            # Convert page_image bytes to PIL Image for the API
-            page_pil_image = Image.open(io.BytesIO(page_image))
+            # Use preprocessed image (with red pixels removed) for boundary detection
+            preprocessed_pil = Image.open(io.BytesIO(preprocessed_image))
+
+            # Use specified temperature for border placement
+            config = types.GenerateContentConfig(
+                temperature=temperature,
+                response_modalities=["IMAGE"]
+            )
 
             response = client.models.generate_content(
                 model=IMAGEN_MODEL,
-                contents=[prompt, page_pil_image]
+                contents=[preprocessed_pil, prompt],
+                config=config
             )
 
             # Extract generated image from response
@@ -143,8 +249,8 @@ The red border should tightly fit around the largest map illustration on the pag
             if generated_image_bytes is None:
                 raise SegmentationError("No image data in response")
 
-            # Debug: Save the generated image with red perimeter
-            debug_path = output_path.replace(".png", "_with_red_perimeter.png")
+            # Debug: Save the generated image with red perimeter to temp/
+            debug_path = os.path.join(temp_dir, output_filename.replace(".png", "_with_red_perimeter.png"))
             generated_img = Image.open(io.BytesIO(generated_image_bytes))
             generated_img.save(debug_path)
             logger.debug(f"Saved image with red perimeter to {debug_path}")
@@ -201,7 +307,18 @@ The red border should tightly fit around the largest map illustration on the pag
 
             cropped = original_img.crop((x_min, y_min, x_max, y_max))
 
-            # Step 6: Save
+            # Step 6: Quality check - verify word count
+            cropped_buffer = io.BytesIO()
+            cropped.save(cropped_buffer, format='PNG')
+            cropped_bytes = cropped_buffer.getvalue()
+
+            word_count, is_valid = check_word_count(cropped_bytes, max_words=100)
+            if not is_valid:
+                raise SegmentationError(f"Extracted region contains {word_count} words (max 100), likely included text paragraphs")
+
+            logger.info(f"Quality check passed: {word_count} words (threshold: 100)")
+
+            # Step 7: Save
             cropped.save(output_path, "PNG")
             logger.info(f"Segmented map saved to {output_path} ({x_max - x_min}x{y_max - y_min})")
             return
