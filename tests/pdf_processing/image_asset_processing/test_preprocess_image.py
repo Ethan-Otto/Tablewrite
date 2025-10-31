@@ -6,6 +6,7 @@ import io
 from src.pdf_processing.image_asset_processing.preprocess_image import remove_existing_red_pixels
 
 
+@pytest.mark.map
 @pytest.mark.unit
 class TestRemoveExistingRedPixels:
     def test_remove_red_pixels_from_image(self):

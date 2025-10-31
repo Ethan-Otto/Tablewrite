@@ -6,6 +6,7 @@ import asyncio
 from src.pdf_processing.image_asset_processing.extract_maps import extract_image_with_pymupdf_async
 
 
+@pytest.mark.map
 @pytest.mark.unit
 class TestExtractImageWithPyMuPDF:
     def test_extract_large_image_from_page(self, test_pdf_path, test_output_dir):
@@ -53,6 +54,7 @@ class TestExtractImageWithPyMuPDF:
         assert len(images) > 0
 
 
+@pytest.mark.map
 @pytest.mark.integration
 @pytest.mark.slow
 class TestExtractWithAIClassification:

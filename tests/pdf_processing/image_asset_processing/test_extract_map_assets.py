@@ -12,6 +12,7 @@ from src.pdf_processing.image_asset_processing.extract_map_assets import (
 from src.pdf_processing.image_asset_processing.models import MapMetadata, MapDetectionResult
 
 
+@pytest.mark.map
 @pytest.mark.integration
 @pytest.mark.slow
 class TestExtractMapsFromPDF:
@@ -171,6 +172,7 @@ class TestExtractMapsFromPDF:
             )
 
 
+@pytest.mark.map
 @pytest.mark.unit
 class TestMetadataSaving:
     def test_save_metadata_creates_json_file(self, test_output_dir):
@@ -236,6 +238,7 @@ class TestMetadataSaving:
             assert map_data["type"] in ["navigation_map", "battle_map"]
 
 
+@pytest.mark.map
 @pytest.mark.integration
 @pytest.mark.slow
 class TestExtractSinglePage:

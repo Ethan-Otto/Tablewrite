@@ -7,6 +7,7 @@ from src.pdf_processing.image_asset_processing.segment_maps import (
 )
 
 
+@pytest.mark.map
 @pytest.mark.integration
 @pytest.mark.slow
 class TestSegmentWithImagen:

@@ -4,6 +4,8 @@ from pydantic import ValidationError
 from src.pdf_processing.image_asset_processing.models import MapDetectionResult, MapMetadata
 
 
+@pytest.mark.map
+@pytest.mark.unit
 class TestMapDetectionResult:
     def test_valid_navigation_map(self):
         result = MapDetectionResult(has_map=True, type="navigation_map", name="Cragmaw Hideout")
@@ -30,6 +32,8 @@ class TestMapDetectionResult:
         assert result.name is None
 
 
+@pytest.mark.map
+@pytest.mark.unit
 class TestMapMetadata:
     def test_valid_metadata_with_chapter(self):
         metadata = MapMetadata(

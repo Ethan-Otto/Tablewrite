@@ -5,6 +5,7 @@ from src.pdf_processing.image_asset_processing.detect_maps import detect_maps_as
 from src.pdf_processing.image_asset_processing.models import MapDetectionResult
 
 
+@pytest.mark.map
 @pytest.mark.integration
 @pytest.mark.slow
 class TestDetectMapsAsync:
