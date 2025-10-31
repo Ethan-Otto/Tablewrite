@@ -1,0 +1,52 @@
+# fly.toml app configuration file
+app = 'foundryvtt-rest-api-relay'
+primary_region = 'ord'
+
+[build]
+
+[http]
+  # This is the port Fly.io will expose to the internet
+  port = 3010
+
+[http_service]
+  # This is the port your app listens on inside the container
+  internal_port = 3010
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 2  # Ensure we always have 2 machines
+  max_machines_running = 5  # Allow scaling up to 5 machines
+  force_instance_key = true
+  
+  # Add restart_machine_strategy for more graceful handling
+  restart_machine_strategy = "rolling"
+  
+  [[http_service.checks]]
+    grace_period = "45s"  # Increased from 30s to allow more time for Redis reconnection
+    interval = "30s"
+    method = "GET"
+    path = "/health"
+    timeout = "10s"  # Increased from 5s
+
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 1000
+    soft_limit = 500
+
+# Add this for private networking
+[experimental]
+  enable_6pn = true  # Enable private networking for VM-to-VM communication
+
+[[vm]]
+  memory = '4gb'
+  cpu_kind = 'shared'
+  cpus = 4
+
+[[vm.mounts]]
+  source = "myapp_data"
+  destination = "/data"
+  
+[env]
+  ENABLE_REDIS = "true"
+  REDIS_CLIENT_EXPIRY = "14400"  # 4 hours in seconds
+  DB_TYPE = "postgres"

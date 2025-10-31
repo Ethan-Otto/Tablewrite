@@ -255,6 +255,30 @@ In FoundryVTT, "Item" is a broad document type that includes character options, 
 - 5 subTypes × 26 letters = 130 API calls for comprehensive coverage of all physical items
 - Deduplicate by UUID (items appear in multiple compendiums like `dnd5e.items` and `dnd5e.equipment24`)
 
+### Self-Hosted Relay Server
+
+The project uses a **self-hosted local relay server** instead of the public hosted service for local development.
+
+**Quick Setup:**
+1. Start relay: `cd relay-server && docker-compose -f docker-compose.local.yml up -d`
+2. Configure FoundryVTT module: Change relay URL to `http://localhost:3010`
+3. Verify: `curl http://localhost:3010/health`
+4. Test: `uv run python scripts/test_relay_connection.py`
+
+**Configuration:**
+- Relay URL: `http://localhost:3010` (set in `.env` as `FOUNDRY_RELAY_URL`)
+- Database: In-memory (bypasses authentication for local development)
+- Logs: `docker-compose -f relay-server/docker-compose.local.yml logs -f relay`
+- Location: `relay-server/` directory
+
+**Key Features:**
+- Built from source for Apple Silicon (ARM64) compatibility
+- Uses memory database to bypass API key authentication
+- WebSocket connection to FoundryVTT for real-time communication
+- Compatible with all existing FoundryVTT integration code
+
+**See:** `docs/RELAY_SERVER_SETUP.md` for complete documentation.
+
 ### Scene Extraction & Artwork Generation
 
 The project includes AI-powered scene extraction and artwork generation for creating visual galleries of D&D module locations.
