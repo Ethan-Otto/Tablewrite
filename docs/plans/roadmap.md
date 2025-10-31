@@ -41,7 +41,19 @@ This document captures long-term feature ideas and enhancements for the D&D modu
 
 ### 1. AI-Generated Scene Artwork
 
-**Status:** 💭 Conceptual
+**Status:** ✔️ Completed (2025-10-24)
+
+**Implementation:** Post-processing workflow with Gemini context extraction, scene identification, and Imagen artwork generation. Creates FoundryVTT journal page with scene gallery.
+
+**Key Files:**
+- `src/scene_extraction/` - Core extraction and generation modules
+  - `models.py` - Scene and ChapterContext Pydantic models
+  - `extract_context.py` - Chapter environmental context extraction
+  - `identify_scenes.py` - Physical location scene identification
+  - `generate_artwork.py` - Scene artwork generation with Gemini Imagen
+  - `create_gallery.py` - FoundryVTT journal gallery HTML generator
+- `scripts/generate_scene_art.py` - Main processing script
+- Integrated into `scripts/full_pipeline.py` as optional step (use `--skip-scenes` to disable)
 
 **Description:**
 Automatically generate artwork for room/location descriptions in D&D modules:

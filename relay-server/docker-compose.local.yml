@@ -1,0 +1,19 @@
+services:
+  relay:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: foundryvtt-rest-api-relay
+    ports:
+      - "3010:3010"
+    environment:
+      - NODE_ENV=development
+      - PORT=3010
+      - DB_TYPE=memory
+      # Optional: Configure connection handling (defaults shown)
+      - WEBSOCKET_PING_INTERVAL_MS=20000  # (20 seconds)
+      - CLIENT_CLEANUP_INTERVAL_MS=15000  # (15 seconds)
+    volumes:
+      - ./data:/app/data
+    command: pnpm local
+    restart: unless-stopped

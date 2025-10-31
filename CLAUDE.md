@@ -85,6 +85,15 @@ uv run src/foundry/upload_to_foundry.py --run-dir output/runs/20241017_123456
 uv run src/foundry/export_from_foundry.py "Lost Mine of Phandelver"
 uv run src/foundry/export_from_foundry.py "Lost Mine of Phandelver" --format json
 
+# Scene Artwork Generation
+uv run python scripts/generate_scene_art.py --run-dir output/runs/20241023_123456
+uv run python scripts/generate_scene_art.py --xml-file output/runs/latest/documents/chapter_01.xml --style "top-down battle map"
+
+# Map Asset Extraction
+uv run python src/pdf_processing/image_asset_processing/extract_map_assets.py --pdf data/pdfs/module.pdf
+uv run python src/pdf_processing/image_asset_processing/extract_map_assets.py --pdf data/pdfs/module.pdf --chapter "Chapter 1"
+uv run python src/pdf_processing/image_asset_processing/extract_map_assets.py --pdf data/pdfs/module.pdf --output custom/output/dir
+
 # Utilities
 uv run src/pdf_processing/pdf_to_xml.py --file "01_Introduction.pdf"  # Single chapter
 uv run src/pdf_processing/get_toc.py                                   # Extract TOC
@@ -120,6 +129,12 @@ The system follows a four-stage pipeline (orchestrated by `scripts/full_pipeline
    - Input: Chapter PDFs from `pdf_sections/`
    - Output: Timestamped run in `output/runs/<YYYYMMDD_HHMMSS>/documents/`
    - Core AI-powered extraction engine using Gemini 2.5 Pro
+
+2.5. **Scene Artwork Generation** (`scripts/generate_scene_art.py`):
+   - Input: Chapter XML from `output/runs/<timestamp>/documents/`
+   - Output: Scene images and gallery HTML in `output/runs/<timestamp>/scene_artwork/`
+   - Post-processing workflow using Gemini for context extraction and scene identification
+   - Gemini Imagen for artwork generation
 
 3. **FoundryVTT Upload** (`src/foundry/upload_to_foundry.py`):
    - Input: XML files from run directory (converted to HTML on-the-fly)
@@ -320,6 +335,226 @@ class NPC(BaseModel):
 - `src/actors/extract_npcs.py`: Gemini-powered NPC identification
 - `src/actors/process_actors.py`: Orchestration workflow
 - `src/foundry/actors.py`: FoundryVTT Actor creation and search
+
+### Self-Hosted Relay Server
+
+The project uses a **self-hosted local relay server** instead of the public hosted service for local development.
+
+**Quick Setup:**
+1. Start relay: `cd relay-server && docker-compose -f docker-compose.local.yml up -d`
+2. Configure FoundryVTT module: Change relay URL to `http://localhost:3010`
+3. Verify: `curl http://localhost:3010/health`
+4. Test: `uv run python scripts/test_relay_connection.py`
+
+**Configuration:**
+- Relay URL: `http://localhost:3010` (set in `.env` as `FOUNDRY_RELAY_URL`)
+- Database: In-memory (bypasses authentication for local development)
+- Logs: `docker-compose -f relay-server/docker-compose.local.yml logs -f relay`
+- Location: `relay-server/` directory
+
+**Key Features:**
+- Built from source for Apple Silicon (ARM64) compatibility
+- Uses memory database to bypass API key authentication
+- WebSocket connection to FoundryVTT for real-time communication
+- Compatible with all existing FoundryVTT integration code
+
+**See:** `docs/RELAY_SERVER_SETUP.md` for complete documentation.
+
+### Scene Extraction & Artwork Generation
+
+The project includes AI-powered scene extraction and artwork generation for creating visual galleries of D&D module locations.
+
+**Architecture:**
+- `src/scene_extraction/models.py`: Pydantic models for Scene and ChapterContext
+- `src/scene_extraction/extract_context.py`: Chapter-level environmental context extraction using Gemini
+- `src/scene_extraction/identify_scenes.py`: Scene location identification using Gemini 2.0 Flash
+- `src/scene_extraction/generate_artwork.py`: AI image generation using Gemini Imagen
+- `src/scene_extraction/create_gallery.py`: HTML gallery generation with collapsible prompts
+- `scripts/generate_scene_art.py`: Main orchestration script with parallel image generation
+
+**Processing Workflow:**
+1. **Context Extraction**: Analyzes chapter XML to determine environment type (underground/outdoor/interior), lighting, terrain, atmosphere
+2. **Scene Identification**: Extracts physical locations from XML, filtering out NPCs, monsters, and plot details
+3. **Image Generation**: Creates AI artwork for each scene using Gemini Imagen (parallel processing with 5 workers)
+4. **Gallery Creation**: Generates HTML gallery with images, descriptions, and collapsible Gemini prompts
+
+**Key Features:**
+- **Location-Specific Context**: Each scene tagged with location_type (underground, outdoor, interior) for accurate image generation
+- **Parallel Generation**: Uses ThreadPoolExecutor with 5 concurrent workers for fast processing
+- **Prompt Transparency**: Collapsible boxes in gallery show full Gemini prompt used for each image
+- **Image Constraints**: Automatically enforces no text in images, no specific named creatures
+- **Model**: Uses `imagen-3.0-generate-002` (no rate limit issues with parallel generation)
+
+**Scene Model:**
+```python
+class Scene(BaseModel):
+    section_path: str        # e.g., "Chapter 2 → The Cragmaw Hideout → Area 1"
+    name: str               # "Twin Pools Cave"
+    description: str        # Physical environment only (no NPCs/monsters)
+    location_type: str      # "underground", "outdoor", "interior", "underwater"
+    xml_section_id: Optional[str] = None
+```
+
+**Usage:**
+```bash
+# Generate artwork for all chapters in a run
+uv run python scripts/generate_scene_art.py --run-dir output/runs/20241023_123456
+
+# Generate artwork for single chapter
+uv run python scripts/generate_scene_art.py --xml-file output/runs/latest/documents/02_Part_1_Goblin_Arrows.xml
+
+# Custom style prompt
+uv run python scripts/generate_scene_art.py --xml-file chapter.xml --style "dark fantasy, grimdark, oil painting"
+
+# Custom output directory
+uv run python scripts/generate_scene_art.py --xml-file chapter.xml --output-dir custom_output/
+```
+
+**Output Structure:**
+```
+output/runs/<timestamp>/scene_artwork/
+├── images/
+│   ├── scene_001_cave_mouth.png
+│   ├── scene_002_goblin_blind.png
+│   └── ...
+└── scene_gallery.html  # Gallery with collapsible prompts
+```
+
+**Performance:**
+- Typical chapter: 10-17 scenes
+- Generation speed: ~2-3 seconds per image with parallel processing
+- Total time: ~20-30 seconds for full chapter
+- Image size: ~1-2 MB per PNG
+
+**Integration with Full Pipeline:**
+- Can be integrated into `scripts/full_pipeline.py` as optional step
+- Scene gallery HTML can be uploaded to FoundryVTT as journal page
+
+### Image Asset Extraction
+
+The project includes AI-powered map extraction for automatically extracting battle maps and navigation maps from D&D module PDFs.
+
+**Architecture:**
+- `src/pdf_processing/image_asset_processing/models.py`: Pydantic models for MapDetectionResult and MapMetadata
+- `src/pdf_processing/image_asset_processing/detect_maps.py`: Async Gemini Vision map detection and image classification
+- `src/pdf_processing/image_asset_processing/extract_maps.py`: PyMuPDF extraction with AI classification
+- `src/pdf_processing/image_asset_processing/segment_maps.py`: Gemini Imagen segmentation with red perimeter technique
+- `src/pdf_processing/image_asset_processing/preprocess_image.py`: Red pixel removal preprocessing
+- `src/pdf_processing/image_asset_processing/extract_map_assets.py`: Main orchestration script
+
+**Processing Workflow:**
+1. **Detection**: Scans all pages in parallel using Gemini Vision to identify functional maps
+   - Filters out decorative maps (maps as props in artwork, scene illustrations)
+   - Uses "FUNCTIONAL MAP" prompt to distinguish gameplay maps from decorative elements
+2. **Flattened PDF Detection**: Checks if page is flattened (single image covering >80% of page area)
+   - Skips PyMuPDF extraction for flattened pages (would extract entire page)
+   - Proceeds directly to Imagen segmentation
+3. **Extraction Attempt**: Tries PyMuPDF extraction first (faster for embedded images)
+   - Size filtering: Images must be ≥200x200px and occupy ≥10% of page area
+   - AI classification: All candidates sent to Gemini Vision in parallel to verify they're actually maps
+   - Returns first image classified as a map (avoids background textures)
+4. **Fallback Segmentation**: If PyMuPDF fails, uses Gemini Imagen segmentation
+   - Preprocesses image to remove existing red pixels
+   - Generates image with tight RGB(255,0,0) red border around map
+   - Detects red pixels and calculates bounding box
+   - Scales coordinates back to original resolution (critical for correct extraction)
+   - Crops original image to segmented region
+   - Word count validation: Rejects extractions with >100 words (5 retry attempts)
+5. **Metadata Generation**: Creates JSON metadata with map names, types, page numbers, and source method
+
+**Key Features:**
+- **Hybrid Approach**: Combines PyMuPDF extraction (fast) with Imagen segmentation (handles baked-in maps)
+- **Fully Parallel Processing**: All pages processed concurrently using `asyncio.gather()` and `asyncio.to_thread()` for blocking operations
+- **AI Classification**: Filters out background textures, decorative maps, and non-functional map artwork
+- **Word Count Validation**: OCR-based quality check rejects extractions with excessive text (>100 words, 5 retries)
+- **Resolution Scaling Fix**: Corrects for Gemini's image downscaling during segmentation
+- **Temp Directory Organization**: Debug files (preprocessed, red perimeter images) stored in `temp/` subdirectory
+- **Comprehensive Metadata**: Tracks extraction method (extracted vs segmented) for quality analysis
+- **Models**: Uses `gemini-2.0-flash` for detection/classification, `gemini-2.5-flash-image` for segmentation
+- **High Reliability**: 100% success rate on clean test cases with 5 retry attempts and temperature 0.5
+
+**MapMetadata Model:**
+```python
+class MapMetadata(BaseModel):
+    name: str              # "Example Keep"
+    chapter: Optional[str] = None  # "Chapter 1"
+    page_num: int          # 1
+    type: str              # "navigation_map" or "battle_map"
+    source: str            # "extracted" (PyMuPDF) or "segmented" (Imagen)
+```
+
+**Usage:**
+```bash
+# Extract all maps from PDF
+uv run python src/pdf_processing/image_asset_processing/extract_map_assets.py --pdf data/pdfs/module.pdf
+
+# Specify chapter name for metadata
+uv run python src/pdf_processing/image_asset_processing/extract_map_assets.py --pdf data/pdfs/module.pdf --chapter "Chapter 1"
+
+# Custom output directory
+uv run python src/pdf_processing/image_asset_processing/extract_map_assets.py --pdf data/pdfs/module.pdf --output custom/output/dir
+```
+
+**Output Structure:**
+```
+output/runs/<timestamp>/map_assets/
+├── page_001_example_keep.png         # Final extracted maps
+├── page_002_goblin_cave.png
+├── page_005_battle_grid.png
+├── maps_metadata.json
+└── temp/                              # Debug files (only created if Imagen segmentation used)
+    ├── page_001_example_keep_preprocessed.png
+    ├── page_001_example_keep_with_red_perimeter.png
+    ├── page_002_goblin_cave_preprocessed.png
+    └── page_002_goblin_cave_with_red_perimeter.png
+```
+
+**Example Metadata:**
+```json
+{
+  "extracted_at": "2025-10-26T14:52:30.869016",
+  "total_maps": 4,
+  "maps": [
+    {
+      "name": "Example Keep Small",
+      "chapter": "Strongholds & Followers Test",
+      "page_num": 1,
+      "type": "navigation_map",
+      "source": "extracted"
+    }
+  ]
+}
+```
+
+**Performance:**
+- Detection: ~2.5 minutes for 60-page PDF (parallel page processing)
+- PyMuPDF extraction: ~13-15 seconds per page (with AI classification, run in parallel)
+- Imagen segmentation: ~15-20 seconds per page (with 5 retries, run in parallel)
+- Total: ~3-4 minutes for typical module PDF with 10 maps
+- Example: Lost Mine of Phandelver (7 maps) extracted in 3:42 with 85.7% success rate
+
+**Critical Implementation Details:**
+1. **Functional Map Detection**: Uses detailed prompt to distinguish functional gameplay maps from decorative elements:
+   - FUNCTIONAL MAP: Primary content is usable for gameplay (floor plans, terrain, tactical grids)
+   - NOT A MAP: Maps as props in artwork, decorative elements in scene illustrations, character portraits
+   - Significantly reduces false positives (10 → 7 detected pages on Lost Mine test)
+
+2. **Background Texture Problem**: Many D&D PDFs have large background textures (e.g., 3107x4132) that are larger than actual maps. Size-based heuristics fail 100% of the time. AI classification solves this by identifying semantic content.
+
+3. **Word Count Validation**: OCR-based quality check using pytesseract:
+   - Rejects extractions with >100 words (likely included text paragraphs)
+   - 5 retry attempts with temperature 0.5
+   - Achieves 100% success rate on clean test cases
+
+4. **Red Pixel Preprocessing**: Removes existing red pixels from page before sending to Imagen to avoid confusion with generated border (uses same threshold: R>200, G<50, B<50)
+
+5. **Resolution Scaling Bug Fix**: Gemini downscales input images (e.g., 3523x4644 → 896x1152, 3.93x smaller). Red pixel detection works on downscaled image, but must scale bounding box coordinates back up before cropping original image. Without scaling, extracts wrong region.
+
+6. **Lenient Red Pixel Detection**: Uses R>200, G<50, B<50 instead of exact RGB(255,0,0) to account for compression artifacts.
+
+7. **Fully Parallel Processing**: Uses `asyncio.to_thread()` for blocking PyMuPDF operations to achieve true concurrency. All pages process simultaneously instead of sequentially.
+
+8. **Temp Directory Organization**: Debug files automatically stored in `temp/` subdirectory. Detects if already in temp directory to avoid nested `temp/temp/` structure.
 
 ### Key Architecture Patterns
 
