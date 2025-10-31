@@ -7,6 +7,7 @@ from typing import Literal, Dict, Any, Optional
 
 from .journals import JournalManager
 from .items import ItemManager
+from .actors import ActorManager
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +63,13 @@ class FoundryClient:
         )
 
         self.items = ItemManager(
+            relay_url=self.relay_url,
+            foundry_url=self.foundry_url,
+            api_key=self.api_key,
+            client_id=self.client_id
+        )
+
+        self.actors = ActorManager(
             relay_url=self.relay_url,
             foundry_url=self.foundry_url,
             api_key=self.api_key,
@@ -241,3 +249,17 @@ class FoundryClient:
         except IOError as e:
             logger.error(f"Failed to write to local file '{local_path}': {e}")
             raise RuntimeError(f"Failed to write file: {e}") from e
+
+    # Actor operations (delegated to ActorManager)
+
+    def search_actor(self, name: str) -> Optional[str]:
+        """Search for actor by name in all compendiums."""
+        return self.actors.search_all_compendiums(name)
+
+    def create_creature_actor(self, stat_block) -> str:
+        """Create creature actor from stat block."""
+        return self.actors.create_creature_actor(stat_block)
+
+    def create_npc_actor(self, npc, stat_block_uuid: Optional[str] = None) -> str:
+        """Create NPC actor with optional stat block link."""
+        return self.actors.create_npc_actor(npc, stat_block_uuid)

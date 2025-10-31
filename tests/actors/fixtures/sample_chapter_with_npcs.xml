@@ -1,0 +1,40 @@
+<!-- tests/actors/fixtures/sample_chapter_with_npcs.xml -->
+<Chapter_01_Introduction>
+    <page number="1">
+        <section>Goblin Ambush</section>
+        <p>On the road to Phandalin, the party encounters a group of goblins led by a scout.</p>
+    </page>
+
+    <page number="2">
+        <section>Cragmaw Hideout</section>
+        <subsection>Area 1: Cave Mouth</subsection>
+        <p>The entrance is guarded by goblins.</p>
+
+        <subsection>Area 6: Goblin Den</subsection>
+        <p>Klarg, a bugbear, leads the Cragmaw goblins from this chamber. He has taken Sildar Hallwinter prisoner.</p>
+        <p>Klarg wears a tattered cloak and wields a morningstar. He is accompanied by his pet wolf, Ripper.</p>
+
+        <stat_block name="Bugbear">
+BUGBEAR
+Medium humanoid (goblinoid), chaotic evil
+Armor Class 16 (hide armor, shield)
+Hit Points 27 (5d8 + 5)
+Challenge 1 (200 XP)
+        </stat_block>
+    </page>
+
+    <page number="3">
+        <section>Prisoners</section>
+        <p>Sildar Hallwinter is a human fighter and member of the Lords' Alliance.
+        He was escorting Gundren Rockseeker to Phandalin when they were ambushed by goblins.
+        Sildar knows that Gundren was taken to Cragmaw Castle but doesn't know where it is.</p>
+
+        <stat_block name="Human Fighter">
+HUMAN FIGHTER
+Medium humanoid (human), lawful good
+Armor Class 17 (chain mail)
+Hit Points 32 (5d8 + 10)
+Challenge 2 (450 XP)
+        </stat_block>
+    </page>
+</Chapter_01_Introduction>

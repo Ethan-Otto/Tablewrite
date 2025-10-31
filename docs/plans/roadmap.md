@@ -164,7 +164,7 @@ IMAGE_OUTPUT_DIR=images
 
 ### 2. Stat Block & NPC Extraction with Actor Generation
 
-**Status:** 💭 Conceptual
+**Status:** ✔️ Completed
 
 **Description:**
 Extract and structure D&D 5e stat blocks and NPCs from modules, then create FoundryVTT Actor objects:
@@ -192,6 +192,15 @@ Extract and structure D&D 5e stat blocks and NPCs from modules, then create Foun
 - FoundryVTT Actors enable drag-and-drop gameplay, combat tracking, automated rolls
 - Linking NPCs to stat blocks provides complete character information in one place
 
+**Implementation Complete:**
+- ✅ Stat block tagging during XML generation (`<stat_block>` tags)
+- ✅ Gemini-powered stat block parsing into Pydantic models
+- ✅ NPC extraction from narrative with stat block linking
+- ✅ FoundryVTT Actor creation with compendium reuse
+- ✅ Bio-only NPC actors with @UUID links to creature stats
+- ✅ Integrated into full_pipeline.py
+- ✅ Comprehensive test coverage (unit + integration)
+
 **Design Decisions:**
 - **Processing Stages**:
   - **Stat Block Tagging**: During initial XML generation (tagged as `<stat_block name="...">raw text</stat_block>`)
@@ -203,7 +212,7 @@ Extract and structure D&D 5e stat blocks and NPCs from modules, then create Foun
 - **NPC Stats**: NPCs have NO stats directly - bio links to creature stat block (e.g., "Klarg" links to "Goblin Boss")
 - **Stat Block Not Found**: If NPC's creature_stat_block_name doesn't exist in compendiums, create it from stat block
 - **Unnamed Creatures**: Do nothing - assume DM will drag from compendium manually
-- **Actor Import**: Create new Actors in module-specific compendium pack
+- **Actor Import**: Create new Actors in world actors (not compendium)
 
 **Resolved Design Questions:**
 - ✅ **Stat Block Parsing**: Gemini parses raw XML text → Pydantic StatBlock
@@ -212,9 +221,9 @@ Extract and structure D&D 5e stat blocks and NPCs from modules, then create Foun
 - ✅ **Missing Stat Block**: Create Actor from stat block directly
 - ✅ **Generic Creatures**: No special handling (already in compendium)
 
-**Open Questions:**
+**Remaining Open Questions:**
 - **Token Images**: Generate token art for actors, or leave blank?
-- **Compendium Pack Name**: Auto-generate (e.g., "lost-mine-of-phandelver-creatures") or user configurable?
+- **Compendium Pack Name**: Currently creates in world actors - should we use compendium packs instead?
 
 **Dependencies:**
 - Stat block tagging requires updated Gemini XML prompt

@@ -255,6 +255,87 @@ In FoundryVTT, "Item" is a broad document type that includes character options, 
 - 5 subTypes × 26 letters = 130 API calls for comprehensive coverage of all physical items
 - Deduplicate by UUID (items appear in multiple compendiums like `dnd5e.items` and `dnd5e.equipment24`)
 
+### Actor/NPC Extraction
+
+The project includes automatic extraction and creation of D&D 5e actors and NPCs from module PDFs.
+
+**Architecture:**
+- **Stat Block Tagging**: During XML generation, Gemini tags stat blocks with `<stat_block name="...">raw text</stat_block>`
+- **Stat Block Parsing**: Gemini parses raw stat blocks into structured Pydantic `StatBlock` models
+- **NPC Extraction**: Post-processing analyzes XML to identify named NPCs and link them to stat blocks
+- **Actor Creation**: Creates FoundryVTT Actor entities with compendium reuse
+
+**Processing Pipeline:**
+```
+PDF → XML (with <stat_block> tags)
+    ↓
+parse_stat_blocks.py (Gemini parses → StatBlock models)
+    ↓
+extract_npcs.py (Gemini identifies NPCs → NPC models)
+    ↓
+ActorManager (creates/reuses FoundryVTT Actors)
+```
+
+**Actor Types:**
+1. **Creature Actors**: Full stat blocks from the module (e.g., "Goblin", "Bugbear")
+   - Contains complete D&D 5e stats (AC, HP, abilities, actions)
+   - Created from `StatBlock` models
+   - Reuses compendium actors if name matches
+
+2. **NPC Actors**: Named characters with plot context (e.g., "Klarg", "Sildar Hallwinter")
+   - Bio-only actors (no stats directly)
+   - Biography includes description, plot role, location
+   - Links to creature stat block via @UUID syntax
+   - Example: "Klarg" (NPC) → links to → "Bugbear" (creature actor)
+
+**Usage:**
+```bash
+# Full pipeline with actors
+uv run python scripts/full_pipeline.py --journal-name "Lost Mine of Phandelver"
+
+# Skip actor processing
+uv run python scripts/full_pipeline.py --skip-actors
+
+# Process actors only (from existing run)
+uv run python scripts/full_pipeline.py --actors-only
+
+# Process actors for specific run
+uv run python scripts/full_pipeline.py --actors-only --run-dir output/runs/20241023_143022
+```
+
+**Compendium Reuse:**
+- Before creating creature actors, searches ALL user compendiums by name
+- If match found, uses existing actor UUID (avoids duplicates)
+- NPCs link to existing compendium entries when possible
+- Example: "Goblin" found in dnd5e.monsters → reuse instead of creating new
+
+**Data Models** (see `src/actors/models.py`):
+```python
+class StatBlock(BaseModel):
+    name: str
+    raw_text: str  # Original stat block text preserved
+    armor_class: int
+    hit_points: int
+    challenge_rating: float
+    # Optional: size, type, alignment, abilities, etc.
+
+class NPC(BaseModel):
+    name: str
+    creature_stat_block_name: str  # Links to creature (e.g., "Bugbear")
+    description: str
+    plot_relevance: str
+    location: Optional[str]
+    first_appearance_section: Optional[str]
+```
+
+**Key Modules:**
+- `src/actors/models.py`: Pydantic models for StatBlock and NPC
+- `src/actors/parse_stat_blocks.py`: Gemini-powered stat block parser
+- `src/actors/extract_stat_blocks.py`: Extract stat blocks from XML
+- `src/actors/extract_npcs.py`: Gemini-powered NPC identification
+- `src/actors/process_actors.py`: Orchestration workflow
+- `src/foundry/actors.py`: FoundryVTT Actor creation and search
+
 ### Self-Hosted Relay Server
 
 The project uses a **self-hosted local relay server** instead of the public hosted service for local development.

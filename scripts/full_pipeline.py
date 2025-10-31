@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
-Full pipeline orchestration: PDF → XML → Scene Art → FoundryVTT → Export
+Full pipeline orchestration: PDF → XML → Scene Art → Actors → FoundryVTT → Export
 
 This script coordinates the complete workflow:
 1. Split PDF into chapter PDFs (split_pdf.py)
 2. Generate XML from chapters using Gemini (pdf_to_xml.py)
 2.5. Generate scene artwork from XML (generate_scene_art.py)
-3. Upload XML to FoundryVTT (upload_to_foundry.py)
-4. Export journal from FoundryVTT to HTML (export_from_foundry.py)
+3. Process actors and NPCs (process_actors.py)
+4. Upload XML to FoundryVTT (upload_to_foundry.py)
+5. Export journal from FoundryVTT to HTML (export_from_foundry.py)
 
 Each step can be skipped with flags for resuming interrupted runs.
 """
@@ -131,6 +132,49 @@ def run_pdf_to_xml(project_root: Path, chapter_file: str = None) -> Path:
         raise
 
 
+def process_actors(run_dir: Path, target: str = "local") -> dict:
+    """
+    Process actors and NPCs from XML files.
+
+    Args:
+        run_dir: Path to run directory containing XML files
+        target: Target environment ('local' or 'forge')
+
+    Returns:
+        Actor processing statistics dict
+
+    Raises:
+        RuntimeError: If actor processing fails
+    """
+    logger.info("=" * 60)
+    logger.info("STEP 3: Processing actors and NPCs")
+    logger.info("=" * 60)
+
+    # Import here to avoid circular dependencies
+    from src.actors.process_actors import process_actors_for_run
+
+    try:
+        result = process_actors_for_run(str(run_dir), target=target)
+
+        logger.info(
+            f"✓ Actor processing complete: "
+            f"{result['stat_blocks_created']} creatures created, "
+            f"{result['stat_blocks_reused']} reused, "
+            f"{result['npcs_created']} NPCs created"
+        )
+
+        if result.get("errors"):
+            logger.warning(f"{len(result['errors'])} error(s) occurred during actor processing")
+            for error in result["errors"]:
+                logger.error(f"  {error}")
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Actor processing failed: {e}")
+        raise RuntimeError(f"Actor processing failed: {e}")
+
+
 def run_scene_artwork_generation(
     run_dir: Path,
     style_prompt: str = None,
@@ -211,7 +255,7 @@ def upload_to_foundry(run_dir: Path, target: str = "local", journal_name: str = 
         RuntimeError: If upload fails
     """
     logger.info("=" * 60)
-    logger.info("STEP 3: Uploading to FoundryVTT")
+    logger.info("STEP 4: Uploading to FoundryVTT")
     logger.info("=" * 60)
 
     # Import here to avoid circular dependencies
@@ -260,7 +304,7 @@ def export_from_foundry(
         RuntimeError: If export fails
     """
     logger.info("=" * 60)
-    logger.info("STEP 4: Exporting from FoundryVTT")
+    logger.info("STEP 5: Exporting from FoundryVTT")
     logger.info("=" * 60)
 
     # Import here to avoid circular dependencies
@@ -343,6 +387,11 @@ def main():
         help="Skip FoundryVTT upload"
     )
     parser.add_argument(
+        "--skip-actors",
+        action="store_true",
+        help="Skip actor/NPC extraction and creation"
+    )
+    parser.add_argument(
         "--skip-export",
         action="store_true",
         help="Skip FoundryVTT export"
@@ -353,8 +402,17 @@ def main():
         help="Skip scene artwork generation"
     )
     parser.add_argument(
+        "--actors-only",
+        action="store_true",
+        help="Only process actors (skip PDF splitting, XML generation, upload)"
+    )
+    parser.add_argument(
         "--chapter-file",
         help="Process only a specific chapter file (e.g., '01_Introduction.pdf')"
+    )
+    parser.add_argument(
+        "--run-dir",
+        help="Specific run directory to use (for --actors-only or --skip-xml)"
     )
     parser.add_argument(
         "--journal-name",
@@ -376,6 +434,43 @@ def main():
     project_root = Path(__file__).parent.parent
 
     try:
+        # Actors-only mode
+        if args.actors_only:
+            logger.info("\n" + "=" * 60)
+            logger.info("Running in actors-only mode")
+            logger.info("=" * 60)
+
+            # Need to find run directory
+            if args.run_dir:
+                run_dir = Path(args.run_dir)
+                if not run_dir.exists():
+                    logger.error(f"Specified run directory not found: {run_dir}")
+                    sys.exit(1)
+            else:
+                # Find latest run
+                runs_dir = project_root / "output" / "runs"
+                if not runs_dir.exists():
+                    logger.error("No runs directory found. Run full pipeline first.")
+                    sys.exit(1)
+
+                run_dirs = [d for d in runs_dir.iterdir() if d.is_dir()]
+                if not run_dirs:
+                    logger.error("No run directories found. Run full pipeline first.")
+                    sys.exit(1)
+
+                run_dir = sorted(run_dirs, key=lambda d: d.name)[-1]
+                logger.info(f"Using latest run: {run_dir.name}")
+
+            try:
+                actor_stats = process_actors(run_dir, target=args.target)
+                logger.info("=" * 60)
+                logger.info("ACTORS-ONLY MODE COMPLETE!")
+                logger.info("=" * 60)
+                sys.exit(0)
+            except Exception as e:
+                logger.error(f"Actor processing failed: {e}")
+                sys.exit(1)
+
         # Step 1: Split PDF
         if args.skip_split:
             logger.info("Skipping PDF split (--skip-split)")
@@ -385,19 +480,27 @@ def main():
         # Step 2: Generate XML
         if args.skip_xml:
             logger.info("Skipping XML generation (--skip-xml), using latest run...")
-            runs_dir = project_root / "output" / "runs"
 
-            if not runs_dir.exists():
-                logger.error("No runs directory found")
-                sys.exit(1)
+            if args.run_dir:
+                run_dir = Path(args.run_dir)
+                if not run_dir.exists():
+                    logger.error(f"Specified run directory not found: {run_dir}")
+                    sys.exit(1)
+            else:
+                runs_dir = project_root / "output" / "runs"
 
-            run_dirs = [d for d in runs_dir.iterdir() if d.is_dir()]
-            if not run_dirs:
-                logger.error("No run directories found")
-                sys.exit(1)
+                if not runs_dir.exists():
+                    logger.error("No runs directory found")
+                    sys.exit(1)
 
-            run_dir = sorted(run_dirs, key=lambda d: d.name)[-1]
-            logger.info(f"Using latest run: {run_dir.name}")
+                run_dirs = [d for d in runs_dir.iterdir() if d.is_dir()]
+                if not run_dirs:
+                    logger.error("No run directories found")
+                    sys.exit(1)
+
+                run_dir = sorted(run_dirs, key=lambda d: d.name)[-1]
+
+            logger.info(f"Using run: {run_dir.name}")
         else:
             run_dir = run_pdf_to_xml(project_root, chapter_file=args.chapter_file)
 
@@ -413,7 +516,17 @@ def main():
                 logger.error(f"Scene artwork generation failed: {e}")
                 logger.warning("Continuing with pipeline despite scene generation failure")
 
-        # Step 3: Upload to FoundryVTT
+        # Step 3: Process actors and NPCs
+        if args.skip_actors:
+            logger.info("Skipping actor processing (--skip-actors)")
+        else:
+            try:
+                actor_stats = process_actors(run_dir, target=args.target)
+            except Exception as e:
+                logger.error(f"Actor processing failed: {e}")
+                logger.warning("Continuing with pipeline...")
+
+        # Step 4: Upload to FoundryVTT
         upload_result = None
         if args.skip_upload:
             logger.info("Skipping FoundryVTT upload (--skip-upload)")
@@ -428,7 +541,7 @@ def main():
                 logger.warning("Some uploads failed, check logs above")
                 sys.exit(1)
 
-        # Step 4: Export from FoundryVTT
+        # Step 5: Export from FoundryVTT
         if args.skip_export:
             logger.info("Skipping FoundryVTT export (--skip-export)")
         elif args.skip_upload:

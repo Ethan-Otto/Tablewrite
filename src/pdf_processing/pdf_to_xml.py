@@ -312,6 +312,40 @@ def get_xml_for_page(page_info: tuple) -> str:
             - Tag repeating bottom text as `<footer>`, repeating top text as `<header>`
             - Page numbers should be tagged as `<page_number>` within the footer or header
 
+            ## STAT BLOCK TAGGING
+            **CRITICAL**: Tag all D&D 5e stat blocks with: `<stat_block name="Creature Name">raw text</stat_block>`
+
+            - **Preserve COMPLETE original stat block text** inside the tag
+            - Do NOT parse or structure the stat block - keep it as raw text
+            - Stat blocks are typically boxed sections with creature stats:
+              - Name and type/size (e.g., "GOBLIN / Small humanoid")
+              - Armor Class, Hit Points, Speed
+              - Ability scores (STR, DEX, CON, INT, WIS, CHA)
+              - Challenge rating
+              - Traits and actions
+
+            **Example stat block tagging:**
+            ```xml
+            <stat_block name="Goblin">
+            GOBLIN
+            Small humanoid (goblinoid), neutral evil
+
+            Armor Class 15 (leather armor, shield)
+            Hit Points 7 (2d6)
+            Speed 30 ft.
+
+            STR     DEX     CON     INT     WIS     CHA
+            8 (-1)  14 (+2) 10 (+0) 10 (+0) 8 (-1)  8 (-1)
+
+            Challenge 1/4 (50 XP)
+
+            Nimble Escape. The goblin can take the Disengage or Hide action...
+
+            ACTIONS
+            Scimitar. Melee Weapon Attack: +4 to hit...
+            </stat_block>
+            ```
+
             ## EXAMPLES
             - Headings (semantic): `<chapter_title>Chapter Title</chapter_title>`, `<section>Section Title</section>`, `<subsection>Subsection Title</subsection>`
             - Paragraphs: `<p>This is a paragraph with **bold** and *italic* text.</p>`
