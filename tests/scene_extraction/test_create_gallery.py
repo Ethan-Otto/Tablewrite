@@ -13,12 +13,14 @@ def sample_scenes():
         Scene(
             section_path="Chapter 1 → Introduction → Town Square",
             name="Phandalin Town Square",
-            description="A bustling market square"
+            description="A bustling market square",
+            location_type="outdoor"
         ),
         Scene(
             section_path="Chapter 2 → The Cragmaw Hideout → Area 1",
             name="Cave Entrance",
-            description="A dark cave entrance"
+            description="A dark cave entrance",
+            location_type="underground"
         )
     ]
 

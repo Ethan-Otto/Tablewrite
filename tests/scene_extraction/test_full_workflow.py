@@ -38,9 +38,11 @@ class TestSceneProcessingWorkflow:
         output_dir.mkdir()
 
         # Patch each module's genai import separately
+        # Note: extract_context and identify_scenes use old google.generativeai.GenerativeModel
+        #       generate_artwork uses new google.genai.Client
         with patch('src.scene_extraction.extract_context.genai.GenerativeModel') as mock_context_model, \
              patch('src.scene_extraction.identify_scenes.genai.GenerativeModel') as mock_scenes_model, \
-             patch('src.scene_extraction.generate_artwork.genai.GenerativeModel') as mock_image_model:
+             patch('src.scene_extraction.generate_artwork.genai.Client') as mock_client_class:
 
             # Set up context extraction mock
             mock_context_response = MagicMock()
@@ -61,24 +63,23 @@ class TestSceneProcessingWorkflow:
             test_response = test_instance.generate_content("test")
             print(f"DEBUG: test_response.text = {test_response.text}")
 
-            # Set up scene identification mock
+            # Set up scene identification mock (old API)
             mock_scenes_response = MagicMock()
-            mock_scenes_response.text = '[{"section_path": "Test Chapter → Area 1", "name": "Forest Clearing", "description": "A dark forest clearing", "xml_section_id": "area_1"}]'
+            mock_scenes_response.text = '[{"section_path": "Test Chapter → Area 1", "name": "Forest Clearing", "description": "A dark forest clearing", "location_type": "outdoor", "xml_section_id": "area_1"}]'
             mock_scenes_instance = MagicMock()
             mock_scenes_instance.generate_content.return_value = mock_scenes_response
             mock_scenes_model.return_value = mock_scenes_instance
 
-            # Set up image generation mock
-            mock_image_response = MagicMock()
-            mock_image_response._result = MagicMock()
-            mock_image_response._result.candidates = [MagicMock()]
-            mock_image_response._result.candidates[0].content = MagicMock()
-            mock_image_response._result.candidates[0].content.parts = [MagicMock()]
-            mock_image_response._result.candidates[0].content.parts[0].inline_data = MagicMock()
-            mock_image_response._result.candidates[0].content.parts[0].inline_data.data = b"fake_png_data"
-            mock_image_instance = MagicMock()
-            mock_image_instance.generate_content.return_value = mock_image_response
-            mock_image_model.return_value = mock_image_instance
+            # Set up image generation mock (new API with genai.Client)
+            mock_pil_image = MagicMock()
+            mock_generated_image = MagicMock()
+            mock_generated_image.image._pil_image = mock_pil_image
+            mock_response = MagicMock()
+            mock_response.generated_images = [mock_generated_image]
+
+            mock_client = MagicMock()
+            mock_client.models.generate_images.return_value = mock_response
+            mock_client_class.return_value = mock_client
 
             # Run workflow
             context = extract_chapter_context(xml_content)
@@ -88,8 +89,15 @@ class TestSceneProcessingWorkflow:
             assert len(scenes) == 1
             assert scenes[0].name == "Forest Clearing"
 
-            image_bytes = generate_scene_image(scenes[0], context)
-            assert image_bytes == b"fake_png_data"
+            # Mock BytesIO for image generation
+            with patch('src.scene_extraction.generate_artwork.BytesIO') as mock_bytesio_class:
+                mock_buffer = MagicMock()
+                mock_buffer.getvalue.return_value = b"fake_png_data"
+                mock_bytesio_class.return_value = mock_buffer
+
+                image_bytes, prompt = generate_scene_image(scenes[0], context)
+                assert image_bytes == b"fake_png_data"
+                assert isinstance(prompt, str)
 
             image_path = output_dir / "scene_001_forest_clearing.png"
             save_scene_image(image_bytes, str(image_path))

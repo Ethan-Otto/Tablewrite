@@ -13,12 +13,14 @@ class TestSceneModel:
             section_path="Chapter 2 → The Cragmaw Hideout → Area 1",
             name="Cave Mouth",
             description="A dark cave entrance with rough stone walls",
+            location_type="underground",
             xml_section_id="chapter_2_area_1"
         )
 
         assert scene.section_path == "Chapter 2 → The Cragmaw Hideout → Area 1"
         assert scene.name == "Cave Mouth"
         assert scene.description == "A dark cave entrance with rough stone walls"
+        assert scene.location_type == "underground"
         assert scene.xml_section_id == "chapter_2_area_1"
 
     def test_scene_creation_minimal_fields(self):
@@ -26,12 +28,14 @@ class TestSceneModel:
         scene = Scene(
             section_path="Chapter 1 → Introduction",
             name="Town Square",
-            description="A bustling town square"
+            description="A bustling town square",
+            location_type="outdoor"
         )
 
         assert scene.section_path == "Chapter 1 → Introduction"
         assert scene.name == "Town Square"
         assert scene.description == "A bustling town square"
+        assert scene.location_type == "outdoor"
         assert scene.xml_section_id is None
 
     def test_scene_validates_non_empty_name(self):
@@ -40,7 +44,8 @@ class TestSceneModel:
             Scene(
                 section_path="Chapter 1",
                 name="",
-                description="Test description"
+                description="Test description",
+                location_type="interior"
             )
 
     def test_scene_validates_non_empty_description(self):
@@ -49,7 +54,8 @@ class TestSceneModel:
             Scene(
                 section_path="Chapter 1",
                 name="Test Scene",
-                description=""
+                description="",
+                location_type="interior"
             )
 
 

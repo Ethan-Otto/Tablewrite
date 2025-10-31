@@ -42,6 +42,7 @@ class TestIdentifySceneLocations:
                     "section_path": "Chapter 1 → Area 1",
                     "name": "Cave Entrance",
                     "description": "Dark cave entrance with rough stone walls",
+                    "location_type": "underground",
                     "xml_section_id": "area_1"
                 }
             ]
@@ -65,7 +66,7 @@ class TestIdentifySceneLocations:
         """Test parsing of JSON array response."""
         with patch('src.scene_extraction.identify_scenes.genai.GenerativeModel') as mock_model:
             mock_response = MagicMock()
-            mock_response.text = '[{"section_path": "Ch1", "name": "Room", "description": "A room"}]'
+            mock_response.text = '[{"section_path": "Ch1", "name": "Room", "description": "A room", "location_type": "interior"}]'
             mock_instance = MagicMock()
             mock_instance.generate_content.return_value = mock_response
             mock_model.return_value = mock_instance
@@ -93,7 +94,7 @@ class TestIdentifySceneLocations:
         with patch('src.scene_extraction.identify_scenes.genai.GenerativeModel') as mock_model:
             mock_response = MagicMock()
             mock_response.text = '''```json
-[{"section_path": "Ch1", "name": "Forest Clearing", "description": "A sunlit clearing"}]
+[{"section_path": "Ch1", "name": "Forest Clearing", "description": "A sunlit clearing", "location_type": "outdoor"}]
 ```'''
             mock_instance = MagicMock()
             mock_instance.generate_content.return_value = mock_response
@@ -111,7 +112,7 @@ class TestIdentifySceneLocations:
             mock_response = MagicMock()
             mock_response.text = '''```
 json
-[{"section_path": "Ch2", "name": "Underground Chamber", "description": "A dark stone chamber"}]
+[{"section_path": "Ch2", "name": "Underground Chamber", "description": "A dark stone chamber", "location_type": "underground"}]
 ```'''
             mock_instance = MagicMock()
             mock_instance.generate_content.return_value = mock_response
@@ -128,7 +129,7 @@ json
         with patch('src.scene_extraction.identify_scenes.genai.GenerativeModel') as mock_model:
             mock_response = MagicMock()
             mock_response.text = '''```
-[{"section_path": "Ch3", "name": "City Street", "description": "Cobblestone street"}]
+[{"section_path": "Ch3", "name": "City Street", "description": "Cobblestone street", "location_type": "outdoor"}]
 ```'''
             mock_instance = MagicMock()
             mock_instance.generate_content.return_value = mock_response

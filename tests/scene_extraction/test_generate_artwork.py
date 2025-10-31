@@ -34,55 +34,80 @@ class TestGenerateSceneImage:
     @pytest.mark.integration
     def test_generate_image_calls_gemini_imagen(self, sample_scene, sample_context):
         """Test that generate_scene_image calls Gemini Imagen API."""
-        with patch('src.scene_extraction.generate_artwork.genai.GenerativeModel') as mock_model:
-            # Mock Imagen response
+        with patch('src.scene_extraction.generate_artwork.genai.Client') as mock_client_class:
+            # Mock the PIL Image
+            mock_pil_image = MagicMock()
+
+            # Mock the generated image
+            mock_generated_image = MagicMock()
+            mock_generated_image.image._pil_image = mock_pil_image
+
+            # Mock the response with generated_images list
             mock_response = MagicMock()
-            mock_response._result = MagicMock()
-            mock_response._result.candidates = [MagicMock()]
-            mock_response._result.candidates[0].content = MagicMock()
-            mock_response._result.candidates[0].content.parts = [MagicMock()]
-            mock_response._result.candidates[0].content.parts[0].inline_data = MagicMock()
-            mock_response._result.candidates[0].content.parts[0].inline_data.data = b"fake_image_data"
+            mock_response.generated_images = [mock_generated_image]
 
-            mock_instance = MagicMock()
-            mock_instance.generate_content.return_value = mock_response
-            mock_model.return_value = mock_instance
+            # Mock the client instance and models.generate_images
+            mock_client = MagicMock()
+            mock_client.models.generate_images.return_value = mock_response
+            mock_client_class.return_value = mock_client
 
-            # Call function
-            image_bytes, prompt = generate_scene_image(sample_scene, sample_context, style_prompt="fantasy art")
+            # Mock BytesIO save
+            with patch('src.scene_extraction.generate_artwork.BytesIO') as mock_bytesio_class:
+                mock_buffer = MagicMock()
+                mock_buffer.getvalue.return_value = b"fake_image_data"
+                mock_bytesio_class.return_value = mock_buffer
 
-            # Verify Gemini called
-            mock_model.assert_called_once()
-            mock_instance.generate_content.assert_called_once()
+                # Call function
+                image_bytes, prompt = generate_scene_image(sample_scene, sample_context, style_prompt="fantasy art")
 
-            # Verify result
-            assert isinstance(image_bytes, bytes)
-            assert image_bytes == b"fake_image_data"
-            assert isinstance(prompt, str)
-            assert len(prompt) > 0
+                # Verify Client was created
+                mock_client_class.assert_called_once()
+
+                # Verify generate_images was called
+                mock_client.models.generate_images.assert_called_once()
+
+                # Verify PIL image save was called
+                mock_pil_image.save.assert_called_once()
+
+                # Verify result
+                assert isinstance(image_bytes, bytes)
+                assert image_bytes == b"fake_image_data"
+                assert isinstance(prompt, str)
+                assert len(prompt) > 0
 
     def test_generate_image_constructs_prompt_with_context(self, sample_scene, sample_context):
         """Test that prompt includes scene description and chapter context."""
-        with patch('src.scene_extraction.generate_artwork.genai.GenerativeModel') as mock_model:
+        with patch('src.scene_extraction.generate_artwork.genai.Client') as mock_client_class:
+            # Mock the PIL Image
+            mock_pil_image = MagicMock()
+
+            # Mock the generated image
+            mock_generated_image = MagicMock()
+            mock_generated_image.image._pil_image = mock_pil_image
+
+            # Mock the response
             mock_response = MagicMock()
-            mock_response._result = MagicMock()
-            mock_response._result.candidates = [MagicMock()]
-            mock_response._result.candidates[0].content = MagicMock()
-            mock_response._result.candidates[0].content.parts = [MagicMock()]
-            mock_response._result.candidates[0].content.parts[0].inline_data = MagicMock()
-            mock_response._result.candidates[0].content.parts[0].inline_data.data = b"data"
+            mock_response.generated_images = [mock_generated_image]
 
-            mock_instance = MagicMock()
-            mock_instance.generate_content.return_value = mock_response
-            mock_model.return_value = mock_instance
+            # Mock the client
+            mock_client = MagicMock()
+            mock_client.models.generate_images.return_value = mock_response
+            mock_client_class.return_value = mock_client
 
-            generate_scene_image(sample_scene, sample_context)
+            # Mock BytesIO
+            with patch('src.scene_extraction.generate_artwork.BytesIO') as mock_bytesio_class:
+                mock_buffer = MagicMock()
+                mock_buffer.getvalue.return_value = b"data"
+                mock_bytesio_class.return_value = mock_buffer
 
-            # Verify prompt contains scene description and context
-            call_args = mock_instance.generate_content.call_args
-            prompt = call_args[0][0]
-            assert "cave" in prompt.lower()
-            assert "underground" in prompt.lower()
+                generate_scene_image(sample_scene, sample_context)
+
+                # Verify prompt contains scene description and context
+                call_args = mock_client.models.generate_images.call_args
+                # The prompt is passed as the 'prompt' keyword argument
+                prompt = call_args.kwargs.get('prompt', '')
+                assert "cave" in prompt.lower()
+                assert "underground" in prompt.lower()
 
 
 class TestSaveSceneImage:
