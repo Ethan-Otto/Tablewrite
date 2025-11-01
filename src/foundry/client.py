@@ -3,10 +3,10 @@
 import os
 import logging
 import requests
-from typing import Literal, Dict, Any, Optional
+from typing import Literal, Dict, Any, Optional, List
 
 from .journals import JournalManager
-from .items import ItemManager
+from .items.manager import ItemManager
 from .actors import ActorManager
 
 logger = logging.getLogger(__name__)
@@ -249,6 +249,70 @@ class FoundryClient:
         except IOError as e:
             logger.error(f"Failed to write to local file '{local_path}': {e}")
             raise RuntimeError(f"Failed to write file: {e}") from e
+
+    def is_world_active(self) -> bool:
+        """
+        Check if any world is currently running in FoundryVTT.
+
+        This works regardless of whether the world was launched via browser
+        or headless API session. Makes a lightweight search API call to verify
+        the server can respond.
+
+        Returns:
+            True if a world is active and responding, False otherwise
+        """
+        endpoint = f"{self.relay_url}/search"
+
+        headers = {
+            "x-api-key": self.api_key
+        }
+
+        params = {
+            "clientId": self.client_id,
+            "query": "",
+            "filter": "Item"
+        }
+
+        try:
+            response = requests.get(endpoint, headers=headers, params=params, timeout=5)
+            response.raise_for_status()
+            # If we get a successful response, a world is active
+            return True
+        except requests.exceptions.RequestException:
+            # Any error means no world is active or server isn't responding
+            return False
+
+    def get_active_sessions(self) -> List[Dict[str, Any]]:
+        """
+        Get currently active headless FoundryVTT sessions.
+
+        Note: This only returns headless API sessions, not browser sessions.
+        Use is_world_active() to check if any world is running.
+
+        Returns:
+            List of active session dictionaries with keys:
+                - id: Session ID
+                - clientId: Client ID
+                - lastActivity: Timestamp of last activity
+                - idleMinutes: Minutes since last activity
+
+        Raises:
+            RuntimeError: If API call fails
+        """
+        endpoint = f"{self.relay_url}/session"
+
+        headers = {
+            "x-api-key": self.api_key
+        }
+
+        try:
+            response = requests.get(endpoint, headers=headers, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            return data.get('activeSessions', [])
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to get active sessions: {e}")
+            raise RuntimeError(f"Failed to get active sessions: {e}") from e
 
     # Actor operations (delegated to ActorManager)
 
