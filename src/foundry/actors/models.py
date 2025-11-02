@@ -70,6 +70,27 @@ class Spell(BaseModel):
     casting_time: Optional[str] = None
 
 
+class InnateSpell(BaseModel):
+    """An innate spell with usage frequency."""
+
+    name: str
+    frequency: str  # "at will", "3/day", "1/day", etc.
+    uses: Optional[int] = None  # Max uses per day
+
+    model_config = ConfigDict(frozen=True)
+
+
+class InnateSpellcasting(BaseModel):
+    """Innate spellcasting ability."""
+
+    ability: str  # "charisma", "intelligence", etc.
+    save_dc: Optional[int] = None
+    attack_bonus: Optional[int] = None
+    spells: List[InnateSpell] = Field(default_factory=list)
+
+    model_config = ConfigDict(frozen=True)
+
+
 class SkillProficiency(BaseModel):
     """Skill proficiency entry."""
 
@@ -149,3 +170,6 @@ class ParsedActorData(BaseModel):
     spellcasting_ability: Optional[Literal["int", "wis", "cha"]] = None
     spell_save_dc: Optional[int] = None
     spell_attack_bonus: Optional[int] = None
+
+    # Innate Spellcasting
+    innate_spellcasting: Optional[InnateSpellcasting] = None
