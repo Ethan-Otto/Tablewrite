@@ -2,6 +2,7 @@
 
 import pytest
 from foundry.actors.models import ParsedActorData, InnateSpellcasting, InnateSpell
+from foundry.actors.converter import convert_to_foundry
 
 
 class TestInnateSpellcastingModel:
@@ -66,3 +67,70 @@ class TestInnateSpellcastingModel:
 
         assert actor.innate_spellcasting is not None
         assert len(actor.innate_spellcasting.spells) == 1
+
+
+class TestInnateSpellcastingConversion:
+    """Tests for converting innate spellcasting to FoundryVTT format."""
+
+    def test_converts_innate_spellcasting_to_feat(self):
+        """Should create Innate Spellcasting feat."""
+        actor = ParsedActorData(
+            source_statblock_name="Pit Fiend",
+            name="Pit Fiend",
+            armor_class=19,
+            hit_points=300,
+            challenge_rating=20,
+            abilities={"STR": 26, "DEX": 14, "CON": 24, "INT": 22, "WIS": 18, "CHA": 24},
+            innate_spellcasting=InnateSpellcasting(
+                ability="charisma",
+                save_dc=21,
+                spells=[
+                    InnateSpell(name="Detect Magic", frequency="at will"),
+                    InnateSpell(name="Fireball", frequency="at will"),
+                ]
+            )
+        )
+
+        result = convert_to_foundry(actor)
+
+        # Should have Innate Spellcasting feat
+        feats = [item for item in result["items"] if item["type"] == "feat"]
+        innate_feat = next((f for f in feats if "Innate Spellcasting" in f["name"]), None)
+
+        assert innate_feat is not None
+        assert "charisma" in innate_feat["system"]["description"]["value"].lower()
+
+    def test_converts_innate_spells_to_spell_items(self):
+        """Should create spell items for innate spells."""
+        actor = ParsedActorData(
+            source_statblock_name="Pit Fiend",
+            name="Pit Fiend",
+            armor_class=19,
+            hit_points=300,
+            challenge_rating=20,
+            abilities={"STR": 26, "DEX": 14, "CON": 24, "INT": 22, "WIS": 18, "CHA": 24},
+            innate_spellcasting=InnateSpellcasting(
+                ability="charisma",
+                save_dc=21,
+                spells=[
+                    InnateSpell(name="Fireball", frequency="at will"),
+                    InnateSpell(name="Hold Monster", frequency="3/day", uses=3),
+                ]
+            )
+        )
+
+        result = convert_to_foundry(actor)
+
+        # Should have spell items
+        spells = [item for item in result["items"] if item["type"] == "spell"]
+
+        assert len(spells) >= 2
+
+        fireball = next((s for s in spells if s["name"] == "Fireball"), None)
+        hold_monster = next((s for s in spells if s["name"] == "Hold Monster"), None)
+
+        assert fireball is not None
+        assert hold_monster is not None
+
+        # Limited-use spell should have uses
+        assert hold_monster["system"]["uses"]["max"] == 3

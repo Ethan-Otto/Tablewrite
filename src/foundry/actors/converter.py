@@ -150,6 +150,65 @@ def convert_to_foundry(parsed_actor: ParsedActorData) -> Dict[str, Any]:
             item["uuid"] = spell.uuid
         items.append(item)
 
+    # Convert innate spellcasting to feat + spell items
+    if parsed_actor.innate_spellcasting:
+        innate = parsed_actor.innate_spellcasting
+
+        # Build description from spell list
+        spell_lines = []
+        # Group by frequency
+        by_frequency = {}
+        for spell in innate.spells:
+            if spell.frequency not in by_frequency:
+                by_frequency[spell.frequency] = []
+            by_frequency[spell.frequency].append(spell.name)
+
+        for freq, spell_names in sorted(by_frequency.items()):
+            spell_list = ", ".join(spell_names)
+            spell_lines.append(f"{freq}: {spell_list}")
+
+        description = (
+            f"The {parsed_actor.name.lower()}'s spellcasting ability is "
+            f"{innate.ability.capitalize()} (spell save DC {innate.save_dc or 10}). "
+            f"It can innately cast the following spells, requiring no material components:\n\n"
+            + "\n".join(spell_lines)
+        )
+
+        # Create Innate Spellcasting feat
+        item = {
+            "name": "Innate Spellcasting",
+            "type": "feat",
+            "img": "icons/magic/air/wind-tornado-wall-blue.webp",
+            "system": {
+                "description": {"value": description},
+                "activation": {"type": "passive"},
+                "uses": {}
+            }
+        }
+        items.append(item)
+
+        # Create spell items for each innate spell
+        for spell in innate.spells:
+            spell_item = {
+                "name": spell.name,
+                "type": "spell",
+                "img": "icons/magic/air/wind-tornado-wall-blue.webp",
+                "system": {
+                    "level": 0,  # Will be looked up if SpellCache available
+                    "school": ""
+                }
+            }
+
+            # Add uses if limited
+            if spell.uses:
+                spell_item["system"]["uses"] = {
+                    "value": spell.uses,
+                    "max": spell.uses,
+                    "per": "day"
+                }
+
+            items.append(spell_item)
+
     # Build final actor structure
     actor = {
         "name": parsed_actor.name,
