@@ -139,61 +139,89 @@ ParsedActorData → Conversion Layer
 
 ## Implementation Design
 
-### Component: CompendiumLookup (NEW)
+### Component: Use Existing ItemManager (Updated)
 
-**File**: `src/foundry/compendium_lookup.py`
+**File**: `src/foundry/items/manager.py` (**EXISTING**)
+**File**: `src/foundry/items/fetch.py` (**EXISTING**)
 
-**Purpose**: Search FoundryVTT compendiums for reusable items
+**Purpose**: Already implemented! Search FoundryVTT compendiums for reusable items
+
+**Existing API**:
 
 ```python
-from typing import Optional, Dict, Any
-from foundry.client import FoundryClient
+from foundry.items.fetch import fetch_all_spells
+from foundry.items.manager import ItemManager
 
-class CompendiumLookup:
-    """Lookup items in FoundryVTT compendiums."""
+# Bulk fetch all spells (a-z queries, handles 200-result limit)
+all_spells = fetch_all_spells(
+    relay_url="...",
+    api_key="...",
+    client_id="..."
+)
 
-    def __init__(self, client: FoundryClient):
-        self.client = client
-        self._spell_cache: Dict[str, str] = {}  # name → UUID
-        self._item_cache: Dict[str, str] = {}   # name → UUID
+# Search by name (via ItemManager)
+item_manager = ItemManager(relay_url, foundry_url, api_key, client_id)
+spell = item_manager.get_item_by_name("Fireball")
+# Returns: {'uuid': 'Compendium.dnd5e.spells24.Item.phbsplFireball00', 'name': 'Fireball', ...}
+```
+
+### Component: SpellCache (NEW - Wrapper)
+
+**File**: `src/actors/spell_cache.py` (new)
+
+**Purpose**: Lightweight wrapper around existing infrastructure for actor parsing
+
+```python
+from typing import Optional, Dict
+from foundry.items.fetch import fetch_all_spells
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class SpellCache:
+    """Cache of spell name → UUID mappings for actor conversion."""
+
+    def __init__(self, relay_url: str, api_key: str, client_id: str):
+        self.relay_url = relay_url
+        self.api_key = api_key
+        self.client_id = client_id
+        self._cache: Dict[str, str] = {}  # Lowercase name → UUID
+        self._loaded = False
+
+    def load(self):
+        """Load all spells from FoundryVTT (run once per session)."""
+        if self._loaded:
+            return
+
+        logger.info("Loading spell cache from FoundryVTT...")
+        spells = fetch_all_spells(
+            relay_url=self.relay_url,
+            api_key=self.api_key,
+            client_id=self.client_id
+        )
+
+        for spell in spells:
+            name_lower = spell['name'].lower()
+            self._cache[name_lower] = spell['uuid']
+
+        self._loaded = True
+        logger.info(f"Loaded {len(self._cache)} spells into cache")
 
     def find_spell_uuid(self, spell_name: str) -> Optional[str]:
         """
-        Find spell UUID in SRD compendium.
+        Find spell UUID by name.
 
         Args:
-            spell_name: Spell name (e.g., "Fireball")
+            spell_name: Spell name (case-insensitive)
 
         Returns:
-            UUID like "Compendium.dnd5e.spells24.Item.phbsplFireball00"
-            or None if not found
+            UUID or None if not found
         """
-        # Check cache first
-        if spell_name in self._spell_cache:
-            return self._spell_cache[spell_name]
+        if not self._loaded:
+            self.load()
 
-        # Search compendium via REST API
-        try:
-            results = self.client.search_compendium(
-                query=spell_name,
-                filter="Spell"
-            )
-
-            for result in results:
-                if result["name"].lower() == spell_name.lower():
-                    uuid = result["uuid"]
-                    self._spell_cache[spell_name] = uuid
-                    return uuid
-
-        except Exception as e:
-            logger.warning(f"Failed to lookup spell '{spell_name}': {e}")
-
-        return None
-
-    def find_item_uuid(self, item_name: str) -> Optional[str]:
-        """Find magic item UUID in SRD compendium."""
-        # Similar to find_spell_uuid but searches Item compendiums
-        pass
+        return self._cache.get(spell_name.lower())
 
     def get_weapon_base_item(self, weapon_name: str) -> Optional[str]:
         """
@@ -222,37 +250,34 @@ class CompendiumLookup:
 ### Updated: convert_to_foundry.py
 
 ```python
-from .compendium_lookup import CompendiumLookup
-from ..actors.parsed_models import ParsedActorData, Attack, Trait
+from actors.spell_cache import SpellCache
+from actors.parsed_models import ParsedActorData, Attack, Trait, Spell
 
 def create_spell_activity(
-    spell_name: str,
-    spell_level: int,
-    compendium: CompendiumLookup
+    spell: Spell,
+    spell_cache: SpellCache
 ) -> Dict[str, Any]:
     """
     Create spell cast activity with compendium reference.
 
     Args:
-        spell_name: "Fireball", "Hold Monster", etc.
-        spell_level: Spell level to cast at
-        compendium: Compendium lookup service
+        spell: Parsed spell with name, level, and UUID
+        spell_cache: Spell cache service
 
     Returns:
         Activity dict with spell reference
     """
-    spell_uuid = compendium.find_spell_uuid(spell_name)
-
-    if not spell_uuid:
-        raise ValueError(f"Spell '{spell_name}' not found in compendium")
+    # UUID should already be populated during parsing
+    if not spell.uuid:
+        raise ValueError(f"Spell '{spell.name}' has no UUID (not found in compendium)")
 
     return {
-        "_id": _generate_id(f"cast_{spell_name}"),
+        "_id": _generate_id(f"cast_{spell.name}"),
         "type": "cast",
         "activation": {"type": "action", "value": None, "override": False},
         "spell": {
-            "uuid": spell_uuid,
-            "level": spell_level,
+            "uuid": spell.uuid,  # Use pre-resolved UUID
+            "level": spell.level,
             "spellbook": True
         },
         # ... rest of activity structure
@@ -260,20 +285,20 @@ def create_spell_activity(
 
 def create_weapon_item(
     attack: Attack,
-    compendium: CompendiumLookup
+    spell_cache: SpellCache
 ) -> FoundryItem:
     """
     Create weapon item with optional base item reference.
 
     Args:
         attack: Parsed attack data
-        compendium: Compendium lookup service
+        spell_cache: Spell cache service (for baseItem lookup)
 
     Returns:
         Weapon item (custom or with baseItem reference)
     """
     # Check if standard weapon
-    base_item = compendium.get_weapon_base_item(attack.name)
+    base_item = spell_cache.get_weapon_base_item(attack.name)
 
     return FoundryItem(
         _id=_generate_id(attack.name),
@@ -299,14 +324,14 @@ def create_weapon_item(
 
 def parsed_to_foundry(
     data: ParsedActorData,
-    compendium: CompendiumLookup
+    spell_cache: SpellCache
 ) -> FoundryActor:
     """
-    Convert ParsedActorData to FoundryVTT actor with compendium lookups.
+    Convert ParsedActorData to FoundryVTT actor.
 
     Args:
-        data: Parsed actor data
-        compendium: Compendium lookup service
+        data: Parsed actor data (spells already have UUIDs populated)
+        spell_cache: Spell cache service
 
     Returns:
         Complete FoundryVTT actor
@@ -315,22 +340,104 @@ def parsed_to_foundry(
 
     # Attacks
     for attack in data.attacks:
-        items.append(create_weapon_item(attack, compendium))
+        items.append(create_weapon_item(attack, spell_cache))
 
     # Traits
     for trait in data.traits:
-        items.append(create_feat_item(trait, compendium))
+        items.append(create_feat_item(trait))
 
-    # Spells (if spellcaster)
+    # Spells (if spellcaster) - UUIDs already resolved during parsing
     if data.spells:
         for spell in data.spells:
             # Create spellcasting feature with spell references
-            items.append(create_spellcasting_feature(spell, compendium))
+            items.append(create_spellcasting_feature(spell, spell_cache))
 
     return FoundryActor(
         name=data.name,
         system=_build_system_data(data),
         items=items
+    )
+```
+
+---
+
+## Integration into ParsedActorData
+
+### Updated Spell Model (in parsed_models.py)
+
+```python
+class Spell(BaseModel):
+    """Parsed spell reference."""
+    name: str
+    level: int
+    uuid: Optional[str] = None  # Resolved during parsing from compendium
+
+    # Additional metadata if needed
+    school: Optional[str] = None
+    casting_time: Optional[str] = None
+```
+
+### Updated ParsedActorData (add spells field)
+
+```python
+class ParsedActorData(BaseModel):
+    """Fully parsed stat block ready for FoundryVTT conversion."""
+
+    # ... existing fields ...
+
+    # Spellcasting
+    spells: List[Spell] = []  # Each spell has UUID pre-resolved
+    spellcasting_ability: Optional[Literal["int", "wis", "cha"]] = None
+```
+
+### Spell Resolution During Parsing (parse_detailed.py)
+
+**Key insight**: Resolve spell UUIDs **during parsing**, not during conversion
+
+```python
+def parse_actor_details(
+    stat_block: StatBlock,
+    api: GeminiAPI,
+    spell_cache: SpellCache  # Pass spell cache to parser
+) -> ParsedActorData:
+    """Parse detailed actor data from stat block using Gemini."""
+
+    # Python-extracted data
+    abilities = stat_block.abilities or {}
+
+    # Gemini-parsed data
+    parsed_json = _parse_with_gemini(stat_block, api)
+
+    # RESOLVE SPELL UUIDs HERE
+    spells_with_uuids = []
+    for spell_data in parsed_json.get("spells", []):
+        spell_name = spell_data["name"]
+        spell_level = spell_data["level"]
+
+        # Lookup UUID in compendium
+        uuid = spell_cache.find_spell_uuid(spell_name)
+
+        if not uuid:
+            logger.warning(f"Spell '{spell_name}' not found in compendium - skipping")
+            continue  # Or raise error in strict mode
+
+        spells_with_uuids.append(Spell(
+            name=spell_name,
+            level=spell_level,
+            uuid=uuid  # ← UUID resolved at parse time!
+        ))
+
+    return ParsedActorData(
+        source_statblock=stat_block,
+        name=stat_block.name,
+        armor_class=stat_block.armor_class,
+        hit_points=stat_block.hit_points,
+        challenge_rating=stat_block.challenge_rating,
+        abilities=abilities,
+        attacks=parsed_json["attacks"],
+        traits=parsed_json["traits"],
+        spells=spells_with_uuids,  # ← Spells with UUIDs
+        # ... etc
     )
 ```
 
@@ -503,12 +610,19 @@ src/foundry/
 ├── client.py                 # FoundryClient (existing)
 ├── actors.py                 # ActorManager (existing)
 ├── foundry_models.py         # Type-safe structures (NEW)
-├── compendium_lookup.py      # Compendium search/cache (NEW)
-├── convert_to_foundry.py     # Conversion with lookups (NEW)
+├── convert_to_foundry.py     # Conversion (NEW)
+├── items/
+│   ├── fetch.py              # fetch_all_spells() (EXISTING)
+│   ├── manager.py            # ItemManager (EXISTING)
+│   └── __init__.py
 └── __init__.py
 
-.cache/
-└── compendium.json           # Persistent lookup cache (NEW)
+src/actors/
+├── models.py                 # StatBlock (existing)
+├── parsed_models.py          # ParsedActorData, Spell, Attack, etc. (NEW)
+├── parse_detailed.py         # Detailed parsing (NEW)
+├── spell_cache.py            # SpellCache wrapper (NEW)
+└── __init__.py
 ```
 
 ---
