@@ -1,13 +1,19 @@
 """Convert ParsedActorData to FoundryVTT actor JSON format."""
 
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional, TYPE_CHECKING
 from .models import ParsedActorData
+
+if TYPE_CHECKING:
+    from .spell_cache import SpellCache
 
 logger = logging.getLogger(__name__)
 
 
-def convert_to_foundry(parsed_actor: ParsedActorData) -> Dict[str, Any]:
+def convert_to_foundry(
+    parsed_actor: ParsedActorData,
+    spell_cache: Optional['SpellCache'] = None
+) -> Dict[str, Any]:
     """
     Convert ParsedActorData to FoundryVTT actor JSON structure.
 
@@ -146,8 +152,15 @@ def convert_to_foundry(parsed_actor: ParsedActorData) -> Dict[str, Any]:
                 "school": spell.school or ""
             }
         }
-        if spell.uuid:
+
+        # Prefer spell cache for UUID lookup
+        if spell_cache:
+            spell_uuid = spell_cache.get_spell_uuid(spell.name)
+            if spell_uuid:
+                item["uuid"] = spell_uuid
+        elif spell.uuid:
             item["uuid"] = spell.uuid
+
         items.append(item)
 
     # Convert innate spellcasting to feat + spell items
@@ -194,10 +207,26 @@ def convert_to_foundry(parsed_actor: ParsedActorData) -> Dict[str, Any]:
                 "type": "spell",
                 "img": "icons/magic/air/wind-tornado-wall-blue.webp",
                 "system": {
-                    "level": 0,  # Will be looked up if SpellCache available
+                    "level": 0,
                     "school": ""
                 }
             }
+
+            # Look up UUID and details from spell cache if available
+            if spell_cache:
+                spell_uuid = spell_cache.get_spell_uuid(spell.name)
+                if spell_uuid:
+                    spell_item["uuid"] = spell_uuid
+
+                # Get spell details
+                spell_data = spell_cache.get_spell_data(spell.name)
+                if spell_data:
+                    # Handle both search results and full item data
+                    # Full data from /get endpoint: {data: {system: {...}}}
+                    # Search results: {system: {...}} (but usually empty)
+                    system_data = spell_data.get("data", {}).get("system") or spell_data.get("system", {})
+                    spell_item["system"]["level"] = system_data.get("level", 0)
+                    spell_item["system"]["school"] = system_data.get("school", "")
 
             # Add uses if limited
             if spell.uses:

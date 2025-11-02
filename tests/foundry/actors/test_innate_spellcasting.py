@@ -134,3 +134,49 @@ class TestInnateSpellcastingConversion:
 
         # Limited-use spell should have uses
         assert hold_monster["system"]["uses"]["max"] == 3
+
+    @pytest.mark.integration
+    @pytest.mark.requires_foundry
+    def test_looks_up_spell_uuids_from_cache(self):
+        """Should use SpellCache to get proper spell UUIDs."""
+        from foundry.actors.spell_cache import SpellCache
+        from dotenv import load_dotenv
+        import os
+
+        load_dotenv()
+
+        # Skip if FoundryVTT not available
+        if not os.getenv("FOUNDRY_RELAY_URL"):
+            pytest.skip("FoundryVTT not configured")
+
+        spell_cache = SpellCache()
+        spell_cache.load()
+
+        actor = ParsedActorData(
+            source_statblock_name="Pit Fiend",
+            name="Pit Fiend",
+            armor_class=19,
+            hit_points=300,
+            challenge_rating=20,
+            abilities={"STR": 26, "DEX": 14, "CON": 24, "INT": 22, "WIS": 18, "CHA": 24},
+            innate_spellcasting=InnateSpellcasting(
+                ability="charisma",
+                save_dc=21,
+                spells=[
+                    InnateSpell(name="Fireball", frequency="at will"),
+                ]
+            )
+        )
+
+        # Convert with spell cache
+        result = convert_to_foundry(actor, spell_cache=spell_cache)
+
+        spells = [item for item in result["items"] if item["type"] == "spell"]
+        fireball = next((s for s in spells if s["name"] == "Fireball"), None)
+
+        assert fireball is not None
+        # Should have UUID from compendium
+        assert "uuid" in fireball
+        assert fireball["uuid"].startswith("Compendium.")
+        # Should have proper level (Fireball is 3rd level)
+        assert fireball["system"]["level"] == 3
