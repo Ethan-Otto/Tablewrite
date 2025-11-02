@@ -309,15 +309,31 @@ uv run python scripts/full_pipeline.py --actors-only --run-dir output/runs/20241
 - NPCs link to existing compendium entries when possible
 - Example: "Goblin" found in dnd5e.monsters → reuse instead of creating new
 
-**Data Models** (see `src/actors/models.py`):
+**Data Models** (see `src/actors/models.py` and `src/foundry/actors/models.py`):
 ```python
+# Basic D&D stat block (src/actors/models.py)
 class StatBlock(BaseModel):
     name: str
     raw_text: str  # Original stat block text preserved
     armor_class: int
     hit_points: int
     challenge_rating: float
-    # Optional: size, type, alignment, abilities, etc.
+    reactions: Optional[str] = None  # REACTIONS section
+    # Optional: size, type, alignment, abilities, actions, traits, etc.
+
+# Detailed parsed data for FoundryVTT conversion (src/foundry/actors/models.py)
+class ParsedActorData(BaseModel):
+    """Fully parsed stat block ready for FoundryVTT conversion."""
+    source_statblock_name: str
+    name: str
+    armor_class: int
+    hit_points: int
+    challenge_rating: float
+    abilities: Dict[str, int]  # STR, DEX, CON, INT, WIS, CHA
+    attacks: List[Attack]  # Weapon attacks with damage formulas
+    traits: List[Trait]  # Special abilities and features
+    spells: List[Spell]  # Spells with compendium UUIDs
+    # Plus: skills, defenses, movement, senses, languages, etc.
 
 class NPC(BaseModel):
     name: str
@@ -328,13 +344,53 @@ class NPC(BaseModel):
     first_appearance_section: Optional[str]
 ```
 
+**Detailed Parsing Infrastructure**:
+The project includes a two-stage parsing pipeline for converting stat blocks into FoundryVTT actors:
+
+1. **Stage 1**: Basic extraction (`StatBlock` model)
+   - Captures core stats: AC, HP, CR
+   - Preserves raw text for all fields (actions, traits, reactions)
+
+2. **Stage 2**: Detailed parsing (`ParsedActorData` model)
+   - Parses attacks into structured `Attack` objects with damage formulas
+   - Parses traits into structured `Trait` objects with activation types
+   - Parses multiattack actions into feat items
+   - Parses innate spellcasting with usage frequency (at will, 3/day, 1/day)
+   - Resolves spell names to compendium UUIDs using `SpellCache`
+   - Breaks down abilities, skills, senses, and defenses into FoundryVTT-ready format
+
+**Actor Parsing Features:**
+- **Basic Stats**: Abilities (STR-CHA), AC, HP, CR, saves, movement, senses, languages
+- **Attacks**: Weapon items with damage formulas and attack bonuses
+- **Traits**: Feat items for special abilities (passive or activated)
+- **Multiattack**: Feat item for creatures that make multiple attacks per action
+- **Innate Spellcasting**: Feat + spell items with usage limits (at will, X/day)
+- **SpellCache Integration**: Automatic spell UUID lookup from FoundryVTT compendiums
+- **Full Round-Trip**: ParsedActorData → Upload → Download → Verify (26+ tests passing)
+
+For detailed usage and examples, see `docs/actor-parsing-guide.md`
+
+**SpellCache** (see `src/foundry/actors/spell_cache.py`):
+```python
+# Load all spells from FoundryVTT compendiums
+cache = SpellCache()
+cache.load()  # Fetches all spells via REST API
+
+# Resolve spell names to UUIDs
+uuid = cache.get_spell_uuid("Fireball")
+# Returns: "Compendium.dnd5e.spells.Item.ztgcdrWPshKRpFd0"
+```
+
 **Key Modules:**
 - `src/actors/models.py`: Pydantic models for StatBlock and NPC
 - `src/actors/parse_stat_blocks.py`: Gemini-powered stat block parser
 - `src/actors/extract_stat_blocks.py`: Extract stat blocks from XML
 - `src/actors/extract_npcs.py`: Gemini-powered NPC identification
 - `src/actors/process_actors.py`: Orchestration workflow
-- `src/foundry/actors.py`: FoundryVTT Actor creation and search
+- `src/foundry/actors/models.py`: Detailed ParsedActorData models for FoundryVTT
+- `src/foundry/actors/spell_cache.py`: Spell UUID resolution cache
+- `src/foundry/actors/converter.py`: Convert ParsedActorData to FoundryVTT JSON (stub)
+- `src/foundry/actors/manager.py`: FoundryVTT Actor creation and search
 
 ### Self-Hosted Relay Server
 
@@ -645,7 +701,16 @@ tests/
 │   ├── __init__.py
 │   ├── test_client.py       # Tests for FoundryClient API
 │   ├── test_upload_script.py # Tests for upload_to_foundry.py
-│   └── test_xml_to_journal_html.py # Tests for XML to journal HTML converter
+│   ├── test_xml_to_journal_html.py # Tests for XML to journal HTML converter
+│   └── actors/              # Tests for src/foundry/actors/
+│       ├── __init__.py
+│       ├── test_models.py   # Tests for ParsedActorData models
+│       ├── test_spell_cache.py # Tests for SpellCache
+│       ├── test_converter.py # Tests for converter stub
+│       ├── test_fixtures.py # Fixture validation tests
+│       └── fixtures/        # Test data for actor parsing
+│           ├── goblin_parsed.json  # Example Goblin ParsedActorData
+│           └── mage_parsed.json    # Example Mage ParsedActorData
 └── output/                  # Persistent test output (not auto-cleaned)
     └── test_runs/           # Timestamped test runs from end-to-end tests
 ```
