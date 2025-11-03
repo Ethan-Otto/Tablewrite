@@ -202,3 +202,8 @@ class TestPitFiendIntegration:
 
         assert downloaded["name"] == "Pit Fiend"
         assert len(downloaded["items"]) == 13
+
+        # Verify all weapons are present (not just count)
+        uploaded_weapons = {i["name"] for i in foundry_json["items"] if i["type"] == "weapon"}
+        downloaded_weapons = {i["name"] for i in downloaded["items"] if i["type"] == "weapon"}
+        assert uploaded_weapons == downloaded_weapons, f"Weapons lost: {uploaded_weapons - downloaded_weapons}"

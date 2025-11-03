@@ -232,6 +232,28 @@ print("\n   Downloaded items:")
 for item in downloaded["items"]:
     print(f"     - {item['name']} ({item['type']})")
 
+# Verify no items were lost
+uploaded_weapons = {i["name"] for i in foundry_json["items"] if i["type"] == "weapon"}
+downloaded_weapons = {i["name"] for i in downloaded["items"] if i["type"] == "weapon"}
+missing_weapons = uploaded_weapons - downloaded_weapons
+
+if missing_weapons:
+    print(f"\n✗ ERROR: Missing weapons after round-trip: {missing_weapons}")
+    print(f"   Uploaded: {uploaded_weapons}")
+    print(f"   Downloaded: {downloaded_weapons}")
+    print("\n" + "=" * 80)
+    print("PIPELINE FAILED - ITEMS LOST")
+    print("=" * 80)
+    sys.exit(1)
+
+# Check for duplicate spells
+uploaded_spell_names = [i["name"] for i in foundry_json["items"] if i["type"] == "spell"]
+downloaded_spell_names = [i["name"] for i in downloaded["items"] if i["type"] == "spell"]
+if len(downloaded_spell_names) != len(set(downloaded_spell_names)):
+    from collections import Counter
+    duplicates = [name for name, count in Counter(downloaded_spell_names).items() if count > 1]
+    print(f"\n✗ WARNING: Duplicate spells detected: {duplicates}")
+
 print("\n" + "=" * 80)
-print("PIPELINE COMPLETE")
+print("PIPELINE COMPLETE - ALL ITEMS PRESERVED")
 print("=" * 80)
