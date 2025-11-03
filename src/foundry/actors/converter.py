@@ -1,13 +1,114 @@
 """Convert ParsedActorData to FoundryVTT actor JSON format."""
 
 import logging
+import secrets
 from typing import Dict, Any, Optional, TYPE_CHECKING
-from .models import ParsedActorData
+from .models import ParsedActorData, Attack, AttackSave
 
 if TYPE_CHECKING:
     from .spell_cache import SpellCache
 
 logger = logging.getLogger(__name__)
+
+
+def _generate_activity_id() -> str:
+    """Generate a unique 16-character ID for activities."""
+    return secrets.token_urlsafe(12)[:16]
+
+
+def _base_activity_structure() -> dict:
+    """Common fields for all activities."""
+    return {
+        "activation": {
+            "type": "action",
+            "value": None,
+            "override": False,
+            "condition": ""
+        },
+        "consumption": {
+            "scaling": {"allowed": False},
+            "spellSlot": True,
+            "targets": []
+        },
+        "description": {"chatFlavor": ""},
+        "duration": {
+            "units": "inst",
+            "concentration": False,
+            "override": False
+        },
+        "effects": [],
+        "range": {"override": False, "units": "self"},
+        "target": {
+            "template": {"contiguous": False, "units": "ft", "type": ""},
+            "affects": {"choice": False, "type": "creature", "count": "1", "special": ""},
+            "override": False,
+            "prompt": True
+        },
+        "uses": {"spent": 0, "recovery": [], "max": ""}
+    }
+
+
+def _create_attack_activity(attack: Attack, activity_id: str) -> dict:
+    """Create an attack-type activity for a weapon."""
+    base = _base_activity_structure()
+    base.update({
+        "type": "attack",
+        "_id": activity_id,
+        "sort": 0,
+        "attack": {
+            "bonus": str(attack.attack_bonus),
+            "flat": True,
+            "critical": {"threshold": None},
+            "type": {"value": attack.attack_type, "classification": "weapon"},
+            "ability": ""
+        },
+        "damage": {
+            "includeBase": True,
+            "parts": [],
+            "critical": {"bonus": ""}
+        },
+        "name": ""
+    })
+    return base
+
+
+def _create_save_activity(save: AttackSave, activity_id: str) -> dict:
+    """Create a save-type activity."""
+    base = _base_activity_structure()
+    base.update({
+        "type": "save",
+        "_id": activity_id,
+        "sort": 0,
+        "save": {
+            "ability": [save.ability],
+            "dc": {"calculation": "", "formula": str(save.dc)}
+        },
+        "damage": {
+            "parts": [[f"{d.number}d{d.denomination}{d.bonus}", d.type]
+                     for d in save.damage],
+            "onSave": save.on_save
+        },
+        "name": ""
+    })
+    return base
+
+
+def _create_ongoing_damage_activity(save: AttackSave, activity_id: str) -> dict:
+    """Create ongoing damage activity (e.g., poison each turn)."""
+    base = _base_activity_structure()
+    base["activation"]["type"] = "turnStart"
+    base.update({
+        "type": "damage",
+        "_id": activity_id,
+        "sort": 0,
+        "damage": {
+            "critical": {"allow": False},
+            "parts": [[f"{d.number}d{d.denomination}{d.bonus}", d.type]
+                     for d in save.ongoing_damage]
+        },
+        "name": f"Add'l {save.ongoing_damage[0].type.capitalize()} Damage" if save.ongoing_damage else ""
+    })
+    return base
 
 
 def convert_to_foundry(
