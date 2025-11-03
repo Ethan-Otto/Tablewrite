@@ -676,6 +676,33 @@ output/runs/<timestamp>/map_assets/
 
 8. **Temp Directory Organization**: Debug files automatically stored in `temp/` subdirectory. Detects if already in temp directory to avoid nested `temp/temp/` structure.
 
+## Web UI
+
+The project includes a chat-based web UI for interacting with the D&D Module Assistant. The UI features a wax seal aesthetic with parchment textures and provides a conversational interface for working with D&D module content, generating scenes, and managing actors.
+
+**For detailed UI documentation, component architecture, styling guidelines, and development workflows, see [`ui/CLAUDE.md`](ui/CLAUDE.md).**
+
+**Key Features:**
+- React 19 + TypeScript + Vite frontend with Tailwind CSS
+- FastAPI backend with Google Gemini API integration
+- Wax seal design with medieval typography and parchment backgrounds
+- Fixed 96vh layout with ChatWindow-only scrolling (no page scrolling)
+- Conversation history maintained across messages
+- Markdown rendering for formatted responses
+
+**Quick Start:**
+```bash
+# Backend (in ui/backend/)
+uv venv && source .venv/bin/activate && uv pip install -r requirements.txt
+echo "GEMINI_API_KEY=<your_key>" > .env
+uvicorn app.main:app --reload --port 8000
+
+# Frontend (in ui/frontend/)
+npm install && npm run dev
+```
+
+Access at http://localhost:5173 (backend at http://localhost:8000)
+
 ### Key Architecture Patterns
 
 **pdf_to_xml.py** (main conversion engine):

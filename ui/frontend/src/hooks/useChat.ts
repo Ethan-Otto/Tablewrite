@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { ChatMessage, ChatRole, ChatRequest } from '../lib/types';
+import type { ChatMessage, ChatRequest } from '../lib/types';
+import { ChatRole } from '../lib/types';
 import { api } from '../lib/api';
 
 interface UseChatReturn {

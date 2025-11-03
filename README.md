@@ -63,6 +63,74 @@ Or activate the virtual environment first (`source .venv/bin/activate`) and use 
 
 Each run preserves logs, raw model responses, and word-count checks beneath `output/runs/<timestamp>/`; avoid editing outputs in place so history stays intact.
 
+## Web UI
+
+The project includes a chat-based web UI for interacting with the D&D Module Assistant. The UI features a wax seal aesthetic with parchment textures and provides a conversational interface for working with D&D module content.
+
+### Architecture
+
+- **Frontend**: React 19 + TypeScript + Vite with Tailwind CSS
+- **Backend**: FastAPI (Python) with Google Gemini API
+- **Design**: Wax seal aesthetic with medieval typography and parchment backgrounds
+
+### Setup & Running
+
+**1. Backend Setup:**
+```bash
+cd ui/backend
+
+# Create virtual environment and install dependencies
+uv venv
+source .venv/bin/activate  # or .venv\Scripts\activate on Windows
+uv pip install -r requirements.txt
+
+# Create .env file with your Gemini API key
+echo "GEMINI_API_KEY=<your_api_key>" > .env
+echo "CORS_ORIGINS=http://localhost:5173" >> .env
+
+# Start the backend server
+uvicorn app.main:app --reload --port 8000
+```
+
+Backend runs on http://localhost:8000 (Swagger docs at http://localhost:8000/docs)
+
+**2. Frontend Setup:**
+```bash
+cd ui/frontend
+
+# Install dependencies
+npm install
+
+# Start the development server
+npm run dev
+```
+
+Frontend runs on http://localhost:5173
+
+**3. Access the UI:**
+Open your browser to http://localhost:5173
+
+### Features
+
+- **Chat Interface**: Conversational UI for working with D&D module content
+- **Conversation History**: Full chat history maintained across messages
+- **Markdown Support**: Rich text rendering for formatted responses
+- **Wax Seal Aesthetic**: Medieval-themed design with parchment textures
+- **Available Commands**:
+  - `/generate-scene [description]` - Generate a new scene
+  - `/list_scenes [chapter]` - List scenes in a chapter
+  - `/list_actors` - List all actors/NPCs
+  - `/help` - Show help
+
+### Development
+
+The UI uses hot module replacement for fast development:
+- Frontend changes reload automatically via Vite HMR
+- Backend changes reload automatically with `--reload` flag
+- Hard refresh (Cmd+Shift+R or Ctrl+Shift+R) to clear browser cache if needed
+
+See `ui/CLAUDE.md` for detailed architecture documentation, component breakdown, and development guidelines.
+
 ## FoundryVTT Integration
 
 The project includes optional integration for uploading generated HTML content directly to FoundryVTT as journal entries.

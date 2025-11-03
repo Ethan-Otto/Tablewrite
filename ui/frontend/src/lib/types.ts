@@ -8,6 +8,15 @@ export enum ChatRole {
   SYSTEM = 'system',
 }
 
+export interface Scene {
+  section_path: string;
+  name: string;
+  description: string;
+  location_type: string;
+  xml_section_id?: string | null;
+  image_url?: string | null;
+}
+
 export interface ChatMessage {
   role: ChatRole;
   content: string;
@@ -26,13 +35,4 @@ export interface ChatResponse {
   type: 'text' | 'scene' | 'list' | 'error';
   data?: Record<string, any> | null;
   scene?: any | null;
-}
-
-export interface Scene {
-  section_path: string;
-  name: string;
-  description: string;
-  location_type: string;
-  xml_section_id?: string | null;
-  image_url?: string | null;
 }

@@ -23,54 +23,181 @@ export function InputArea({ onSendMessage, disabled = false }: InputAreaProps) {
   };
 
   return (
-    <div className="border-t-4 border-[#8d7555] bg-gradient-to-b from-[#c4b098] to-[#b89d7d] px-6 py-6">
-      <div className="max-w-4xl mx-auto flex gap-4 items-end">
+    <div
+      className="px-10 pt-[25px] pb-0"
+      style={{
+        background: 'linear-gradient(180deg, #b89d7d 0%, #9d8565 100%)',
+        border: '4px double #7d5a3d',
+        borderTop: 'none'
+      }}
+    >
+      <div className="flex gap-[15px] items-center">
         {/* Text Input */}
-        <div className="flex-1">
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={disabled}
-            placeholder="Type a message or use /help for commands..."
-            className="w-full px-4 py-3 rounded-lg bg-[#e8dcc5] border-2 border-[#a89d7d] 
-                     text-[#3d2817] placeholder-[#8d7555] resize-none
-                     focus:outline-none focus:ring-2 focus:ring-[#7d5a3d] focus:border-transparent
-                     disabled:opacity-50 disabled:cursor-not-allowed
-                     font-ui"
-            rows={2}
-          />
-        </div>
+        <textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={disabled}
+          placeholder="/generate-scene [description]"
+          className="flex-1 px-6 py-4 rounded-[4px] resize-none outline-none transition-all duration-300"
+          style={{
+            background: 'rgba(245, 238, 225, 0.95)',
+            border: '2px solid #7d5a3d',
+            fontFamily: 'IM Fell DW Pica, serif',
+            fontSize: '16px',
+            color: '#3d2817',
+            boxShadow: 'inset 2px 2px 5px rgba(0, 0, 0, 0.12)'
+          }}
+          rows={2}
+        />
 
-        {/* Wax Seal Button */}
-        <button
-          onClick={handleSend}
-          disabled={disabled || !message.trim()}
-          className="relative group disabled:opacity-50 disabled:cursor-not-allowed"
-          aria-label="Send message"
-        >
-          {/* Wax seal base */}
-          <div className="relative w-16 h-16 rounded-full bg-gradient-radial from-[#a62828] via-[#8b1f1f] to-[#6b1515] 
-                        shadow-lg border-2 border-[#6b1515]
-                        transition-all duration-200
-                        group-hover:shadow-xl group-hover:scale-105 group-active:scale-95
-                        disabled:group-hover:scale-100">
-            {/* Fleur-de-lis symbol */}
-            <div className="absolute inset-0 flex items-center justify-center text-[#d4c4a8] text-2xl font-bold">
+        {/* Wax Seal Button with Ribbon */}
+        <div className="relative flex-shrink-0" style={{ position: 'relative' }}>
+          {/* Ribbon underneath seal */}
+          <div
+            style={{
+              content: '""',
+              position: 'absolute',
+              bottom: '12px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '45px',
+              height: '70px',
+              background: 'linear-gradient(180deg, #5c3d2e 0%, #4a3020 100%)',
+              clipPath: 'polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%)',
+              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.3)',
+              zIndex: 0
+            }}
+          />
+
+          {/* Wax Seal Button */}
+          <button
+            onClick={handleSend}
+            disabled={disabled || !message.trim()}
+            className="relative cursor-pointer transition-all duration-200 flex-shrink-0 flex items-center justify-center overflow-visible"
+            style={{
+              width: '78px',
+              height: '78px',
+              background: 'radial-gradient(circle at 35% 30%, #a83030 0%, #9d2424 20%, #8b1f1f 40%, #721818 70%, #5a1212 100%)',
+              border: 'none',
+              borderRadius: '44% 56% 48% 52% / 53% 47% 53% 47%',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.4)',
+              zIndex: 1
+            }}
+            aria-label="Send message"
+          >
+            {/* Embossed ring */}
+            <div
+              style={{
+                position: 'absolute',
+                width: '56px',
+                height: '56px',
+                borderRadius: '50%',
+                border: '2px solid rgba(0, 0, 0, 0.3)',
+                boxShadow: 'inset 0 0 6px rgba(0, 0, 0, 0.35)',
+                zIndex: 1
+              }}
+            />
+
+            {/* Central emblem */}
+            <span
+              className="seal-emblem"
+              style={{
+                fontFamily: 'UnifrakturMaguntia, cursive',
+                fontSize: '44px',
+                color: 'rgba(0, 0, 0, 0.4)',
+                textShadow: '0 1px 1px rgba(0, 0, 0, 0.5)',
+                zIndex: 2,
+                position: 'relative'
+              }}
+            >
               ⚜
-            </div>
-            
+            </span>
+
             {/* Wax texture overlay */}
-            <div className="absolute inset-0 rounded-full bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1IiBoZWlnaHQ9IjUiPgo8cmVjdCB3aWR0aD0iNSIgaGVpZ2h0PSI1IiBmaWxsPSIjZmZmIj48L3JlY3Q+CjxwYXRoIGQ9Ik0wIDVMNSAwWk02IDRMNCA2Wk0tMSAxTDEgLTFaIiBzdHJva2U9IiM4ODgiIHN0cm9rZS13aWR0aD0iMSI+PC9wYXRoPgo8L3N2Zz4=')] opacity-10">
-            </div>
-          </div>
-        </button>
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                borderRadius: '44% 56% 48% 52% / 53% 47% 53% 47%',
+                backgroundImage: `
+                  radial-gradient(circle at 15% 20%, rgba(0, 0, 0, 0.18) 1.5px, transparent 1.5px),
+                  radial-gradient(circle at 85% 30%, rgba(0, 0, 0, 0.15) 1.5px, transparent 1.5px),
+                  radial-gradient(circle at 60% 75%, rgba(0, 0, 0, 0.12) 1px, transparent 1px),
+                  radial-gradient(circle at 30% 80%, rgba(0, 0, 0, 0.16) 1px, transparent 1px),
+                  radial-gradient(circle at 70% 15%, rgba(168, 48, 48, 0.25) 2px, transparent 2px),
+                  radial-gradient(circle at 45% 45%, rgba(0, 0, 0, 0.08) 1px, transparent 1px)
+                `,
+                backgroundSize: '20px 20px, 25px 25px, 18px 18px, 23px 23px, 30px 30px, 15px 15px',
+                pointerEvents: 'none',
+                opacity: 0.8
+              }}
+            />
+
+            {/* Wax drip */}
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '-10px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '18px',
+                height: '14px',
+                background: 'radial-gradient(circle at 40% 20%, #8b1f1f 0%, #5a1212 100%)',
+                borderRadius: '0 0 45% 55%',
+                boxShadow: '0 2px 5px rgba(0, 0, 0, 0.4)'
+              }}
+            />
+
+            {/* Wax crack */}
+            <div
+              style={{
+                position: 'absolute',
+                top: '22%',
+                right: '18%',
+                width: '12px',
+                height: '1.5px',
+                background: 'rgba(0, 0, 0, 0.25)',
+                transform: 'rotate(-25deg)',
+                borderRadius: '50%'
+              }}
+            />
+          </button>
+        </div>
       </div>
-      
+
       {/* Helper text */}
-      <div className="max-w-4xl mx-auto mt-2 text-xs text-[#7d5a3d] text-center">
+      <div
+        className="mt-2 mb-0 text-center italic"
+        style={{
+          fontFamily: 'IM Fell DW Pica, serif',
+          fontSize: '13px',
+          color: '#5c3d2e'
+        }}
+      >
         Press Enter to send • Shift+Enter for new line
       </div>
+
+      <style>{`
+        .command-input::placeholder {
+          color: #9d8565;
+          font-style: italic;
+        }
+        .command-input:focus {
+          border-color: #5c3d2e;
+          box-shadow: 0 0 0 3px rgba(125, 90, 61, 0.25), inset 2px 2px 5px rgba(0, 0, 0, 0.12);
+        }
+        button:hover:not(:disabled) {
+          opacity: 0.95;
+        }
+        button:active:not(:disabled) {
+          opacity: 0.9;
+          transform: scale(0.98);
+        }
+      `}</style>
     </div>
   );
 }

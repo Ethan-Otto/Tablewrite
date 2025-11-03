@@ -26,7 +26,8 @@ class GeminiService:
     def generate_chat_response(
         self,
         message: str,
-        context: Dict[str, Any]
+        context: Dict[str, Any],
+        conversation_history: Optional[list] = None
     ) -> str:
         """
         Generate a chat response using Gemini.
@@ -34,12 +35,13 @@ class GeminiService:
         Args:
             message: User message
             context: Conversation context
+            conversation_history: List of previous messages
 
         Returns:
             Generated response text
         """
-        # Build prompt with context
-        prompt = self._build_chat_prompt(message, context)
+        # Build prompt with context and history
+        prompt = self._build_chat_prompt(message, context, conversation_history)
 
         # Generate response
         response = self.api.generate_content(prompt)
@@ -73,9 +75,10 @@ Keep it concise (2-3 sentences) and evocative."""
     def _build_chat_prompt(
         self,
         message: str,
-        context: Dict[str, Any]
+        context: Dict[str, Any],
+        conversation_history: Optional[list] = None
     ) -> str:
-        """Build prompt with context."""
+        """Build prompt with context and conversation history."""
         prompt = """You are a helpful D&D Module Assistant. You help users work with D&D module content, generate scenes, and manage actors.
 
 Available commands:
@@ -91,6 +94,17 @@ Available commands:
         if context.get("chapter"):
             prompt += f"Current chapter: {context['chapter']}\n"
 
-        prompt += f"\nUser: {message}\n\nAssistant:"
+        # Add conversation history if available
+        if conversation_history:
+            prompt += "\n**Conversation History:**\n"
+            for msg in conversation_history:
+                role = msg.get("role", "").upper()
+                content = msg.get("content", "")
+                if role == "SYSTEM":
+                    continue  # Skip system messages
+                prompt += f"{role}: {content}\n"
+            prompt += "\n"
+
+        prompt += f"User: {message}\n\nAssistant:"
 
         return prompt

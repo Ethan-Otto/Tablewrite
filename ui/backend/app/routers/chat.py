@@ -43,9 +43,20 @@ async def chat(request: ChatRequest) -> ChatResponse:
             )
 
         else:  # Regular chat
+            # Convert conversation history to dict format
+            history_dicts = [
+                {
+                    "role": msg.role.value,
+                    "content": msg.content,
+                    "timestamp": msg.timestamp.isoformat()
+                }
+                for msg in request.conversation_history
+            ]
+
             response_text = gemini_service.generate_chat_response(
                 message=request.message,
-                context=request.context
+                context=request.context,
+                conversation_history=history_dicts
             )
             return ChatResponse(message=response_text, type="text")
 
