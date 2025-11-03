@@ -309,7 +309,10 @@ class TestActorRoundTrip:
         assert save_activity["save"]["ability"] == ["con"]
         assert save_activity["save"]["dc"]["formula"] == "21"
 
-        # Verify ongoing damage details
+        # Verify ongoing damage details (v10+ object structure)
         dmg_activity = [a for a in activities if a["type"] == "damage"][0]
         assert dmg_activity["activation"]["type"] == "turnStart"
-        assert dmg_activity["damage"]["parts"][0][0] == "6d6"
+        dmg_part = dmg_activity["damage"]["parts"][0]
+        assert dmg_part["number"] == 6
+        assert dmg_part["denomination"] == 6
+        assert dmg_part["types"] == ["poison"]

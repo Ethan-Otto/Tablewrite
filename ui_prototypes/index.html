@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D&D Module Chat UI Prototypes</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1a0f0a 0%, #2a1f15 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            color: #f4e8d0;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        h1 {
+            font-family: 'Cinzel', serif;
+            text-align: center;
+            font-size: 36px;
+            margin-bottom: 12px;
+            color: #d4a574;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 16px;
+            color: #c4b8a6;
+            margin-bottom: 50px;
+        }
+
+        .prototypes {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .prototype-card {
+            background: rgba(61, 42, 31, 0.6);
+            border: 2px solid #5a4d3d;
+            border-radius: 12px;
+            padding: 30px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            display: block;
+        }
+
+        .prototype-card:hover {
+            border-color: #d4a574;
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(212, 165, 116, 0.2);
+        }
+
+        .prototype-icon {
+            font-size: 48px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .prototype-title {
+            font-family: 'Cinzel', serif;
+            font-size: 22px;
+            color: #d4a574;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .prototype-description {
+            color: #c4b8a6;
+            line-height: 1.6;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .features {
+            list-style: none;
+            margin-top: 16px;
+        }
+
+        .features li {
+            padding: 6px 0;
+            color: #8b7355;
+            font-size: 13px;
+        }
+
+        .features li::before {
+            content: '⚔ ';
+            color: #d4a574;
+            margin-right: 8px;
+        }
+
+        .footer {
+            text-align: center;
+            padding-top: 30px;
+            border-top: 1px solid #5a4d3d;
+            color: #8b7355;
+            font-size: 13px;
+        }
+
+        .footer a {
+            color: #d4a574;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚔ D&D Module Chat Assistant ⚔</h1>
+        <p class="subtitle">Choose your preferred UI style</p>
+
+        <div class="prototypes">
+            <!-- Heavy Ornate -->
+            <a href="heavy_ornate.html" class="prototype-card">
+                <div class="prototype-icon">🏰</div>
+                <h2 class="prototype-title">Heavy Ornate</h2>
+                <p class="prototype-description">
+                    Maximum Baldur's Gate 2 aesthetic with elaborate borders, parchment textures, and medieval styling throughout.
+                </p>
+                <ul class="features">
+                    <li>Ornate corner decorations</li>
+                    <li>Heavy parchment texture</li>
+                    <li>Cinzel fantasy typography</li>
+                    <li>Gold/bronze color palette</li>
+                    <li>Immersive fantasy feel</li>
+                </ul>
+            </a>
+
+            <!-- Medium Fantasy -->
+            <a href="medium_fantasy.html" class="prototype-card">
+                <div class="prototype-icon">⚔️</div>
+                <h2 class="prototype-title">Medium Fantasy</h2>
+                <p class="prototype-description">
+                    Balanced approach with fantasy-inspired design elements and clean readability. Best of both worlds.
+                </p>
+                <ul class="features">
+                    <li>Subtle ornamentation</li>
+                    <li>Avatar-based messages</li>
+                    <li>Soft parchment background</li>
+                    <li>Rounded modern borders</li>
+                    <li>Pleasant fantasy aesthetic</li>
+                </ul>
+            </a>
+
+            <!-- Clean Modern -->
+            <a href="clean_modern.html" class="prototype-card">
+                <div class="prototype-icon">🗡️</div>
+                <h2 class="prototype-title">Clean Modern</h2>
+                <p class="prototype-description">
+                    Contemporary chat interface with subtle fantasy touches. Discord-like UX with warm color palette.
+                </p>
+                <ul class="features">
+                    <li>Minimal decorations</li>
+                    <li>Modern chat layout</li>
+                    <li>Dark theme with accent</li>
+                    <li>Clean typography</li>
+                    <li>Functionality-first design</li>
+                </ul>
+            </a>
+        </div>
+
+        <div class="footer">
+            <p>Built with React + shadcn/ui + FastAPI</p>
+            <p style="margin-top: 8px; font-size: 12px;">
+                Each prototype demonstrates the same functionality with different visual styles.<br>
+                Click any card to view the full prototype in your browser.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

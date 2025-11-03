@@ -84,8 +84,17 @@ def _create_save_activity(save: AttackSave, activity_id: str) -> dict:
             "dc": {"calculation": "", "formula": str(save.dc)}
         },
         "damage": {
-            "parts": [[f"{d.number}d{d.denomination}{d.bonus}", d.type]
-                     for d in save.damage],
+            "parts": [
+                {
+                    "custom": {"enabled": False, "formula": ""},
+                    "number": d.number,
+                    "denomination": d.denomination,
+                    "bonus": d.bonus,
+                    "types": [d.type],
+                    "scaling": {"number": 1}
+                }
+                for d in save.damage
+            ],
             "onSave": save.on_save
         },
         "name": ""
@@ -103,8 +112,17 @@ def _create_ongoing_damage_activity(save: AttackSave, activity_id: str) -> dict:
         "sort": 0,
         "damage": {
             "critical": {"allow": False},
-            "parts": [[f"{d.number}d{d.denomination}{d.bonus}", d.type]
-                     for d in save.ongoing_damage]
+            "parts": [
+                {
+                    "custom": {"enabled": False, "formula": ""},
+                    "number": d.number,
+                    "denomination": d.denomination,
+                    "bonus": d.bonus,
+                    "types": [d.type],
+                    "scaling": {"number": 1}
+                }
+                for d in save.ongoing_damage
+            ]
         },
         "name": f"Add'l {save.ongoing_damage[0].type.capitalize()} Damage" if save.ongoing_damage else ""
     })

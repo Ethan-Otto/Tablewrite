@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Variant 4: Quill & Inkwell</title>
+    <link href="https://fonts.googleapis.com/css2?family=IM+Fell+DW+Pica:ital@0;1&family=UnifrakturMaguntia&family=Crimson+Pro:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Crimson Pro', serif;
+            background: linear-gradient(135deg, #c4b098 0%, #b4a088 50%, #c4b098 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            filter: sepia(0.15);
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 1000px;
+            height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
+        }
+
+        .header {
+            background:
+                linear-gradient(180deg, rgba(92, 61, 46, 0.1) 0%, transparent 100%),
+                linear-gradient(180deg, #a89070 0%, #8d7555 100%);
+            border: 4px double #6d5544;
+            border-bottom: none;
+            padding: 20px 40px;
+            position: relative;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        .header h1 {
+            font-family: 'UnifrakturMaguntia', cursive;
+            text-align: center;
+            color: #3d2817;
+            font-size: 36px;
+            letter-spacing: 3px;
+            text-shadow: 2px 2px 0 rgba(255, 255, 255, 0.15);
+        }
+
+        .header-flourish {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 28px;
+            color: #6d5544;
+        }
+
+        .header-flourish.left { left: 120px; }
+        .header-flourish.right { right: 120px; }
+
+        .chat-window {
+            flex: 1;
+            background:
+                repeating-linear-gradient(0deg, transparent 0px, rgba(61, 40, 23, 0.015) 1px, transparent 2px, transparent 20px),
+                repeating-linear-gradient(90deg, transparent 0px, rgba(61, 40, 23, 0.015) 1px, transparent 2px, transparent 20px),
+                radial-gradient(circle at 30% 30%, rgba(212, 196, 168, 1) 0%, rgba(200, 180, 150, 1) 100%);
+            border-left: 4px double #6d5544;
+            border-right: 4px double #6d5544;
+            overflow-y: auto;
+            padding: 40px;
+            position: relative;
+            box-shadow: inset 0 0 100px rgba(61, 40, 23, 0.05);
+        }
+
+        /* Ink splotches */
+        .ink-splotch {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(20, 15, 10, 0.15) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .ink-splotch.s1 {
+            width: 35px;
+            height: 35px;
+            top: 12%;
+            left: 8%;
+        }
+
+        .ink-splotch.s2 {
+            width: 25px;
+            height: 25px;
+            top: 45%;
+            right: 15%;
+        }
+
+        .ink-splotch.s3 {
+            width: 20px;
+            height: 20px;
+            bottom: 25%;
+            left: 25%;
+        }
+
+        .message {
+            margin-bottom: 30px;
+            display: flex;
+            gap: 15px;
+            animation: fadeInParchment 0.6s ease-out;
+        }
+
+        @keyframes fadeInParchment {
+            from {
+                opacity: 0;
+                transform: translateY(10px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 3px double #6d5544;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+            background: radial-gradient(circle, #d4c4a8 0%, #c4b098 100%);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+        }
+
+        .emoji-icon {
+            filter: grayscale(1) brightness(0);
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 20px 25px;
+            border-radius: 4px;
+            position: relative;
+            font-family: 'IM Fell DW Pica', serif;
+            line-height: 1.8;
+        }
+
+        .message.assistant .message-content {
+            background: linear-gradient(135deg, rgba(225, 215, 195, 0.9) 0%, rgba(215, 200, 175, 0.9) 100%);
+            color: #2d1f15;
+            border: 2px solid #a89070;
+            border-left: 4px solid #6d5544;
+            box-shadow:
+                4px 4px 0 rgba(109, 85, 68, 0.12),
+                0 6px 15px rgba(0, 0, 0, 0.18);
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, rgba(168, 144, 112, 0.35) 0%, rgba(141, 117, 85, 0.35) 100%);
+            color: #2d1f15;
+            border: 2px solid #6d5544;
+            border-right: 4px solid #3d2817;
+            box-shadow:
+                -4px 4px 0 rgba(109, 85, 68, 0.12),
+                0 6px 15px rgba(0, 0, 0, 0.18);
+        }
+
+        .message-label {
+            font-family: 'Crimson Pro', serif;
+            font-size: 11px;
+            font-weight: 600;
+            color: #6d5544;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .scene-card {
+            background: linear-gradient(135deg, rgba(225, 215, 195, 0.95) 0%, rgba(215, 200, 175, 0.95) 100%);
+            border: 3px double #6d5544;
+            border-radius: 8px;
+            padding: 30px;
+            margin: 30px 0;
+            box-shadow:
+                6px 6px 0 rgba(109, 85, 68, 0.18),
+                0 10px 30px rgba(0, 0, 0, 0.25);
+            position: relative;
+        }
+
+        .scene-card::before {
+            content: '❦';
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 40px;
+            color: #6d5544;
+            background: linear-gradient(135deg, #d4c4a8 0%, #c4b098 100%);
+            padding: 0 20px;
+        }
+
+        .scene-card h3 {
+            font-family: 'UnifrakturMaguntia', cursive;
+            color: #3d2817;
+            margin-bottom: 20px;
+            margin-top: 10px;
+            font-size: 28px;
+            text-align: center;
+            padding-bottom: 15px;
+            border-bottom: 2px double #6d5544;
+            letter-spacing: 2px;
+        }
+
+        .scene-image {
+            width: 100%;
+            height: 280px;
+            background:
+                repeating-linear-gradient(45deg, #b4a088 0px, #b4a088 2px, #a89070 2px, #a89070 4px),
+                linear-gradient(135deg, #c4b098 0%, #b4a088 100%);
+            border: 3px double #6d5544;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6d5544;
+            font-style: italic;
+            margin-bottom: 20px;
+            box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.12);
+        }
+
+        .scene-description {
+            color: #2d1f15;
+            line-height: 1.9;
+            font-size: 17px;
+            font-family: 'IM Fell DW Pica', serif;
+            text-align: justify;
+        }
+
+        .input-area {
+            background:
+                linear-gradient(180deg, rgba(92, 61, 46, 0.1) 0%, transparent 100%),
+                linear-gradient(180deg, #8d7555 0%, #a89070 100%);
+            border: 4px double #6d5544;
+            border-top: none;
+            padding: 25px 40px;
+            box-shadow: inset 0 -2px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .command-input {
+            flex: 1;
+            background: rgba(225, 215, 195, 0.95);
+            border: 2px solid #6d5544;
+            padding: 16px 24px;
+            font-family: 'IM Fell DW Pica', serif;
+            font-size: 16px;
+            color: #2d1f15;
+            border-radius: 4px;
+            outline: none;
+            transition: all 0.3s ease;
+            box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.12);
+        }
+
+        .command-input::placeholder {
+            color: #8d7555;
+            font-style: italic;
+        }
+
+        .command-input:focus {
+            border-color: #3d2817;
+            box-shadow:
+                0 0 0 3px rgba(109, 85, 68, 0.25),
+                inset 2px 2px 5px rgba(0, 0, 0, 0.12);
+        }
+
+        /* INKWELL BUTTON */
+        .send-button {
+            width: 65px;
+            height: 65px;
+            background:
+                radial-gradient(ellipse at 50% 30%, #2a2520 0%, #1a1510 60%, #0d0a08 100%);
+            border: none;
+            border-radius: 50% 50% 48% 52%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow:
+                inset 0 3px 8px rgba(0, 0, 0, 0.6),
+                0 3px 8px rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            flex-shrink: 0;
+            position: relative;
+            padding-bottom: 12px;
+        }
+
+        /* Glass shine on inkwell */
+        .send-button::before {
+            content: '';
+            position: absolute;
+            top: 15%;
+            left: 20%;
+            width: 25%;
+            height: 35%;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, transparent 100%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        /* Ink level indicator */
+        .ink-level {
+            position: absolute;
+            bottom: 8px;
+            width: 70%;
+            height: 35%;
+            background: linear-gradient(180deg, #0d0a08 0%, #000000 100%);
+            border-radius: 50% / 50% 50% 0 0;
+            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.8);
+        }
+
+        /* Inkwell opening */
+        .inkwell-opening {
+            position: absolute;
+            top: 8px;
+            width: 40%;
+            height: 15%;
+            background: radial-gradient(ellipse, #000000 0%, #0d0a08 100%);
+            border-radius: 50%;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.9);
+        }
+
+        .send-button:hover {
+            transform: translateY(-1px);
+            box-shadow:
+                inset 0 3px 8px rgba(0, 0, 0, 0.7),
+                0 4px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .send-button:active {
+            transform: translateY(1px);
+            box-shadow:
+                inset 0 3px 10px rgba(0, 0, 0, 0.8),
+                0 2px 6px rgba(0, 0, 0, 0.4);
+        }
+
+        .command-hint {
+            font-family: 'IM Fell DW Pica', serif;
+            font-size: 13px;
+            color: #3d2817;
+            margin-top: 12px;
+            text-align: center;
+            font-style: italic;
+        }
+
+        .chat-window::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        .chat-window::-webkit-scrollbar-track {
+            background: rgba(168, 144, 112, 0.3);
+            border: 1px solid #a89070;
+        }
+
+        .chat-window::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #6d5544 0%, #3d2817 100%);
+            border-radius: 6px;
+            border: 2px solid #d4c4a8;
+        }
+
+        .chat-window::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #7d6554 0%, #4d3827 100%);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <div class="header-flourish left">❦</div>
+            <h1>Module Assistant</h1>
+            <div class="header-flourish right">❦</div>
+        </div>
+
+        <div class="chat-window">
+            <div class="ink-splotch s1"></div>
+            <div class="ink-splotch s2"></div>
+            <div class="ink-splotch s3"></div>
+
+            <div class="message assistant">
+                <div class="message-avatar">✒</div>
+                <div class="message-content">
+                    <div class="message-label">Assistant</div>
+                    Greetings, adventurer! I am your Module Assistant. I can help you generate scenes, manage actors, and work with your D&D modules. Try typing <strong>/help</strong> to see available commands.
+                </div>
+            </div>
+
+            <div class="message user">
+                <div class="message-avatar"><span class="emoji-icon">🧙</span></div>
+                <div class="message-content">
+                    <div class="message-label">You</div>
+                    /generate-scene the entrance to the Cragmaw Hideout cave
+                </div>
+            </div>
+
+            <div class="message assistant">
+                <div class="message-avatar">✒</div>
+                <div class="message-content">
+                    <div class="message-label">Assistant</div>
+                    Generating scene for "the entrance to the Cragmaw Hideout cave"...
+                </div>
+            </div>
+
+            <div class="scene-card">
+                <h3>Cragmaw Hideout Entrance</h3>
+                <div class="scene-image">
+                    [Generated scene image would appear here]
+                </div>
+                <div class="scene-description">
+                    A narrow cave mouth opens before you, partially concealed by thick undergrowth and gnarled tree roots. The entrance is roughly seven feet high and ten feet wide, with jagged stone forming a natural archway. The sound of running water echoes from within, and muddy tracks suggest recent activity.
+                </div>
+            </div>
+
+            <div class="message user">
+                <div class="message-avatar"><span class="emoji-icon">🧙</span></div>
+                <div class="message-content">
+                    <div class="message-label">You</div>
+                    /list-scenes Chapter 2
+                </div>
+            </div>
+
+            <div class="message assistant">
+                <div class="message-avatar">✒</div>
+                <div class="message-content">
+                    <div class="message-label">Assistant</div>
+                    <strong>Scenes in Chapter 2:</strong><br><br>
+                    1. Cragmaw Hideout Entrance<br>
+                    2. Twin Pools Cave<br>
+                    3. Goblin Den<br>
+                    4. Klarg's Cave
+                </div>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <div class="input-wrapper">
+                <input type="text" class="command-input" placeholder="/generate-scene [description]" />
+                <button class="send-button">
+                    <div class="inkwell-opening"></div>
+                    <div class="ink-level"></div>
+                </button>
+            </div>
+            <div class="command-hint">
+                Variant 4: Quill & Inkwell • Sepia-toned with ink splotches
+            </div>
+        </div>
+    </div>
+</body>
+</html>

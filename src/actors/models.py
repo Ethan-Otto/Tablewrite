@@ -26,6 +26,7 @@ class StatBlock(BaseModel):
     languages: Optional[str] = None
     traits: Optional[str] = None  # Special traits/features
     actions: Optional[str] = None  # Actions section
+    reactions: Optional[str] = None  # REACTIONS section (if present)
 
     @field_validator('armor_class')
     @classmethod

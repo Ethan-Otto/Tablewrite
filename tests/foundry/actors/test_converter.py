@@ -188,7 +188,12 @@ class TestActivityHelpers:
         assert activity["save"]["dc"]["formula"] == "13"
         assert activity["damage"]["onSave"] == "half"
         assert len(activity["damage"]["parts"]) == 1
-        assert activity["damage"]["parts"][0] == ["2d6", "poison"]
+        # Check object structure (v10+)
+        part = activity["damage"]["parts"][0]
+        assert part["number"] == 2
+        assert part["denomination"] == 6
+        assert part["bonus"] == ""
+        assert part["types"] == ["poison"]
 
     def test_create_ongoing_damage_activity(self):
         """Should create damage-type activity for ongoing effects."""
@@ -204,7 +209,12 @@ class TestActivityHelpers:
         assert activity["_id"] == "dmg789"
         assert activity["activation"]["type"] == "turnStart"
         assert len(activity["damage"]["parts"]) == 1
-        assert activity["damage"]["parts"][0] == ["6d6", "poison"]
+        # Check object structure (v10+)
+        part = activity["damage"]["parts"][0]
+        assert part["number"] == 6
+        assert part["denomination"] == 6
+        assert part["bonus"] == ""
+        assert part["types"] == ["poison"]
 
 
 class TestWeaponActivities:

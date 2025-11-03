@@ -1,0 +1,97 @@
+{
+  "source_statblock_name": "Goblin",
+  "name": "Goblin",
+  "armor_class": 15,
+  "hit_points": 7,
+  "hit_dice": "2d6",
+  "challenge_rating": 0.25,
+  "size": "Small",
+  "creature_type": "humanoid",
+  "creature_subtype": "goblinoid",
+  "alignment": "neutral evil",
+  "abilities": {
+    "STR": 8,
+    "DEX": 14,
+    "CON": 10,
+    "INT": 10,
+    "WIS": 8,
+    "CHA": 8
+  },
+  "saving_throw_proficiencies": [],
+  "skill_proficiencies": [
+    {
+      "skill": "Stealth",
+      "bonus": 6,
+      "proficiency_level": 2
+    }
+  ],
+  "damage_resistances": null,
+  "damage_immunities": null,
+  "damage_vulnerabilities": null,
+  "condition_immunities": [],
+  "speed_walk": 30,
+  "speed_fly": null,
+  "speed_swim": null,
+  "speed_burrow": null,
+  "speed_climb": null,
+  "speed_hover": false,
+  "darkvision": 60,
+  "blindsight": null,
+  "tremorsense": null,
+  "truesight": null,
+  "passive_perception": 9,
+  "languages": ["Common", "Goblin"],
+  "telepathy": null,
+  "traits": [
+    {
+      "name": "Nimble Escape",
+      "description": "The goblin can take the Disengage or Hide action as a bonus action on each of its turns.",
+      "activation": "bonus",
+      "uses": null,
+      "recharge": null,
+      "saving_throw": null
+    }
+  ],
+  "attacks": [
+    {
+      "name": "Scimitar",
+      "attack_type": "melee",
+      "attack_bonus": 4,
+      "reach": 5,
+      "range_short": null,
+      "range_long": null,
+      "damage": [
+        {
+          "number": 1,
+          "denomination": 6,
+          "bonus": "+2",
+          "type": "slashing"
+        }
+      ],
+      "additional_effects": null
+    },
+    {
+      "name": "Shortbow",
+      "attack_type": "ranged",
+      "attack_bonus": 4,
+      "reach": null,
+      "range_short": 80,
+      "range_long": 320,
+      "damage": [
+        {
+          "number": 1,
+          "denomination": 6,
+          "bonus": "+2",
+          "type": "piercing"
+        }
+      ],
+      "additional_effects": null
+    }
+  ],
+  "reactions": [],
+  "multiattack_description": null,
+  "spells": [],
+  "spellcasting_ability": null,
+  "spell_save_dc": null,
+  "spell_attack_bonus": null
+}
