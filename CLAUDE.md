@@ -227,6 +227,14 @@ The `/search` endpoint uses the QuickInsert module on FoundryVTT and has specifi
 
 - **Recommended approach for bulk operations**: Build a local cache by querying with common terms ("a", "of", "the") and specific compendium packs, then perform lookups locally
 
+- **Critical Search API Quirk for World Actors**:
+  - **Empty query returns ONLY compendium actors**: `query=""` with `filter="Actor"` returns 0 world actors
+  - **Non-empty query returns world + compendium actors**: `query="a"` returns both world and compendium actors
+  - **To get all world actors**: Must search with all 26 letters (a-z) and deduplicate by UUID
+  - Example: `ActorManager.get_all_actors()` searches alphabet a-z and filters to `Actor.*` UUIDs
+  - This quirk affects any bulk operations on world actors (deletion, export, migration)
+  - Uses same comprehensive strategy as item caching (26 queries, one per letter)
+
 **FoundryVTT Item Types:**
 
 In FoundryVTT, "Item" is a broad document type that includes character options, spells, and physical items. Filter by `subType` to narrow down:
@@ -381,16 +389,72 @@ uuid = cache.get_spell_uuid("Fireball")
 # Returns: "Compendium.dnd5e.spells.Item.ztgcdrWPshKRpFd0"
 ```
 
+**FoundryVTT Actor Creation Workflow:**
+
+The system uses a **two-step workflow** for creating actors with compendium spells:
+
+1. **CREATE Actor**: Upload actor with weapons, feats, and traits embedded in payload
+2. **GIVE Spells**: Add compendium spells via `/give` endpoint to preserve full spell data
+
+**Why Two Steps?**
+- Including spell UUIDs in CREATE payload results in FoundryVTT stripping the UUIDs and creating minimal stubs
+- The `/give` endpoint properly hydrates full compendium data (descriptions, activities, damage formulas)
+- Weapons and feats MUST be in CREATE payload (cannot use /give for custom items)
+
+**Converter API:**
+```python
+from foundry.actors.converter import convert_to_foundry
+from foundry.actors.spell_cache import SpellCache
+
+# Load spell cache for UUID resolution
+spell_cache = SpellCache()
+spell_cache.load()
+
+# Convert ParsedActorData to FoundryVTT format
+actor_json, spell_uuids = convert_to_foundry(parsed_actor, spell_cache=spell_cache)
+
+# actor_json contains: weapons, feats, traits, multiattack, innate spellcasting feat
+# spell_uuids contains: list of compendium spell UUIDs to add via /give
+
+# Create actor (automatically adds spells via /give)
+actor_uuid = client.actors.create_actor(actor_json, spell_uuids=spell_uuids)
+```
+
+**FoundryVTT v10+ Activities Structure:**
+
+The converter generates proper v10+ activities for weapon attacks:
+
+- **Single Activity**: Simple weapon attack (e.g., Scimitar)
+- **Two Activities**: Attack + save (e.g., Poison Bite with CON save)
+- **Three Activities**: Attack + save + ongoing damage (e.g., Pit Fiend Bite with poison damage)
+
+Each activity has a unique 16-character alphanumeric `_id` field (format: `[a-zA-Z0-9]{16}`).
+
+**Activity Types:**
+- `attack`: Weapon attack with attack bonus and damage
+- `save`: Saving throw (DC, ability, damage, onSave behavior)
+- `damage`: Ongoing damage effects (e.g., poison damage at start of turn)
+
 **Key Modules:**
 - `src/actors/models.py`: Pydantic models for StatBlock and NPC
 - `src/actors/parse_stat_blocks.py`: Gemini-powered stat block parser
 - `src/actors/extract_stat_blocks.py`: Extract stat blocks from XML
 - `src/actors/extract_npcs.py`: Gemini-powered NPC identification
 - `src/actors/process_actors.py`: Orchestration workflow
-- `src/foundry/actors/models.py`: Detailed ParsedActorData models for FoundryVTT
+- `src/foundry/actors/models.py`: Detailed ParsedActorData models for FoundryVTT (Attack, Trait, Spell, etc.)
 - `src/foundry/actors/spell_cache.py`: Spell UUID resolution cache
-- `src/foundry/actors/converter.py`: Convert ParsedActorData to FoundryVTT JSON (stub)
-- `src/foundry/actors/manager.py`: FoundryVTT Actor creation and search
+- `src/foundry/actors/converter.py`: Convert ParsedActorData to FoundryVTT JSON with v10+ activities
+- `src/foundry/actors/manager.py`: FoundryVTT Actor CRUD operations (create, get, delete, search)
+
+**Utility Scripts:**
+- `scripts/delete_all_actors.py`: Delete all world actors (filters out compendiums)
+  ```bash
+  # Interactive mode (asks for confirmation)
+  uv run python scripts/delete_all_actors.py
+
+  # Auto-confirm (useful for cleanup during development)
+  uv run python scripts/delete_all_actors.py --yes
+  ```
 
 ### Self-Hosted Relay Server
 

@@ -422,9 +422,10 @@ class ActorManager:
 
         all_actors = {}  # Use dict to deduplicate by UUID
 
-        # Search with common characters to find all actors
-        # API has 200 result limit, so we need multiple queries
-        search_queries = ["a", "e", "i", "o", "u", "t", "n", "s", "r", "h"]
+        # Search with all letters of the alphabet to find all actors
+        # API has 200 result limit, so we need multiple queries for comprehensive coverage
+        import string
+        search_queries = list(string.ascii_lowercase)  # a-z
 
         try:
             for query in search_queries:
