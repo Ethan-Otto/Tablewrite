@@ -398,3 +398,81 @@ class ActorManager:
             )
 
         logger.info(f"Successfully added {len(item_uuids)} compendium items to actor {actor_uuid}")
+
+    def get_all_actors(self) -> List[Dict[str, Any]]:
+        """
+        Get all actors in the world using search with wildcard.
+
+        Returns:
+            List of actor data dictionaries
+
+        Raises:
+            RuntimeError: If request fails
+        """
+        url = f"{self.relay_url}/search"
+
+        headers = {
+            "x-api-key": self.api_key,
+            "Content-Type": "application/json"
+        }
+
+        # Search with common letter to get all actors (API has 200 result limit)
+        params = {
+            "clientId": self.client_id,
+            "filter": "Actor",
+            "query": ""  # Empty query to get all actors
+        }
+
+        try:
+            response = requests.get(url, params=params, headers=headers, timeout=30)
+
+            if response.status_code != 200:
+                logger.error(f"Get all actors failed: {response.status_code}")
+                raise RuntimeError(f"Failed to get all actors: {response.status_code}")
+
+            results = response.json()
+
+            # Handle both list and dict response formats
+            actors = results if isinstance(results, list) else results.get("results", [])
+
+            logger.info(f"Retrieved {len(actors)} actors from world")
+            return actors
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Get all actors request failed: {e}")
+            raise RuntimeError(f"Failed to get all actors: {e}") from e
+
+    def delete_actor(self, actor_uuid: str) -> Dict[str, Any]:
+        """
+        Delete an actor.
+
+        Args:
+            actor_uuid: UUID of the actor to delete (format: Actor.{id})
+
+        Returns:
+            Response data from API
+
+        Raises:
+            RuntimeError: If deletion fails
+        """
+        url = f"{self.relay_url}/delete?clientId={self.client_id}&uuid={actor_uuid}"
+
+        headers = {
+            "x-api-key": self.api_key,
+            "Content-Type": "application/json"
+        }
+
+        try:
+            response = requests.delete(url, headers=headers, timeout=30)
+
+            if response.status_code != 200:
+                logger.error(f"Delete failed: {response.status_code} - {response.text}")
+                raise RuntimeError(f"Failed to delete actor: {response.status_code} - {response.text}")
+
+            result = response.json()
+            logger.info(f"Deleted actor: {actor_uuid}")
+            return result
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Delete request failed: {e}")
+            raise RuntimeError(f"Failed to delete actor: {e}") from e
