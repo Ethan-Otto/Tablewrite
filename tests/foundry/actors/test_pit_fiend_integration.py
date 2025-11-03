@@ -6,7 +6,7 @@ from pathlib import Path
 
 from foundry.actors.models import (
     ParsedActorData, Attack, Trait, DamageFormula,
-    Multiattack, InnateSpellcasting, InnateSpell
+    Multiattack, InnateSpellcasting, InnateSpell, AttackSave
 )
 from foundry.actors.converter import convert_to_foundry
 from foundry.client import FoundryClient
@@ -95,7 +95,15 @@ class TestPitFiendIntegration:
                     reach=5,
                     damage=[
                         DamageFormula(number=4, denomination=6, bonus="+8", type="piercing")
-                    ]
+                    ],
+                    # NEW: Add saving throw for poison
+                    attack_save=AttackSave(
+                        ability="con",
+                        dc=21,
+                        ongoing_damage=[DamageFormula(number=6, denomination=6, bonus="", type="poison")],
+                        duration_rounds=10,
+                        effect_description="Poisoned - can't regain HP"
+                    )
                 ),
                 Attack(
                     name="Claw",
@@ -145,6 +153,18 @@ class TestPitFiendIntegration:
         assert any(w["name"] == "Claw" for w in weapons)
         assert any(w["name"] == "Mace" for w in weapons)
         assert any(w["name"] == "Tail" for w in weapons)
+
+        # NEW: Verify Bite has 3 activities (attack + save + ongoing damage)
+        bite = [w for w in weapons if w["name"] == "Bite"][0]
+        assert len(bite["system"]["activities"]) == 3
+        bite_activities = bite["system"]["activities"].values()
+        assert any(a["type"] == "attack" for a in bite_activities)
+        assert any(a["type"] == "save" for a in bite_activities)
+        assert any(a["type"] == "damage" for a in bite_activities)
+
+        # Other weapons should have 1 activity (just attack)
+        claw = [w for w in weapons if w["name"] == "Claw"][0]
+        assert len(claw["system"]["activities"]) == 1
 
         # Should have 5 feats (3 traits + multiattack + innate spellcasting)
         assert len(feats) >= 5
