@@ -53,7 +53,7 @@ class TestConverter:
         assert result["system"]["details"]["cr"] == 0.25
 
     def test_converts_actor_with_attacks(self):
-        """Should convert attacks to weapon items."""
+        """Should convert attacks to weapon items with activities."""
         goblin = ParsedActorData(
             source_statblock_name="Goblin",
             name="Goblin",
@@ -73,14 +73,26 @@ class TestConverter:
         )
 
         result = convert_to_foundry(goblin)
-
-        # Check items array has weapon
-        assert len(result["items"]) == 1
         weapon = result["items"][0]
-        assert weapon["name"] == "Scimitar"
-        assert weapon["type"] == "weapon"
-        assert weapon["system"]["attackBonus"] == "4"
-        assert weapon["system"]["actionType"] == "melee"
+
+        # NEW v10+ structure checks
+        assert "activities" in weapon["system"]
+        assert len(weapon["system"]["activities"]) == 1
+
+        # Verify attack activity
+        activity = list(weapon["system"]["activities"].values())[0]
+        assert activity["type"] == "attack"
+        assert activity["attack"]["bonus"] == "4"
+        assert activity["attack"]["flat"] == True
+
+        # OLD v9 fields should be removed
+        assert "attackBonus" not in weapon["system"]
+        assert "parts" not in weapon["system"].get("damage", {})
+
+        # NEW damage.base structure
+        assert "base" in weapon["system"]["damage"]
+        assert weapon["system"]["damage"]["base"]["number"] == 1
+        assert weapon["system"]["damage"]["base"]["denomination"] == 6
 
     def test_converts_actor_with_traits(self):
         """Should convert traits to feat items."""
@@ -193,3 +205,84 @@ class TestActivityHelpers:
         assert activity["activation"]["type"] == "turnStart"
         assert len(activity["damage"]["parts"]) == 1
         assert activity["damage"]["parts"][0] == ["6d6", "poison"]
+
+
+class TestWeaponActivities:
+    """Tests for weapon conversion with v10+ activities structure."""
+
+    def test_converts_attack_with_save(self):
+        """Should create weapon with attack + save activities."""
+        actor = ParsedActorData(
+            source_statblock_name="Test",
+            name="Test",
+            armor_class=15,
+            hit_points=50,
+            challenge_rating=2,
+            abilities={"STR": 14, "DEX": 12, "CON": 13, "INT": 10, "WIS": 11, "CHA": 8},
+            attacks=[
+                Attack(
+                    name="Poison Bite",
+                    attack_type="melee",
+                    attack_bonus=4,
+                    reach=5,
+                    damage=[DamageFormula(number=1, denomination=6, bonus="+2", type="piercing")],
+                    attack_save=AttackSave(
+                        ability="con",
+                        dc=13,
+                        damage=[DamageFormula(number=2, denomination=6, bonus="", type="poison")],
+                        on_save="half"
+                    )
+                )
+            ]
+        )
+
+        result = convert_to_foundry(actor)
+        weapon = result["items"][0]
+
+        # Should have 2 activities: attack + save
+        assert len(weapon["system"]["activities"]) == 2
+
+        activities = list(weapon["system"]["activities"].values())
+        assert any(a["type"] == "attack" for a in activities)
+        assert any(a["type"] == "save" for a in activities)
+
+    def test_converts_attack_with_ongoing_damage(self):
+        """Should create weapon with attack + save + ongoing damage activities."""
+        pit_fiend = ParsedActorData(
+            source_statblock_name="Pit Fiend",
+            name="Pit Fiend",
+            armor_class=19,
+            hit_points=300,
+            challenge_rating=20,
+            abilities={"STR": 26, "DEX": 14, "CON": 24, "INT": 22, "WIS": 18, "CHA": 24},
+            attacks=[
+                Attack(
+                    name="Bite",
+                    attack_type="melee",
+                    attack_bonus=14,
+                    reach=5,
+                    damage=[DamageFormula(number=4, denomination=6, bonus="+8", type="piercing")],
+                    attack_save=AttackSave(
+                        ability="con",
+                        dc=21,
+                        ongoing_damage=[DamageFormula(number=6, denomination=6, bonus="", type="poison")],
+                        duration_rounds=10
+                    )
+                )
+            ]
+        )
+
+        result = convert_to_foundry(pit_fiend)
+        bite = result["items"][0]
+
+        # Should have 3 activities: attack + save + ongoing damage
+        assert len(bite["system"]["activities"]) == 3
+
+        activities = list(bite["system"]["activities"].values())
+        assert any(a["type"] == "attack" for a in activities)
+        assert any(a["type"] == "save" for a in activities)
+        assert any(a["type"] == "damage" for a in activities)
+
+        # Verify ongoing damage has correct activation
+        dmg_activity = [a for a in activities if a["type"] == "damage"][0]
+        assert dmg_activity["activation"]["type"] == "turnStart"

@@ -191,25 +191,58 @@ def convert_to_foundry(
     # Build items array (attacks, traits, spells)
     items = []
 
-    # Convert attacks to weapon items
+    # Convert attacks to weapon items (NEW v10+ structure with activities)
     for attack in parsed_actor.attacks:
+        activities = {}
+
+        # 1. Always create attack activity
+        attack_id = _generate_activity_id()
+        activities[attack_id] = _create_attack_activity(attack, attack_id)
+
+        # 2. Add save activity if present
+        if attack.attack_save:
+            save_id = _generate_activity_id()
+            activities[save_id] = _create_save_activity(attack.attack_save, save_id)
+
+            # 3. Add ongoing damage activity if present
+            if attack.attack_save.ongoing_damage:
+                dmg_id = _generate_activity_id()
+                activities[dmg_id] = _create_ongoing_damage_activity(attack.attack_save, dmg_id)
+
+        # Build weapon item (v10+ structure)
         item = {
             "name": attack.name,
             "type": "weapon",
             "img": "icons/weapons/swords/scimitar-guard-purple.webp",
             "system": {
                 "description": {"value": attack.additional_effects or ""},
-                "attackBonus": str(attack.attack_bonus),
+                "activities": activities,
                 "damage": {
-                    "parts": [[f"{dmg.number}d{dmg.denomination}{dmg.bonus}", dmg.type]
-                             for dmg in attack.damage]
+                    "base": {
+                        "number": attack.damage[0].number,
+                        "denomination": attack.damage[0].denomination,
+                        "bonus": attack.damage[0].bonus.replace("+", ""),
+                        "types": [attack.damage[0].type],
+                        "custom": {"enabled": False, "formula": ""},
+                        "scaling": {"mode": "", "number": None, "formula": ""}
+                    },
+                    "versatile": {
+                        "number": None,
+                        "denomination": None,
+                        "types": [],
+                        "custom": {"enabled": False},
+                        "scaling": {"number": 1}
+                    }
                 },
                 "range": {
                     "value": attack.range_short,
                     "long": attack.range_long,
-                    "reach": attack.reach
+                    "reach": attack.reach,
+                    "units": "ft"
                 },
-                "actionType": attack.attack_type
+                "type": {"value": "natural", "baseItem": ""},
+                "properties": [],
+                "uses": {"spent": 0, "recovery": [], "max": ""}
             }
         }
         items.append(item)
