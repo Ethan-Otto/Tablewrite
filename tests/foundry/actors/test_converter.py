@@ -128,7 +128,12 @@ class TestConverter:
         feat = result["items"][0]
         assert feat["name"] == "Nimble Escape"
         assert feat["type"] == "feat"
-        assert feat["system"]["activation"]["type"] == "bonus"
+
+        # Check activation in v10+ activities structure
+        assert "activities" in feat["system"]
+        assert len(feat["system"]["activities"]) == 1
+        activity = list(feat["system"]["activities"].values())[0]
+        assert activity["activation"]["type"] == "bonus"
 
     def test_importable(self):
         """Converter should be importable from foundry.actors."""
@@ -311,3 +316,51 @@ class TestWeaponActivities:
         # Verify ongoing damage has correct activation
         dmg_activity = [a for a in activities if a["type"] == "damage"][0]
         assert dmg_activity["activation"]["type"] == "turnStart"
+
+
+class TestIconCacheIntegration:
+    """Tests for icon cache integration with converter."""
+
+    def test_convert_to_foundry_uses_icon_cache(self):
+        """Test converter selects appropriate icons from cache."""
+        from foundry.actors.converter import convert_to_foundry
+        from foundry.actors.models import ParsedActorData, Attack, DamageFormula
+        from foundry.icon_cache import IconCache
+
+        # Setup mock icon cache
+        icon_cache = IconCache()
+        icon_cache._all_icons = [
+            "icons/weapons/swords/scimitar-guard-purple.webp",
+            "icons/magic/fire/explosion-fireball.webp"
+        ]
+        icon_cache._icons_by_category = {
+            "weapons": ["icons/weapons/swords/scimitar-guard-purple.webp"],
+            "magic": ["icons/magic/fire/explosion-fireball.webp"]
+        }
+        icon_cache._loaded = True
+
+        # Create test actor with scimitar attack
+        parsed_actor = ParsedActorData(
+            source_statblock_name="Goblin",
+            name="Goblin",
+            armor_class=15,
+            hit_points=7,
+            challenge_rating=0.25,
+            abilities={"str": 8, "dex": 14, "con": 10, "int": 10, "wis": 8, "cha": 8},
+            attacks=[
+                Attack(
+                    name="Scimitar",
+                    attack_type="melee",
+                    attack_bonus=4,
+                    reach=5,
+                    damage=[DamageFormula(number=1, denomination=6, bonus="+2", type="slashing")]
+                )
+            ]
+        )
+
+        foundry_json, _ = convert_to_foundry(parsed_actor, icon_cache=icon_cache)
+
+        # Find scimitar item
+        scimitar = next(item for item in foundry_json['items'] if item['name'] == 'Scimitar')
+
+        assert scimitar['img'] == "icons/weapons/swords/scimitar-guard-purple.webp"

@@ -7,6 +7,7 @@ from .models import ParsedActorData, Attack, AttackSave
 
 if TYPE_CHECKING:
     from .spell_cache import SpellCache
+    from ..icon_cache import IconCache
 
 logger = logging.getLogger(__name__)
 
@@ -137,6 +138,7 @@ def _create_ongoing_damage_activity(save: AttackSave, activity_id: str) -> dict:
 def convert_to_foundry(
     parsed_actor: ParsedActorData,
     spell_cache: Optional['SpellCache'] = None,
+    icon_cache: Optional['IconCache'] = None,
     include_spells_in_payload: bool = False
 ) -> tuple[Dict[str, Any], list[str]]:
     """
@@ -293,12 +295,19 @@ def convert_to_foundry(
                 dmg_id = _generate_activity_id()
                 activities[dmg_id] = _create_ongoing_damage_activity(attack.attack_save, dmg_id)
 
+        # Select appropriate icon from cache
+        weapon_icon = "icons/weapons/swords/scimitar-guard-purple.webp"  # Default
+        if icon_cache and icon_cache.loaded:
+            matched_icon = icon_cache.get_icon(attack.name, category="weapons")
+            if matched_icon:
+                weapon_icon = matched_icon
+
         # Build weapon item (v10+ structure)
         item = {
             "_id": _generate_activity_id(),
             "name": attack.name,
             "type": "weapon",
-            "img": "icons/weapons/swords/scimitar-guard-purple.webp",
+            "img": weapon_icon,
             "system": {
                 "description": {"value": attack.additional_effects or ""},
                 "activities": activities,
@@ -353,11 +362,20 @@ def convert_to_foundry(
             })
             activities[activity_id] = activity
 
+        # Select appropriate icon based on trait name
+        trait_icon = "icons/magic/movement/trail-streak-zigzag-yellow.webp"  # Default
+        if icon_cache and icon_cache.loaded:
+            # Try multiple keyword matches
+            keywords = trait.name.lower().split()
+            matched_icon = icon_cache.get_icon_by_keywords(keywords, category="magic")
+            if matched_icon:
+                trait_icon = matched_icon
+
         item = {
             "_id": _generate_activity_id(),
             "name": trait.name,
             "type": "feat",
-            "img": "icons/magic/movement/trail-streak-zigzag-yellow.webp",
+            "img": trait_icon,
             "system": {
                 "description": {"value": trait.description},
                 "activities": activities,
