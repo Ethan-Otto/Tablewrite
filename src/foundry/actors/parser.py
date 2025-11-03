@@ -144,6 +144,14 @@ OUTPUT ONLY VALID JSON. No explanations.
 
     # Parse response
     parsed_json = json.loads(response.text)
+    logger.debug(f"Gemini response type: {type(parsed_json)}, value: {parsed_json}")
+
+    # Handle case where Gemini returns a list instead of dict
+    if isinstance(parsed_json, list):
+        if len(parsed_json) == 0:
+            raise ValueError(f"Gemini returned empty list for action: {action_text[:100]}")
+        parsed_json = parsed_json[0]  # Take first element
+        logger.warning(f"Gemini returned list instead of dict, using first element")
 
     # Create appropriate object
     if is_multiattack:
@@ -224,6 +232,15 @@ OUTPUT ONLY VALID JSON. No explanations.
         )
 
         parsed_json = json.loads(response.text)
+        logger.debug(f"Gemini trait response type: {type(parsed_json)}, value: {parsed_json}")
+
+        # Handle case where Gemini returns a list instead of dict
+        if isinstance(parsed_json, list):
+            if len(parsed_json) == 0:
+                raise ValueError(f"Gemini returned empty list for trait: {trait_text[:100]}")
+            parsed_json = parsed_json[0]
+            logger.warning(f"Gemini returned list instead of dict for trait, using first element")
+
         return Trait(**parsed_json)
 
 
@@ -284,6 +301,14 @@ OUTPUT ONLY VALID JSON. No explanations.
     )
 
     parsed_json = json.loads(response.text)
+    logger.debug(f"Gemini spellcasting response type: {type(parsed_json)}, value: {parsed_json}")
+
+    # Handle case where Gemini returns a list instead of dict
+    if isinstance(parsed_json, list):
+        if len(parsed_json) == 0:
+            raise ValueError(f"Gemini returned empty list for spellcasting: {trait_text[:100]}")
+        parsed_json = parsed_json[0]
+        logger.warning(f"Gemini returned list instead of dict for spellcasting, using first element")
 
     # Resolve spell UUIDs if spell_cache provided
     if spell_cache:
