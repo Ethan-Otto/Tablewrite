@@ -37,6 +37,9 @@ class Attack(BaseModel):
     damage: List[DamageFormula]  # Primary + additional damage
     additional_effects: Optional[str] = None  # e.g., "target is grappled (escape DC 16)"
 
+    # NEW: Optional attack save (e.g., Pit Fiend Bite poison save)
+    attack_save: Optional['AttackSave'] = None
+
 
 class Trait(BaseModel):
     """Parsed trait/feature."""

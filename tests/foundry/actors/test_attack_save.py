@@ -1,7 +1,7 @@
 """Tests for AttackSave model."""
 
 import pytest
-from foundry.actors.models import AttackSave, DamageFormula
+from foundry.actors.models import AttackSave, DamageFormula, Attack
 
 
 class TestAttackSaveModel:
@@ -53,3 +53,39 @@ class TestAttackSaveModel:
 
         with pytest.raises(Exception):  # Pydantic frozen error
             save.dc = 15
+
+
+class TestAttackWithAttackSave:
+    """Tests for Attack model with attack_save field."""
+
+    def test_attack_with_attack_save(self):
+        """Should include optional attack_save field."""
+        attack = Attack(
+            name="Poison Bite",
+            attack_type="melee",
+            attack_bonus=4,
+            reach=5,
+            damage=[DamageFormula(number=1, denomination=6, bonus="+2", type="piercing")],
+            attack_save=AttackSave(
+                ability="con",
+                dc=13,
+                damage=[DamageFormula(number=2, denomination=6, bonus="", type="poison")],
+                on_save="half"
+            )
+        )
+
+        assert attack.attack_save is not None
+        assert attack.attack_save.ability == "con"
+        assert attack.attack_save.dc == 13
+
+    def test_attack_without_attack_save(self):
+        """Should work without attack_save (defaults to None)."""
+        attack = Attack(
+            name="Longsword",
+            attack_type="melee",
+            attack_bonus=5,
+            reach=5,
+            damage=[DamageFormula(number=1, denomination=8, bonus="+3", type="slashing")]
+        )
+
+        assert attack.attack_save is None
