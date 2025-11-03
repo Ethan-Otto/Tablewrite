@@ -114,3 +114,26 @@ def test_get_icon_with_fuzzy_matching():
     # Test no match returns None
     icon = cache.get_icon("nonexistent item")
     assert icon is None
+
+
+def test_get_icon_by_keywords():
+    """Test keyword matching for icon selection."""
+    cache = IconCache()
+    cache._all_icons = [
+        "icons/weapons/swords/sword-steel.webp",
+        "icons/weapons/swords/blade-curved.webp",
+    ]
+    cache._icons_by_category = {"weapons": cache._all_icons[:]}
+    cache._loaded = True
+
+    # Test first keyword matches
+    icon = cache.get_icon_by_keywords(["sword", "blade"], category="weapons")
+    assert icon == "icons/weapons/swords/sword-steel.webp"
+
+    # Test second keyword matches
+    icon = cache.get_icon_by_keywords(["scimitar", "blade"], category="weapons")
+    assert icon == "icons/weapons/swords/blade-curved.webp"
+
+    # Test no match
+    icon = cache.get_icon_by_keywords(["axe", "hammer"], category="weapons")
+    assert icon is None
