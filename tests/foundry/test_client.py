@@ -700,3 +700,10 @@ class TestActorOperations:
 
         assert uuid == "Actor.xyz789"
         mock_post.assert_called_once()
+
+    def test_foundry_client_has_icon_cache(self, mock_client):
+        """Test FoundryClient exposes icon cache."""
+        from src.foundry.icon_cache import IconCache
+
+        assert hasattr(mock_client, 'icons')
+        assert isinstance(mock_client.icons, IconCache)

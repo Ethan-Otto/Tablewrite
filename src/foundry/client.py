@@ -8,6 +8,7 @@ from typing import Literal, Dict, Any, Optional, List
 from .journals import JournalManager
 from .items.manager import ItemManager
 from .actors import ActorManager
+from .icon_cache import IconCache
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +76,8 @@ class FoundryClient:
             api_key=self.api_key,
             client_id=self.client_id
         )
+
+        self.icons = IconCache()
 
         logger.info(f"Initialized FoundryClient for {target} at {self.foundry_url}")
 
