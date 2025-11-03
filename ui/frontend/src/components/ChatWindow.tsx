@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { ChatMessage } from '../lib/types';
 import { Message } from './Message';
 
@@ -6,6 +7,13 @@ interface ChatWindowProps {
 }
 
 export function ChatWindow({ messages }: ChatWindowProps) {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
   return (
     <div className="flex-1 overflow-y-auto bg-[#2d1f15] px-4 py-6">
       <div className="max-w-4xl mx-auto space-y-4">
@@ -16,9 +24,13 @@ export function ChatWindow({ messages }: ChatWindowProps) {
             </p>
           </div>
         ) : (
-          messages.map((msg, idx) => (
-            <Message key={idx} message={msg} />
-          ))
+          <>
+            {messages.map((msg, idx) => (
+              <Message key={idx} message={msg} />
+            ))}
+            {/* Invisible element at the bottom to scroll to */}
+            <div ref={messagesEndRef} />
+          </>
         )}
       </div>
     </div>
