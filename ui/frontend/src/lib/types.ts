@@ -12,6 +12,7 @@ export interface ChatMessage {
   role: ChatRole;
   content: string;
   timestamp: string;
+  scene?: Scene | null;
 }
 
 export interface ChatRequest {
@@ -33,4 +34,5 @@ export interface Scene {
   description: string;
   location_type: string;
   xml_section_id?: string | null;
+  image_url?: string | null;
 }

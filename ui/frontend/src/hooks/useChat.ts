@@ -45,19 +45,14 @@ export function useChat(): UseChatReturn {
       // Call backend API
       const response = await api.chat(request);
 
-      // Add assistant response
+      // Add assistant response with optional scene data
       const assistantMessage: ChatMessage = {
         role: ChatRole.ASSISTANT,
         content: response.message,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        scene: response.scene || null
       };
       setMessages(prev => [...prev, assistantMessage]);
-
-      // If response includes scene data, could handle that here
-      // (Task 12 will add SceneCard component for this)
-      if (response.scene) {
-        console.log('Scene data received:', response.scene);
-      }
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to send message';
