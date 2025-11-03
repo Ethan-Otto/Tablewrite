@@ -12,8 +12,13 @@ logger = logging.getLogger(__name__)
 
 
 def _generate_activity_id() -> str:
-    """Generate a unique 16-character ID for activities."""
-    return secrets.token_urlsafe(12)[:16]
+    """Generate a unique 16-character ID for activities and items.
+
+    FoundryVTT requires exactly 16 alphanumeric characters [a-zA-Z0-9].
+    """
+    import string
+    alphabet = string.ascii_letters + string.digits  # a-zA-Z0-9
+    return ''.join(secrets.choice(alphabet) for _ in range(16))
 
 
 def _base_activity_structure() -> dict:
@@ -229,6 +234,7 @@ def convert_to_foundry(
 
         # Build weapon item (v10+ structure)
         item = {
+            "_id": _generate_activity_id(),
             "name": attack.name,
             "type": "weapon",
             "img": "icons/weapons/swords/scimitar-guard-purple.webp",
@@ -268,6 +274,7 @@ def convert_to_foundry(
     # Convert traits to feat items
     for trait in parsed_actor.traits:
         item = {
+            "_id": _generate_activity_id(),
             "name": trait.name,
             "type": "feat",
             "img": "icons/magic/movement/trail-streak-zigzag-yellow.webp",
@@ -282,6 +289,7 @@ def convert_to_foundry(
     # Convert multiattack to feat item
     if parsed_actor.multiattack:
         item = {
+            "_id": _generate_activity_id(),
             "name": parsed_actor.multiattack.name,
             "type": "feat",
             "img": "icons/magic/movement/trail-streak-zigzag-yellow.webp",
@@ -296,6 +304,7 @@ def convert_to_foundry(
     # Convert spells to spell items (using UUIDs)
     for spell in parsed_actor.spells:
         item = {
+            "_id": _generate_activity_id(),
             "name": spell.name,
             "type": "spell",
             "img": "icons/magic/air/wind-tornado-wall-blue.webp",
@@ -341,6 +350,7 @@ def convert_to_foundry(
 
         # Create Innate Spellcasting feat
         item = {
+            "_id": _generate_activity_id(),
             "name": "Innate Spellcasting",
             "type": "feat",
             "img": "icons/magic/air/wind-tornado-wall-blue.webp",
@@ -355,6 +365,7 @@ def convert_to_foundry(
         # Create spell items for each innate spell
         for spell in innate.spells:
             spell_item = {
+                "_id": _generate_activity_id(),
                 "name": spell.name,
                 "type": "spell",
                 "img": "icons/magic/air/wind-tornado-wall-blue.webp",
