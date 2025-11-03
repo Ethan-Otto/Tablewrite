@@ -3,6 +3,7 @@
 import logging
 import os
 import requests
+from difflib import SequenceMatcher
 from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -126,3 +127,92 @@ class IconCache:
                 if category_path not in self._icons_by_category:
                     self._icons_by_category[category_path] = []
                 self._icons_by_category[category_path].append(path)
+
+    def get_icon(
+        self,
+        search_term: str,
+        category: Optional[str] = None,
+        threshold: float = 0.6
+    ) -> Optional[str]:
+        """
+        Get best matching icon path using fuzzy string matching.
+
+        Args:
+            search_term: Item/attack/trait name to match (e.g., "Scimitar", "Fireball")
+            category: Optional category to narrow search (e.g., "weapons", "magic", "equipment")
+            threshold: Similarity threshold for matching (0.0-1.0, default 0.6)
+
+        Returns:
+            Best matching icon path if found, None otherwise
+
+        Example:
+            >>> cache.get_icon("scimitar", category="weapons")
+            'icons/weapons/swords/scimitar-curved-blue.webp'
+        """
+        if not self._loaded:
+            logger.warning("IconCache.get_icon() called before load()")
+            return None
+
+        # Normalize search term
+        search_term = search_term.lower().replace(" ", "-")
+
+        # Determine search pool
+        if category and category in self._icons_by_category:
+            search_pool = self._icons_by_category[category]
+        else:
+            search_pool = self._all_icons
+
+        if not search_pool:
+            return None
+
+        # Find best match using fuzzy string matching
+        best_match = None
+        best_score = 0.0
+
+        for icon_path in search_pool:
+            # Extract filename without extension for matching
+            filename = icon_path.split('/')[-1].rsplit('.', 1)[0]
+
+            # Calculate similarity against full filename
+            similarity = SequenceMatcher(None, search_term, filename).ratio()
+
+            # Also check similarity against individual words in filename (separated by hyphens)
+            words = filename.split('-')
+            for word in words:
+                word_similarity = SequenceMatcher(None, search_term, word).ratio()
+                similarity = max(similarity, word_similarity)
+
+            if similarity > best_score and similarity >= threshold:
+                best_score = similarity
+                best_match = icon_path
+
+        if best_match:
+            logger.debug(f"Matched '{search_term}' → '{best_match}' (score: {best_score:.2f})")
+
+        return best_match
+
+    def get_icon_by_keywords(
+        self,
+        keywords: List[str],
+        category: Optional[str] = None
+    ) -> Optional[str]:
+        """
+        Get icon matching any of the provided keywords.
+
+        Args:
+            keywords: List of keywords to match against (tries in order)
+            category: Optional category to narrow search
+
+        Returns:
+            First matching icon path, or None if no match
+
+        Example:
+            >>> cache.get_icon_by_keywords(["sword", "blade", "weapon"], category="weapons")
+            'icons/weapons/swords/sword-steel.webp'
+        """
+        for keyword in keywords:
+            icon = self.get_icon(keyword, category=category)
+            if icon:
+                return icon
+
+        return None

@@ -77,3 +77,40 @@ def test_categorize_icon_preserves_all_hierarchy_levels():
     assert deep_path in cache._icons_by_category["weapons/swords"]
     assert deep_path in cache._icons_by_category["weapons/swords/longswords"]
     assert deep_path in cache._icons_by_category["weapons/swords/longswords/magical"]
+
+
+def test_get_icon_with_fuzzy_matching():
+    """Test fuzzy matching for icon selection with hierarchical categories."""
+    cache = IconCache()
+    cache._all_icons = [
+        "icons/weapons/swords/scimitar-curved-blue.webp",
+        "icons/weapons/axes/axe-battle-worn.webp",
+        "icons/magic/fire/fireball-explosion.webp"
+    ]
+    cache._icons_by_category = {
+        "weapons": [
+            "icons/weapons/swords/scimitar-curved-blue.webp",
+            "icons/weapons/axes/axe-battle-worn.webp"
+        ],
+        "weapons/swords": ["icons/weapons/swords/scimitar-curved-blue.webp"],
+        "weapons/axes": ["icons/weapons/axes/axe-battle-worn.webp"],
+        "magic": ["icons/magic/fire/fireball-explosion.webp"],
+        "magic/fire": ["icons/magic/fire/fireball-explosion.webp"]
+    }
+    cache._loaded = True
+
+    # Test top-level category match
+    icon = cache.get_icon("scimitar", category="weapons")
+    assert icon == "icons/weapons/swords/scimitar-curved-blue.webp"
+
+    # Test subcategory match (more specific)
+    icon = cache.get_icon("scimitar", category="weapons/swords")
+    assert icon == "icons/weapons/swords/scimitar-curved-blue.webp"
+
+    # Test fuzzy match without category
+    icon = cache.get_icon("fire ball")
+    assert icon == "icons/magic/fire/fireball-explosion.webp"
+
+    # Test no match returns None
+    icon = cache.get_icon("nonexistent item")
+    assert icon is None
