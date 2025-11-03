@@ -91,6 +91,25 @@ class InnateSpellcasting(BaseModel):
     model_config = ConfigDict(frozen=True)
 
 
+class AttackSave(BaseModel):
+    """A saving throw associated with an attack."""
+
+    ability: str  # "con", "dex", "wis", etc.
+    dc: int       # Difficulty Class
+
+    # Damage on failed save
+    damage: List[DamageFormula] = Field(default_factory=list)
+    on_save: Literal["half", "none", "full"] = "none"  # Damage on successful save
+
+    # For ongoing effects (e.g., poison damage each turn)
+    ongoing_damage: Optional[List[DamageFormula]] = None
+    duration_rounds: Optional[int] = None
+
+    effect_description: Optional[str] = None  # e.g., "poisoned condition"
+
+    model_config = ConfigDict(frozen=True)
+
+
 class SkillProficiency(BaseModel):
     """Skill proficiency entry."""
 
