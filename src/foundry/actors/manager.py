@@ -401,10 +401,14 @@ class ActorManager:
 
     def get_all_actors(self) -> List[Dict[str, Any]]:
         """
-        Get all actors in the world using search with wildcard.
+        Get all world actors using multiple search queries.
+
+        Note: The search API requires a non-empty query to return world actors.
+        Empty queries only return compendium actors. This method searches with
+        common letters and deduplicates by UUID.
 
         Returns:
-            List of actor data dictionaries
+            List of world actor data dictionaries (Actor.* UUIDs only)
 
         Raises:
             RuntimeError: If request fails
@@ -416,27 +420,38 @@ class ActorManager:
             "Content-Type": "application/json"
         }
 
-        # Search with common letter to get all actors (API has 200 result limit)
-        params = {
-            "clientId": self.client_id,
-            "filter": "Actor",
-            "query": ""  # Empty query to get all actors
-        }
+        all_actors = {}  # Use dict to deduplicate by UUID
+
+        # Search with common characters to find all actors
+        # API has 200 result limit, so we need multiple queries
+        search_queries = ["a", "e", "i", "o", "u", "t", "n", "s", "r", "h"]
 
         try:
-            response = requests.get(url, params=params, headers=headers, timeout=30)
+            for query in search_queries:
+                params = {
+                    "clientId": self.client_id,
+                    "filter": "Actor",
+                    "query": query
+                }
 
-            if response.status_code != 200:
-                logger.error(f"Get all actors failed: {response.status_code}")
-                raise RuntimeError(f"Failed to get all actors: {response.status_code}")
+                response = requests.get(url, params=params, headers=headers, timeout=30)
 
-            results = response.json()
+                if response.status_code != 200:
+                    logger.warning(f"Search for '{query}' failed: {response.status_code}")
+                    continue
 
-            # Handle both list and dict response formats
-            actors = results if isinstance(results, list) else results.get("results", [])
+                results = response.json()
+                actors = results if isinstance(results, list) else results.get("results", [])
 
-            logger.info(f"Retrieved {len(actors)} actors from world")
-            return actors
+                # Filter to only world actors and deduplicate
+                for actor in actors:
+                    uuid = actor.get("uuid", actor.get("_id", ""))
+                    if uuid.startswith("Actor."):
+                        all_actors[uuid] = actor
+
+            actor_list = list(all_actors.values())
+            logger.info(f"Retrieved {len(actor_list)} unique world actors")
+            return actor_list
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Get all actors request failed: {e}")
