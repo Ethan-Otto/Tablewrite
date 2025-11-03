@@ -69,7 +69,10 @@ class TestMultiattackConversion:
             )
         )
 
-        result = convert_to_foundry(actor)
+        result, spell_uuids = convert_to_foundry(actor)
+
+        # Check spell UUIDs (should be empty)
+        assert spell_uuids == []
 
         # Should have multiattack feat in items
         feats = [item for item in result["items"] if item["type"] == "feat"]

@@ -33,13 +33,16 @@ class TestConverter:
             }
         )
 
-        result = convert_to_foundry(goblin)
+        result, spell_uuids = convert_to_foundry(goblin)
 
         # Check top-level structure
         assert result["name"] == "Goblin"
         assert result["type"] == "npc"
         assert "system" in result
         assert "items" in result
+
+        # Check spell UUIDs (should be empty for basic actor)
+        assert spell_uuids == []
 
         # Check abilities
         assert result["system"]["abilities"]["dex"]["value"] == 14
@@ -72,8 +75,11 @@ class TestConverter:
             ]
         )
 
-        result = convert_to_foundry(goblin)
+        result, spell_uuids = convert_to_foundry(goblin)
         weapon = result["items"][0]
+
+        # Check spell UUIDs (should be empty)
+        assert spell_uuids == []
 
         # NEW v10+ structure checks
         assert "activities" in weapon["system"]
@@ -112,7 +118,10 @@ class TestConverter:
             ]
         )
 
-        result = convert_to_foundry(goblin)
+        result, spell_uuids = convert_to_foundry(goblin)
+
+        # Check spell UUIDs (should be empty)
+        assert spell_uuids == []
 
         # Check items array has feat
         assert len(result["items"]) == 1
@@ -246,8 +255,11 @@ class TestWeaponActivities:
             ]
         )
 
-        result = convert_to_foundry(actor)
+        result, spell_uuids = convert_to_foundry(actor)
         weapon = result["items"][0]
+
+        # Check spell UUIDs (should be empty)
+        assert spell_uuids == []
 
         # Should have 2 activities: attack + save
         assert len(weapon["system"]["activities"]) == 2
@@ -282,8 +294,11 @@ class TestWeaponActivities:
             ]
         )
 
-        result = convert_to_foundry(pit_fiend)
+        result, spell_uuids = convert_to_foundry(pit_fiend)
         bite = result["items"][0]
+
+        # Check spell UUIDs (should be empty)
+        assert spell_uuids == []
 
         # Should have 3 activities: attack + save + ongoing damage
         assert len(bite["system"]["activities"]) == 3

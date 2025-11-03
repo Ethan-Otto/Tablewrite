@@ -137,8 +137,8 @@ class TestPitFiendIntegration:
         )
 
     def test_pit_fiend_has_all_items(self, pit_fiend_data, spell_cache):
-        """Pit Fiend should have 13 items like official FoundryVTT."""
-        result = convert_to_foundry(pit_fiend_data, spell_cache=spell_cache)
+        """Pit Fiend conversion should have weapons/feats in payload, spells in UUIDs."""
+        result, spell_uuids = convert_to_foundry(pit_fiend_data, spell_cache=spell_cache)
 
         items = result["items"]
 
@@ -174,33 +174,30 @@ class TestPitFiendIntegration:
         assert any(f["name"] == "Magic Weapons" for f in feats)
         assert any("Innate Spellcasting" in f["name"] for f in feats)
 
-        # Should have 4 spells
-        assert len(spells) == 4
-        assert any(s["name"] == "Fireball" for s in spells)
-        assert any(s["name"] == "Hold Monster" for s in spells)
-        assert any(s["name"] == "Wall of Fire" for s in spells)
-        assert any(s["name"] == "Detect Magic" for s in spells)
+        # NEW behavior: Spells NOT in payload, returned as UUIDs
+        assert len(spells) == 0, "Spells should NOT be in CREATE payload"
 
-        # Total should be 13 items (4 weapons + 5 feats + 4 spells)
-        assert len(items) == 13
+        # Should have 4 spell UUIDs
+        assert len(spell_uuids) == 4
+        # All should be compendium references
+        assert all(uuid.startswith("Compendium.") for uuid in spell_uuids)
 
-        # Verify spell UUIDs were looked up
-        fireball = next(s for s in spells if s["name"] == "Fireball")
-        assert "uuid" in fireball
-        assert fireball["uuid"].startswith("Compendium.")
+        # Payload should have 9 items (4 weapons + 5 feats, NO spells)
+        assert len(items) == 9
 
     def test_pit_fiend_round_trip(self, pit_fiend_data, spell_cache):
-        """Full upload/download round-trip with all features."""
+        """Full upload/download round-trip with spells added via /give."""
         client = FoundryClient(target="local")
 
-        # Convert and upload
-        foundry_json = convert_to_foundry(pit_fiend_data, spell_cache=spell_cache)
-        actor_uuid = client.actors.create_actor(foundry_json)
+        # Convert and upload (with spell UUIDs for /give)
+        foundry_json, spell_uuids = convert_to_foundry(pit_fiend_data, spell_cache=spell_cache)
+        actor_uuid = client.actors.create_actor(foundry_json, spell_uuids=spell_uuids)
 
         # Download and verify
         downloaded = client.actors.get_actor(actor_uuid)
 
         assert downloaded["name"] == "Pit Fiend"
+        # Should have 13 items total (9 from payload + 4 spells added via /give)
         assert len(downloaded["items"]) == 13
 
         # Verify all weapons are present (not just count)

@@ -63,7 +63,7 @@ class TestActorRoundTrip:
         4. Verify all critical fields are preserved
         """
         # Step 1: Convert to FoundryVTT format
-        foundry_json = convert_to_foundry(goblin_data)
+        foundry_json, spell_uuids = convert_to_foundry(goblin_data)
 
         # Verify conversion produced valid structure
         assert foundry_json["name"] == "Goblin"
@@ -106,18 +106,20 @@ class TestActorRoundTrip:
         - Saving throw proficiencies
         """
         # Step 1: Convert to FoundryVTT format
-        foundry_json = convert_to_foundry(mage_data)
+        # Use backward compatibility mode since mage_data has fake spell UUIDs
+        foundry_json, spell_uuids = convert_to_foundry(mage_data, include_spells_in_payload=True)
 
         # Verify conversion
         assert foundry_json["name"] == "Mage"
         assert foundry_json["type"] == "npc"
+        # Backward compat mode: Spells IN payload
         assert len(foundry_json["items"]) == 17  # 1 attack + 16 spells
 
         # Verify spellcasting attributes
         assert foundry_json["system"]["attributes"]["spellcasting"] == "int"
         assert foundry_json["system"]["attributes"]["spelldc"] == 14
 
-        # Step 2: Upload to FoundryVTT
+        # Step 2: Upload to FoundryVTT (no spell_uuids needed - already in payload)
         actor_uuid = foundry_client.actors.create_actor(foundry_json)
         assert actor_uuid is not None
         assert actor_uuid.startswith("Actor.")
@@ -139,7 +141,7 @@ class TestActorRoundTrip:
 
     def test_conversion_preserves_all_attacks(self, goblin_data):
         """Verify attacks are correctly converted to weapon items with activities."""
-        foundry_json = convert_to_foundry(goblin_data)
+        foundry_json, spell_uuids = convert_to_foundry(goblin_data)
 
         weapons = [item for item in foundry_json["items"] if item["type"] == "weapon"]
         assert len(weapons) == 2
@@ -171,7 +173,7 @@ class TestActorRoundTrip:
 
     def test_conversion_preserves_all_traits(self, goblin_data):
         """Verify traits are correctly converted to feat items."""
-        foundry_json = convert_to_foundry(goblin_data)
+        foundry_json, spell_uuids = convert_to_foundry(goblin_data)
 
         feats = [item for item in foundry_json["items"] if item["type"] == "feat"]
         assert len(feats) == 1
@@ -182,26 +184,21 @@ class TestActorRoundTrip:
         assert "Disengage or Hide" in nimble_escape["system"]["description"]["value"]
 
     def test_conversion_preserves_spells(self, mage_data):
-        """Verify spells are correctly converted with UUIDs."""
-        foundry_json = convert_to_foundry(mage_data)
+        """Verify spells are correctly returned as UUIDs (not in payload)."""
+        foundry_json, spell_uuids = convert_to_foundry(mage_data)
 
+        # NEW behavior: Spells NOT in payload
         spells = [item for item in foundry_json["items"] if item["type"] == "spell"]
-        assert len(spells) == 16
+        assert len(spells) == 0, "Spells should NOT be in CREATE payload"
 
-        # Check cantrips
-        cantrips = [s for s in spells if s["system"]["level"] == 0]
-        assert len(cantrips) == 4
-
-        # Check spell has UUID
-        fireball = next(s for s in spells if s["name"] == "Fireball")
-        assert "uuid" in fireball
-        assert fireball["uuid"].startswith("Compendium.")
-        assert fireball["system"]["level"] == 3
-        assert fireball["system"]["school"] == "evo"
+        # Spells should be in spell_uuids
+        assert len(spell_uuids) == 16
+        # All should be compendium UUIDs
+        assert all(uuid.startswith("Compendium.") for uuid in spell_uuids)
 
     def test_conversion_structure_matches_foundry_format(self, goblin_data):
         """Verify converted JSON matches FoundryVTT expected structure."""
-        foundry_json = convert_to_foundry(goblin_data)
+        foundry_json, spell_uuids = convert_to_foundry(goblin_data)
 
         # Check required top-level fields
         assert "name" in foundry_json
@@ -247,7 +244,7 @@ class TestActorRoundTrip:
             )]
         )
 
-        foundry_json = convert_to_foundry(goblin)
+        foundry_json, spell_uuids = convert_to_foundry(goblin)
         actor_uuid = foundry_client.actors.create_actor(foundry_json)
 
         # Download and verify
@@ -289,7 +286,7 @@ class TestActorRoundTrip:
             )]
         )
 
-        foundry_json = convert_to_foundry(pit_fiend)
+        foundry_json, spell_uuids = convert_to_foundry(pit_fiend)
         actor_uuid = foundry_client.actors.create_actor(foundry_json)
 
         downloaded = foundry_client.actors.get_actor(actor_uuid)

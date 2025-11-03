@@ -136,30 +136,36 @@ def _create_ongoing_damage_activity(save: AttackSave, activity_id: str) -> dict:
 
 def convert_to_foundry(
     parsed_actor: ParsedActorData,
-    spell_cache: Optional['SpellCache'] = None
-) -> Dict[str, Any]:
+    spell_cache: Optional['SpellCache'] = None,
+    include_spells_in_payload: bool = False
+) -> tuple[Dict[str, Any], list[str]]:
     """
     Convert ParsedActorData to FoundryVTT actor JSON structure.
 
     This function transforms our parsed actor data into the complete JSON
     structure expected by FoundryVTT's D&D 5e system, including:
     - Actor system data (abilities, defenses, movement, senses)
-    - Items array (attacks as weapon items, traits as feat items, spells)
-    - Activities within items (attack rolls, damage, saves)
+    - Items array (attacks as weapon items, traits as feat items)
+    - Spell UUIDs to be added via /give endpoint (returned separately)
 
     Args:
         parsed_actor: Fully parsed actor data with attacks, traits, spells
+        spell_cache: Optional spell cache for UUID lookups
+        include_spells_in_payload: If True, include spell stubs in CREATE payload
+            (not recommended - spells will lack full compendium data)
 
     Returns:
-        Dict containing FoundryVTT actor JSON structure
+        Tuple of (actor_json, spell_uuids):
+            - actor_json: Dict containing FoundryVTT actor JSON structure
+            - spell_uuids: List of compendium spell UUIDs to add via /give
 
     Example:
         >>> goblin_data = ParsedActorData(...)
-        >>> foundry_json = convert_to_foundry(goblin_data)
-        >>> foundry_json['name']
+        >>> actor_json, spell_uuids = convert_to_foundry(goblin_data, spell_cache)
+        >>> actor_json['name']
         'Goblin'
-        >>> foundry_json['system']['abilities']['dex']['value']
-        14
+        >>> spell_uuids
+        ['Compendium.dnd5e.spells.ztgcdrWPshKRpFd0']
     """
     logger.info(f"Converting actor '{parsed_actor.name}' to FoundryVTT format...")
 
@@ -213,6 +219,7 @@ def convert_to_foundry(
 
     # Build items array (attacks, traits, spells)
     items = []
+    spell_uuids = []  # Collect spell UUIDs to add via /give
 
     # Convert attacks to weapon items (NEW v10+ structure with activities)
     for attack in parsed_actor.attacks:
@@ -301,28 +308,35 @@ def convert_to_foundry(
         }
         items.append(item)
 
-    # Convert spells to spell items (using UUIDs)
+    # Convert spells - collect UUIDs for /give endpoint
     for spell in parsed_actor.spells:
-        item = {
-            "_id": _generate_activity_id(),
-            "name": spell.name,
-            "type": "spell",
-            "img": "icons/magic/air/wind-tornado-wall-blue.webp",
-            "system": {
-                "level": spell.level,
-                "school": spell.school or ""
-            }
-        }
-
-        # Prefer spell cache for UUID lookup
+        # Get UUID from cache or spell object
+        spell_uuid = None
         if spell_cache:
             spell_uuid = spell_cache.get_spell_uuid(spell.name)
+        elif spell.uuid:
+            spell_uuid = spell.uuid
+
+        if spell_uuid:
+            spell_uuids.append(spell_uuid)
+        else:
+            logger.warning(f"No UUID found for spell '{spell.name}', skipping")
+
+        # Optionally include stub in payload (not recommended)
+        if include_spells_in_payload:
+            item = {
+                "_id": _generate_activity_id(),
+                "name": spell.name,
+                "type": "spell",
+                "img": "icons/magic/air/wind-tornado-wall-blue.webp",
+                "system": {
+                    "level": spell.level,
+                    "school": spell.school or ""
+                }
+            }
             if spell_uuid:
                 item["uuid"] = spell_uuid
-        elif spell.uuid:
-            item["uuid"] = spell.uuid
-
-        items.append(item)
+            items.append(item)
 
     # Convert innate spellcasting to feat + spell items
     if parsed_actor.innate_spellcasting:
@@ -362,44 +376,51 @@ def convert_to_foundry(
         }
         items.append(item)
 
-        # Create spell items for each innate spell
+        # Collect UUIDs for innate spells (to add via /give)
         for spell in innate.spells:
-            spell_item = {
-                "_id": _generate_activity_id(),
-                "name": spell.name,
-                "type": "spell",
-                "img": "icons/magic/air/wind-tornado-wall-blue.webp",
-                "system": {
-                    "level": 0,
-                    "school": ""
-                }
-            }
-
-            # Look up UUID and details from spell cache if available
+            # Look up UUID from spell cache
+            spell_uuid = None
             if spell_cache:
                 spell_uuid = spell_cache.get_spell_uuid(spell.name)
+
+            if spell_uuid:
+                spell_uuids.append(spell_uuid)
+            else:
+                logger.warning(f"No UUID found for innate spell '{spell.name}', skipping")
+
+            # Optionally include stub in payload (not recommended)
+            if include_spells_in_payload:
+                spell_item = {
+                    "_id": _generate_activity_id(),
+                    "name": spell.name,
+                    "type": "spell",
+                    "img": "icons/magic/air/wind-tornado-wall-blue.webp",
+                    "system": {
+                        "level": 0,
+                        "school": ""
+                    }
+                }
+
                 if spell_uuid:
                     spell_item["uuid"] = spell_uuid
 
-                # Get spell details
-                spell_data = spell_cache.get_spell_data(spell.name)
-                if spell_data:
-                    # Handle both search results and full item data
-                    # Full data from /get endpoint: {data: {system: {...}}}
-                    # Search results: {system: {...}} (but usually empty)
-                    system_data = spell_data.get("data", {}).get("system") or spell_data.get("system", {})
-                    spell_item["system"]["level"] = system_data.get("level", 0)
-                    spell_item["system"]["school"] = system_data.get("school", "")
+                # Get spell details from cache
+                if spell_cache:
+                    spell_data = spell_cache.get_spell_data(spell.name)
+                    if spell_data:
+                        system_data = spell_data.get("data", {}).get("system") or spell_data.get("system", {})
+                        spell_item["system"]["level"] = system_data.get("level", 0)
+                        spell_item["system"]["school"] = system_data.get("school", "")
 
-            # Add uses if limited
-            if spell.uses:
-                spell_item["system"]["uses"] = {
-                    "value": spell.uses,
-                    "max": spell.uses,
-                    "per": "day"
-                }
+                # Add uses if limited
+                if spell.uses:
+                    spell_item["system"]["uses"] = {
+                        "value": spell.uses,
+                        "max": spell.uses,
+                        "per": "day"
+                    }
 
-            items.append(spell_item)
+                items.append(spell_item)
 
     # Build final actor structure
     actor = {
@@ -412,5 +433,5 @@ def convert_to_foundry(
         "flags": {}
     }
 
-    logger.info(f"✓ Converted actor '{parsed_actor.name}' ({len(items)} items)")
-    return actor
+    logger.info(f"✓ Converted actor '{parsed_actor.name}' ({len(items)} items, {len(spell_uuids)} spells via /give)")
+    return actor, spell_uuids

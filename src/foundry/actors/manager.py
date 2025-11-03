@@ -240,16 +240,19 @@ class ActorManager:
             logger.error(f"NPC creation request failed: {e}")
             raise RuntimeError(f"Failed to create NPC: {e}") from e
 
-    def create_actor(self, actor_data: Dict[str, Any]) -> str:
+    def create_actor(self, actor_data: Dict[str, Any], spell_uuids: list[str] = None) -> str:
         """
         Create an Actor from pre-built FoundryVTT JSON format.
 
         This method accepts a complete FoundryVTT actor JSON structure
         (as produced by convert_to_foundry) and uploads it to FoundryVTT.
+        Optionally adds compendium spells via /give endpoint after creation.
 
         Args:
             actor_data: Complete FoundryVTT actor JSON with 'name', 'type',
                        'system', 'items', etc.
+            spell_uuids: Optional list of compendium spell UUIDs to add via /give
+                        (recommended for full spell data)
 
         Returns:
             Actor UUID
@@ -284,6 +287,12 @@ class ActorManager:
             result = response.json()
             uuid = result.get("uuid")
             logger.info(f"Created actor: {actor_name} (UUID: {uuid})")
+
+            # Add compendium spells via /give if provided
+            if spell_uuids:
+                logger.info(f"Adding {len(spell_uuids)} compendium spells via /give...")
+                self.add_compendium_items(uuid, spell_uuids)
+
             return uuid
 
         except requests.exceptions.RequestException as e:
@@ -333,3 +342,59 @@ class ActorManager:
         except requests.exceptions.RequestException as e:
             logger.error(f"Actor retrieval request failed: {e}")
             raise RuntimeError(f"Failed to retrieve actor: {e}") from e
+
+    def add_compendium_items(self, actor_uuid: str, item_uuids: list[str]) -> None:
+        """
+        Add compendium items to an actor using the /give endpoint.
+
+        This method adds items from compendiums (typically spells) to an existing
+        actor. Items added this way retain full compendium data including
+        descriptions, activities, and damage formulas.
+
+        Args:
+            actor_uuid: UUID of the actor to add items to
+            item_uuids: List of compendium item UUIDs to add
+
+        Raises:
+            RuntimeError: If any item addition fails
+        """
+        url = f"{self.relay_url}/give"
+
+        headers = {
+            "x-api-key": self.api_key,
+            "Content-Type": "application/json"
+        }
+
+        failed_items = []
+
+        for item_uuid in item_uuids:
+            payload = {
+                "toUuid": actor_uuid,
+                "itemUuid": item_uuid,
+                "selected": False
+            }
+
+            try:
+                response = requests.post(
+                    f"{url}?clientId={self.client_id}",
+                    json=payload,
+                    headers=headers,
+                    timeout=30
+                )
+
+                if response.status_code != 200:
+                    logger.warning(f"Failed to add item {item_uuid}: {response.status_code}")
+                    failed_items.append(item_uuid)
+                else:
+                    logger.debug(f"Added compendium item: {item_uuid}")
+
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"Failed to add item {item_uuid}: {e}")
+                failed_items.append(item_uuid)
+
+        if failed_items:
+            raise RuntimeError(
+                f"Failed to add {len(failed_items)}/{len(item_uuids)} compendium items"
+            )
+
+        logger.info(f"Successfully added {len(item_uuids)} compendium items to actor {actor_uuid}")

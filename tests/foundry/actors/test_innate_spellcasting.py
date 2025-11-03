@@ -91,7 +91,7 @@ class TestInnateSpellcastingConversion:
             )
         )
 
-        result = convert_to_foundry(actor)
+        result, spell_uuids = convert_to_foundry(actor)
 
         # Should have Innate Spellcasting feat
         feats = [item for item in result["items"] if item["type"] == "feat"]
@@ -119,9 +119,9 @@ class TestInnateSpellcastingConversion:
             )
         )
 
-        result = convert_to_foundry(actor)
+        result, spell_uuids = convert_to_foundry(actor, include_spells_in_payload=True)
 
-        # Should have spell items
+        # Should have spell items in payload
         spells = [item for item in result["items"] if item["type"] == "spell"]
 
         assert len(spells) >= 2
@@ -169,14 +169,22 @@ class TestInnateSpellcastingConversion:
         )
 
         # Convert with spell cache
-        result = convert_to_foundry(actor, spell_cache=spell_cache)
+        result, spell_uuids = convert_to_foundry(actor, spell_cache=spell_cache)
 
+        # NEW behavior: spells NOT in payload, returned as UUIDs
         spells = [item for item in result["items"] if item["type"] == "spell"]
-        fireball = next((s for s in spells if s["name"] == "Fireball"), None)
+        assert len(spells) == 0, "Spells should NOT be in payload by default"
+
+        # Check spell UUIDs returned separately
+        assert len(spell_uuids) == 1
+        fireball_uuid = spell_uuids[0]
+        assert fireball_uuid.startswith("Compendium.")
+
+        # Also test backward compatibility with include_spells_in_payload=True
+        result_compat, _ = convert_to_foundry(actor, spell_cache=spell_cache, include_spells_in_payload=True)
+        spells_compat = [item for item in result_compat["items"] if item["type"] == "spell"]
+        fireball = next((s for s in spells_compat if s["name"] == "Fireball"), None)
 
         assert fireball is not None
-        # Should have UUID from compendium
-        assert "uuid" in fireball
-        assert fireball["uuid"].startswith("Compendium.")
         # Should have proper level (Fireball is 3rd level)
         assert fireball["system"]["level"] == 3
