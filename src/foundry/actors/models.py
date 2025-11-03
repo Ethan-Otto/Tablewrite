@@ -46,7 +46,7 @@ class Trait(BaseModel):
 
     name: str
     description: str
-    activation: Literal["action", "bonus", "reaction", "passive"] = "passive"
+    activation: Literal["action", "bonus", "reaction", "passive", "legendary"] = "passive"
     uses: Optional[int] = None  # Limited uses per day/rest
     recharge: Optional[str] = None  # e.g., "5-6" for recharge on 5 or 6
     saving_throw: Optional[SavingThrow] = None
@@ -97,8 +97,8 @@ class InnateSpellcasting(BaseModel):
 class AttackSave(BaseModel):
     """A saving throw associated with an attack."""
 
-    ability: str  # "con", "dex", "wis", etc.
-    dc: int       # Difficulty Class
+    ability: Optional[str] = None  # "con", "dex", "wis", etc. (None for automatic effects)
+    dc: Optional[int] = None       # Difficulty Class (None for automatic effects)
 
     # Damage on failed save
     damage: List[DamageFormula] = Field(default_factory=list)

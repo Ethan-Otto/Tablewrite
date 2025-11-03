@@ -194,10 +194,52 @@ def convert_to_foundry(
         }
     }
 
+    # Add senses
+    senses = {}
+    if parsed_actor.darkvision:
+        senses["darkvision"] = parsed_actor.darkvision
+    if parsed_actor.blindsight:
+        senses["blindsight"] = parsed_actor.blindsight
+    if parsed_actor.tremorsense:
+        senses["tremorsense"] = parsed_actor.tremorsense
+    if parsed_actor.truesight:
+        senses["truesight"] = parsed_actor.truesight
+    if senses:
+        attributes["senses"] = senses
+
     # Add spellcasting info if present
     if parsed_actor.spellcasting_ability:
         attributes["spellcasting"] = parsed_actor.spellcasting_ability
         attributes["spelldc"] = parsed_actor.spell_save_dc or 10
+
+    # Build skills
+    # FoundryVTT skill abbreviation mapping
+    skill_abbrev_map = {
+        "acrobatics": "acr",
+        "animal handling": "ani",
+        "arcana": "arc",
+        "athletics": "ath",
+        "deception": "dec",
+        "history": "his",
+        "insight": "ins",
+        "intimidation": "itm",
+        "investigation": "inv",
+        "medicine": "med",
+        "nature": "nat",
+        "perception": "prc",
+        "performance": "prf",
+        "persuasion": "per",
+        "religion": "rel",
+        "sleight of hand": "slt",
+        "stealth": "ste",
+        "survival": "sur"
+    }
+
+    skills = {}
+    for skill_prof in parsed_actor.skill_proficiencies:
+        skill_key = skill_abbrev_map.get(skill_prof.skill.lower())
+        if skill_key:
+            skills[skill_key] = {"value": skill_prof.proficiency_level}
 
     # Build details (simplified like create_creature_actor)
     details = {
@@ -209,12 +251,24 @@ def convert_to_foundry(
         "alignment": parsed_actor.alignment or ""
     }
 
+    # Build traits (damage modifiers and condition immunities)
+    traits_dict = {}
+    if parsed_actor.damage_resistances:
+        traits_dict["dr"] = {"value": parsed_actor.damage_resistances.types}
+    if parsed_actor.damage_immunities:
+        traits_dict["di"] = {"value": parsed_actor.damage_immunities.types}
+    if parsed_actor.damage_vulnerabilities:
+        traits_dict["dv"] = {"value": parsed_actor.damage_vulnerabilities.types}
+    if parsed_actor.condition_immunities:
+        traits_dict["ci"] = {"value": parsed_actor.condition_immunities}
+
     # Build system object (minimal like create_creature_actor)
     system = {
         "abilities": abilities,
         "attributes": attributes,
         "details": details,
-        "traits": {}  # Empty traits dict for schema compatibility
+        "skills": skills,
+        "traits": traits_dict
     }
 
     # Build items array (attacks, traits, spells)
@@ -280,6 +334,25 @@ def convert_to_foundry(
 
     # Convert traits to feat items
     for trait in parsed_actor.traits:
+        # Create activity for non-passive traits
+        activities = {}
+        if trait.activation != "passive":
+            activity_id = _generate_activity_id()
+            activity = _base_activity_structure()
+            activity.update({
+                "type": "utility",
+                "_id": activity_id,
+                "sort": 0,
+                "name": "",
+                "activation": {
+                    "type": trait.activation,
+                    "value": None,
+                    "override": False,
+                    "condition": ""
+                }
+            })
+            activities[activity_id] = activity
+
         item = {
             "_id": _generate_activity_id(),
             "name": trait.name,
@@ -287,7 +360,7 @@ def convert_to_foundry(
             "img": "icons/magic/movement/trail-streak-zigzag-yellow.webp",
             "system": {
                 "description": {"value": trait.description},
-                "activation": {"type": trait.activation},
+                "activities": activities,
                 "uses": {"value": trait.uses, "max": trait.uses} if trait.uses else {}
             }
         }
@@ -295,6 +368,22 @@ def convert_to_foundry(
 
     # Convert multiattack to feat item
     if parsed_actor.multiattack:
+        # Create activity for multiattack
+        activity_id = _generate_activity_id()
+        activity = _base_activity_structure()
+        activity.update({
+            "type": "utility",
+            "_id": activity_id,
+            "sort": 0,
+            "name": "",
+            "activation": {
+                "type": parsed_actor.multiattack.activation,
+                "value": None,
+                "override": False,
+                "condition": ""
+            }
+        })
+
         item = {
             "_id": _generate_activity_id(),
             "name": parsed_actor.multiattack.name,
@@ -302,7 +391,7 @@ def convert_to_foundry(
             "img": "icons/magic/movement/trail-streak-zigzag-yellow.webp",
             "system": {
                 "description": {"value": parsed_actor.multiattack.description},
-                "activation": {"type": parsed_actor.multiattack.activation},
+                "activities": {activity_id: activity},
                 "uses": {}
             }
         }

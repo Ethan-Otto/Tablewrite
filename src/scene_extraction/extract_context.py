@@ -18,7 +18,7 @@ GEMINI_API_KEY = os.getenv("GeminiImageAPI")
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
-GEMINI_MODEL_NAME = "gemini-2.0-flash-exp"
+GEMINI_MODEL_NAME = "gemini-2.0-flash"
 
 
 def extract_chapter_context(xml_content: str) -> ChapterContext:

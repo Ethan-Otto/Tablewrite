@@ -25,6 +25,16 @@ class StatBlock(BaseModel):
     senses: Optional[str] = None
     languages: Optional[str] = None
 
+    # Proficiencies (extracted from raw text)
+    saving_throws: Optional[Dict[str, int]] = None  # {"dex": 8, "con": 13, "wis": 10}
+    skills: Optional[Dict[str, int]] = None  # {"perception": 4, "stealth": 5}
+
+    # Damage modifiers
+    damage_resistances: Optional[str] = None  # e.g., "Fire, Cold; Bludgeoning from Nonmagical Attacks"
+    damage_immunities: Optional[str] = None
+    damage_vulnerabilities: Optional[str] = None
+    condition_immunities: Optional[str] = None  # e.g., "Poisoned, Charmed"
+
     # Split into lists for parallel processing
     # Each item is a complete entry (e.g., "Scimitar. Melee Weapon Attack: +4 to hit...")
     traits: List[str] = []  # Special abilities (includes innate spellcasting if present)
