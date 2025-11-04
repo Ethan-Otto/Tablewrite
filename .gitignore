@@ -29,6 +29,7 @@ tests_report.md
 ui/frontend/playwright-report/
 ui/frontend/test-results/
 ui/frontend/.playwright/
+ui/frontend/e2e/  # Debugging/iteration tests
 
 # UI Development Artifacts
 ui/frontend/*.png
