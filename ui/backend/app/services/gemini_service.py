@@ -2,7 +2,7 @@
 
 import sys
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 # Add project src to path
 project_root = Path(__file__).parent.parent.parent.parent.parent
@@ -22,6 +22,80 @@ class GeminiService:
             api_key: Optional API key (loads from .env if not provided)
         """
         self.api = GeminiAPI(model_name="gemini-2.0-flash", api_key=api_key)
+
+    def _schema_to_gemini_tool(self, schema: 'ToolSchema') -> dict:
+        """
+        Convert ToolSchema to Gemini function calling format.
+
+        Args:
+            schema: Tool schema
+
+        Returns:
+            Gemini tool dict
+        """
+        return {
+            "name": schema.name,
+            "description": schema.description,
+            "parameters": schema.parameters
+        }
+
+    async def generate_with_tools(
+        self,
+        message: str,
+        conversation_history: List[Dict[str, str]],
+        tools: List['ToolSchema']
+    ) -> Dict[str, Any]:
+        """
+        Generate response with tool calling support.
+
+        Args:
+            message: User message
+            conversation_history: Previous messages
+            tools: Available tool schemas
+
+        Returns:
+            Response dict with type and content
+        """
+        # Convert tool schemas to Gemini format
+        gemini_functions = [self._schema_to_gemini_tool(t) for t in tools]
+
+        # Build prompt with history
+        prompt = self._build_chat_prompt(message, {}, conversation_history)
+
+        # Generate with function calling
+        if gemini_functions:
+            response = self.api.client.models.generate_content(
+                model=self.api.model_name,
+                contents=prompt,
+                config={
+                    "tools": [{"function_declarations": gemini_functions}]
+                }
+            )
+        else:
+            # No tools available, regular generation
+            response = self.api.generate_content(prompt)
+
+        # Check if response contains function call
+        if hasattr(response, 'candidates') and response.candidates:
+            candidate = response.candidates[0]
+            if hasattr(candidate.content, 'parts') and candidate.content.parts:
+                for part in candidate.content.parts:
+                    if hasattr(part, 'function_call') and part.function_call:
+                        return {
+                            "type": "tool_call",
+                            "tool_call": {
+                                "name": part.function_call.name,
+                                "parameters": dict(part.function_call.args)
+                            },
+                            "text": None
+                        }
+
+        # No tool call - return text response
+        return {
+            "type": "text",
+            "text": response.text,
+            "tool_call": None
+        }
 
     def generate_chat_response(
         self,

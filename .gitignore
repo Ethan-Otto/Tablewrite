@@ -29,7 +29,6 @@ tests_report.md
 ui/frontend/playwright-report/
 ui/frontend/test-results/
 ui/frontend/.playwright/
-ui/frontend/e2e/
 
 # UI Development Artifacts
 ui/frontend/*.png

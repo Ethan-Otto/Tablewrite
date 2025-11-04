@@ -1,7 +1,10 @@
 import type { ChatMessage } from '../lib/types';
 import { ChatRole } from '../lib/types';
 import { SceneCard } from './SceneCard';
+import { ImageCarousel } from './ImageCarousel';
+import { ErrorCard } from './ErrorCard';
 import ReactMarkdown from 'react-markdown';
+import type { ImageData, SceneData } from '../lib/types';
 
 interface MessageProps {
   message: ChatMessage;
@@ -10,6 +13,13 @@ interface MessageProps {
 export function Message({ message }: MessageProps) {
   const isUser = message.role === ChatRole.USER;
   const isSystem = message.role === ChatRole.SYSTEM;
+
+  console.log('[DEBUG] Message component rendering:', {
+    role: message.role,
+    type: message.type,
+    hasData: !!message.data,
+    data: message.data
+  });
 
   if (isSystem) {
     return (
@@ -84,6 +94,36 @@ export function Message({ message }: MessageProps) {
           </div>
         </div>
       </div>
+
+      {/* Loading animation for image generation */}
+      {message.type === 'loading' && (
+        <div className="mt-3 flex items-center gap-2 text-[#7d5a3d]">
+          <div className="flex gap-1">
+            <div className="w-2 h-2 rounded-full bg-[#7d5a3d] animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-2 h-2 rounded-full bg-[#7d5a3d] animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-2 h-2 rounded-full bg-[#7d5a3d] animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          </div>
+        </div>
+      )}
+
+      {/* Tool-specific rendering */}
+      {(() => {
+        console.log('[DEBUG] Checking image condition:', {
+          typeCheck: message.type === 'image',
+          dataCheck: !!message.data,
+          messageType: message.type,
+          messageData: message.data
+        });
+        if (message.type === 'image' && message.data) {
+          console.log('[DEBUG] RENDERING ImageCarousel');
+          return <ImageCarousel data={message.data as ImageData} />;
+        }
+        return null;
+      })()}
+
+      {message.type === 'error' && (
+        <ErrorCard message={message.content} />
+      )}
 
       {/* Render Scene Card if scene data is present */}
       {message.scene && (

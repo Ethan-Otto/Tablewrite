@@ -17,11 +17,22 @@ export interface Scene {
   image_url?: string | null;
 }
 
+export interface ImageData {
+  image_urls: string[];
+  prompt: string;
+}
+
+export interface SceneData {
+  scene: Scene;
+}
+
 export interface ChatMessage {
   role: ChatRole;
   content: string;
   timestamp: string;
-  scene?: Scene | null;
+  type?: string;  // NEW: response type
+  data?: ImageData | SceneData | Record<string, any> | null;  // NEW: tool-specific data
+  scene?: Scene | null;  // Keep for backwards compatibility
 }
 
 export interface ChatRequest {
@@ -32,7 +43,7 @@ export interface ChatRequest {
 
 export interface ChatResponse {
   message: string;
-  type: 'text' | 'scene' | 'list' | 'error';
-  data?: Record<string, any> | null;
+  type: 'text' | 'image' | 'scene' | 'actor' | 'error';
+  data?: ImageData | SceneData | Record<string, any> | null;
   scene?: any | null;
 }

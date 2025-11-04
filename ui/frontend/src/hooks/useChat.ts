@@ -32,6 +32,21 @@ export function useChat(): UseChatReturn {
       timestamp: new Date().toISOString()
     };
     setMessages(prev => [...prev, userMessage]);
+
+    // Check if this might be an image generation request
+    const isImageRequest = content.toLowerCase().match(/\b(generate|create|show|make).*(image|picture|photo|illustration)|image.*of/);
+
+    // Add loading placeholder for image requests
+    if (isImageRequest) {
+      const loadingMessage: ChatMessage = {
+        role: ChatRole.ASSISTANT,
+        content: 'Fabricating....',
+        timestamp: new Date().toISOString(),
+        type: 'loading'
+      };
+      setMessages(prev => [...prev, loadingMessage]);
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -46,26 +61,41 @@ export function useChat(): UseChatReturn {
       // Call backend API
       const response = await api.chat(request);
 
+      console.log('[DEBUG] API response:', response);
+
       // Add assistant response with optional scene data
       const assistantMessage: ChatMessage = {
         role: ChatRole.ASSISTANT,
         content: response.message,
         timestamp: new Date().toISOString(),
-        scene: response.scene || null
+        type: response.type || 'text',
+        data: response.data || null,
+        scene: response.scene || null,  // Keep for backwards compatibility
       };
-      setMessages(prev => [...prev, assistantMessage]);
+      console.log('[DEBUG] Assistant message:', assistantMessage);
+
+      // Remove loading message and add real response
+      setMessages(prev => {
+        // Remove the loading message if it exists
+        const filtered = isImageRequest ? prev.filter(m => m.type !== 'loading') : prev;
+        return [...filtered, assistantMessage];
+      });
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to send message';
       setError(errorMessage);
-      
+
       // Add error message to chat
       const errorChatMessage: ChatMessage = {
         role: ChatRole.SYSTEM,
         content: `Error: ${errorMessage}`,
         timestamp: new Date().toISOString()
       };
-      setMessages(prev => [...prev, errorChatMessage]);
+      setMessages(prev => {
+        // Remove loading message if it exists
+        const filtered = prev.filter(m => m.type !== 'loading');
+        return [...filtered, errorChatMessage];
+      });
     } finally {
       setIsLoading(false);
     }
