@@ -15,6 +15,7 @@ from actors.models import ActorCreationResult
 from foundry.actors.parser import parse_stat_block_parallel
 from foundry.actors.converter import convert_to_foundry
 from foundry.actors.spell_cache import SpellCache
+from foundry.icon_cache import IconCache
 from foundry.client import FoundryClient
 
 logger = logging.getLogger(__name__)
@@ -100,6 +101,7 @@ async def create_actor_from_description(
     model_name: str = "gemini-2.0-flash",
     output_dir_base: str = "output/runs",
     spell_cache: Optional[SpellCache] = None,
+    icon_cache: Optional[IconCache] = None,
     foundry_client: Optional[FoundryClient] = None
 ) -> ActorCreationResult:
     """
@@ -183,7 +185,16 @@ async def create_actor_from_description(
             spell_cache = SpellCache()
             spell_cache.load()
 
-        actor_json, spell_uuids = convert_to_foundry(parsed_actor, spell_cache=spell_cache)
+        if icon_cache is None:
+            logger.info("Loading icon cache...")
+            icon_cache = IconCache()
+            icon_cache.load()
+
+        actor_json, spell_uuids = convert_to_foundry(
+            parsed_actor,
+            spell_cache=spell_cache,
+            icon_cache=icon_cache
+        )
         foundry_json_file = _save_intermediate_file(
             actor_json,
             output_dir / "04_foundry_actor.json",
@@ -233,6 +244,7 @@ def create_actor_from_description_sync(
     model_name: str = "gemini-2.0-flash",
     output_dir_base: str = "output/runs",
     spell_cache: Optional[SpellCache] = None,
+    icon_cache: Optional[IconCache] = None,
     foundry_client: Optional[FoundryClient] = None
 ) -> ActorCreationResult:
     """
@@ -267,6 +279,7 @@ def create_actor_from_description_sync(
             model_name=model_name,
             output_dir_base=output_dir_base,
             spell_cache=spell_cache,
+            icon_cache=icon_cache,
             foundry_client=foundry_client
         )
     )
@@ -278,6 +291,7 @@ async def create_actors_batch(
     model_name: str = "gemini-2.0-flash",
     output_dir_base: str = "output/runs",
     spell_cache: Optional[SpellCache] = None,
+    icon_cache: Optional[IconCache] = None,
     foundry_client: Optional[FoundryClient] = None
 ) -> List[Union[ActorCreationResult, Exception]]:
     """
@@ -340,6 +354,11 @@ async def create_actors_batch(
         spell_cache = SpellCache()
         spell_cache.load()
 
+    if icon_cache is None:
+        logger.info("Loading icon cache for batch processing...")
+        icon_cache = IconCache()
+        icon_cache.load()
+
     if foundry_client is None:
         logger.info("Creating FoundryVTT client for batch processing...")
         foundry_client = FoundryClient(
@@ -357,6 +376,7 @@ async def create_actors_batch(
             model_name=model_name,
             output_dir_base=output_dir_base,
             spell_cache=spell_cache,
+            icon_cache=icon_cache,
             foundry_client=foundry_client
         )
         tasks.append(task)
@@ -378,6 +398,7 @@ def create_actors_batch_sync(
     model_name: str = "gemini-2.0-flash",
     output_dir_base: str = "output/runs",
     spell_cache: Optional[SpellCache] = None,
+    icon_cache: Optional[IconCache] = None,
     foundry_client: Optional[FoundryClient] = None
 ) -> List[Union[ActorCreationResult, Exception]]:
     """
@@ -392,6 +413,7 @@ def create_actors_batch_sync(
             model_name=model_name,
             output_dir_base=output_dir_base,
             spell_cache=spell_cache,
+            icon_cache=icon_cache,
             foundry_client=foundry_client
         )
     )
