@@ -1,12 +1,13 @@
 """Gemini-powered parser for converting raw D&D 5e stat block text to StatBlock."""
 
+import asyncio
 import json
 import logging
 import os
 from pathlib import Path
 from typing import Optional
 
-import google.generativeai as genai
+from google import genai
 from dotenv import load_dotenv
 
 from actors.models import StatBlock
@@ -15,8 +16,18 @@ from actors.models import StatBlock
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 load_dotenv(PROJECT_ROOT / ".env")
 
-# Configure Gemini
-genai.configure(api_key=os.getenv("GeminiImageAPI"))
+# Configure Gemini (lazy initialization)
+_client = None
+
+def get_client():
+    """Get or create the Gemini client."""
+    global _client
+    if _client is None:
+        api_key = os.getenv("GeminiImageAPI")
+        if not api_key:
+            raise ValueError("GeminiImageAPI environment variable not set")
+        _client = genai.Client(api_key=api_key)
+    return _client
 
 logger = logging.getLogger(__name__)
 
@@ -140,10 +151,12 @@ PARSING RULES:
 OUTPUT ONLY VALID JSON. No explanations.
 """
 
-    model = genai.GenerativeModel(model_name)
-    response = await model.generate_content_async(
-        prompt,
-        generation_config=genai.GenerationConfig(
+    # Use asyncio.to_thread since generate_content is synchronous
+    response = await asyncio.to_thread(
+        get_client().models.generate_content,
+        model=model_name,
+        contents=prompt,
+        config=genai.types.GenerateContentConfig(
             temperature=PARSE_TEMPERATURE,
             response_mime_type="application/json"
         )

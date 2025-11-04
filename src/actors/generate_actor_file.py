@@ -1,5 +1,6 @@
 """Generate D&D 5e actor descriptions from natural language using Gemini."""
 
+import asyncio
 import logging
 import os
 from typing import Optional
@@ -118,7 +119,9 @@ Generate ONLY the stat block text, no additional commentary.
 """
 
     try:
-        response = await get_client().models.generate_content_async(
+        # Use asyncio.to_thread since generate_content is synchronous
+        response = await asyncio.to_thread(
+            get_client().models.generate_content,
             model=model_name,
             contents=prompt,
             config=genai.types.GenerateContentConfig(
