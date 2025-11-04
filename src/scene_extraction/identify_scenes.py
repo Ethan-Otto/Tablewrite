@@ -5,7 +5,7 @@ import json
 import os
 from typing import List
 from dotenv import load_dotenv
-import google.generativeai as genai
+from google import genai
 
 from .models import Scene, ChapterContext
 
@@ -14,10 +14,18 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# Configure Gemini API
-GEMINI_API_KEY = os.getenv("GeminiImageAPI")
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+# Configure Gemini API (lazy initialization)
+_client = None
+
+def get_client():
+    """Get or create the Gemini client."""
+    global _client
+    if _client is None:
+        api_key = os.getenv("GeminiImageAPI")
+        if not api_key:
+            raise ValueError("GeminiImageAPI environment variable not set")
+        _client = genai.Client(api_key=api_key)
+    return _client
 
 # Use gemini-2.0-flash for structured extraction - fast and reliable JSON parsing
 GEMINI_MODEL_NAME = "gemini-2.0-flash"
@@ -84,8 +92,10 @@ Return ONLY valid JSON array, no markdown formatting:
 """
 
     try:
-        model = genai.GenerativeModel(GEMINI_MODEL_NAME)
-        response = model.generate_content(prompt)
+        response = get_client().models.generate_content(
+            model=GEMINI_MODEL_NAME,
+            contents=prompt
+        )
 
         logger.debug(f"Gemini response: {response.text}")
 

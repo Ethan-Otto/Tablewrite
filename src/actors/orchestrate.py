@@ -10,6 +10,7 @@ from typing import Union, Optional, List
 from pydantic import BaseModel
 
 from actors.generate_actor_file import generate_actor_description
+from actors.generate_actor_biography import generate_actor_biography
 from actors.statblock_parser import parse_raw_text_to_statblock
 from actors.models import ActorCreationResult
 from foundry.actors.parser import parse_stat_block_parallel
@@ -111,8 +112,9 @@ async def create_actor_from_description(
     1. Generate raw stat block text using Gemini
     2. Parse raw text to StatBlock model
     3. Parse StatBlock to detailed ParsedActorData
-    4. Convert to FoundryVTT JSON format
-    5. Upload to FoundryVTT server
+    4. Generate flavorful biography using Gemini
+    5. Convert to FoundryVTT JSON format
+    6. Upload to FoundryVTT server
 
     All intermediate outputs are saved to disk for debugging.
 
@@ -171,7 +173,7 @@ async def create_actor_from_description(
         )
 
         # Step 3: Parse to detailed ParsedActorData
-        logger.info("Step 3/5: Parsing to detailed ParsedActorData...")
+        logger.info("Step 3/6: Parsing to detailed ParsedActorData...")
         parsed_actor = await parse_stat_block_parallel(stat_block)
         parsed_data_file = _save_intermediate_file(
             parsed_actor,
@@ -179,8 +181,20 @@ async def create_actor_from_description(
             "ParsedActorData model"
         )
 
-        # Step 4: Convert to FoundryVTT format
-        logger.info("Step 4/5: Converting to FoundryVTT format...")
+        # Step 4: Generate biography
+        logger.info("Step 4/6: Generating actor biography...")
+        biography = await generate_actor_biography(parsed_actor, model_name=model_name)
+        # Update parsed_actor with biography
+        parsed_actor = parsed_actor.model_copy(update={"biography": biography})
+        # Re-save with biography included
+        _save_intermediate_file(
+            parsed_actor,
+            output_dir / "03_parsed_actor_data.json",
+            "ParsedActorData model (with biography)"
+        )
+
+        # Step 5: Convert to FoundryVTT format
+        logger.info("Step 5/6: Converting to FoundryVTT format...")
         if spell_cache is None:
             spell_cache = SpellCache()
             spell_cache.load()
@@ -190,10 +204,11 @@ async def create_actor_from_description(
             icon_cache = IconCache()
             icon_cache.load()
 
-        actor_json, spell_uuids = convert_to_foundry(
+        actor_json, spell_uuids = await convert_to_foundry(
             parsed_actor,
             spell_cache=spell_cache,
-            icon_cache=icon_cache
+            icon_cache=icon_cache,
+            use_ai_icons=True  # Enable AI-powered icon selection
         )
         foundry_json_file = _save_intermediate_file(
             actor_json,
@@ -201,8 +216,8 @@ async def create_actor_from_description(
             "FoundryVTT actor JSON"
         )
 
-        # Step 5: Upload to FoundryVTT
-        logger.info("Step 5/5: Uploading to FoundryVTT...")
+        # Step 6: Upload to FoundryVTT
+        logger.info("Step 6/6: Uploading to FoundryVTT...")
         if foundry_client is None:
             foundry_client = FoundryClient(
                 target=os.getenv("FOUNDRY_TARGET", "local")

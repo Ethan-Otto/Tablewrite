@@ -141,6 +141,9 @@ class ParsedActorData(BaseModel):
     hit_dice: Optional[str] = None  # e.g., "27d10 + 189"
     challenge_rating: float
 
+    # Biography/description
+    biography: Optional[str] = None  # Full stat block text or generated description
+
     # Creature type
     size: Optional[str] = None  # "Small", "Medium", "Large", etc.
     creature_type: Optional[str] = None  # "humanoid", "fiend", etc.

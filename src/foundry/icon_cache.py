@@ -1,12 +1,29 @@
 """Icon cache for resolving item types to FoundryVTT icon paths."""
 
+import asyncio
 import logging
 import os
 import requests
 from difflib import SequenceMatcher
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
+import google.generativeai as genai
 
 logger = logging.getLogger(__name__)
+
+# Gemini client (lazy initialization)
+_gemini_client = None
+
+
+def _get_gemini_client():
+    """Get or create Gemini client (lazy initialization)."""
+    global _gemini_client
+    if _gemini_client is None:
+        api_key = os.getenv("GeminiImageAPI")
+        if not api_key:
+            raise ValueError("GeminiImageAPI environment variable not set")
+        genai.configure(api_key=api_key)
+        _gemini_client = genai
+    return _gemini_client
 
 
 class IconCache:
@@ -82,8 +99,8 @@ class IconCache:
             response.raise_for_status()
             data = response.json()
 
-            # Extract icon file paths
-            files = data.get('files', [])
+            # Extract icon file paths (API returns 'results' not 'files')
+            files = data.get('results', data.get('files', []))
             for file_info in files:
                 path = file_info.get('path', '')
                 # Filter by extension
@@ -216,3 +233,172 @@ class IconCache:
                 return icon
 
         return None
+
+    async def _select_icon_with_gemini(
+        self,
+        item_name: str,
+        icon_paths: List[str],
+        model_name: str = "gemini-2.0-flash"
+    ) -> Optional[str]:
+        """
+        Use Gemini to select the most appropriate icon from a list.
+
+        Args:
+            item_name: Name of the item/attack/trait (e.g., "Flaming Sword")
+            icon_paths: List of candidate icon file paths
+            model_name: Gemini model to use
+
+        Returns:
+            Best matching icon path, or None if Gemini fails
+        """
+        if not icon_paths:
+            return None
+
+        # Extract just filenames for the prompt (easier for Gemini to process)
+        filenames = [path.split('/')[-1].rsplit('.', 1)[0] for path in icon_paths]
+
+        prompt = f"""You are an icon selection assistant for a D&D 5e virtual tabletop.
+
+Given an item/ability name, select the MOST APPROPRIATE icon from the list below.
+
+ITEM NAME: {item_name}
+
+AVAILABLE ICONS (numbered):
+{chr(10).join(f"{i+1}. {name}" for i, name in enumerate(filenames))}
+
+INSTRUCTIONS:
+1. Consider the item's theme, purpose, and visual style
+2. Match based on semantic meaning, not just literal words
+3. Respond with ONLY the number of your choice (1-{len(filenames)})
+4. Choose the single best match
+
+Your response (number only):"""
+
+        try:
+            # Use asyncio.to_thread since generate_content is synchronous
+            response = await asyncio.to_thread(
+                _get_gemini_client().GenerativeModel(model_name).generate_content,
+                prompt,
+                generation_config=genai.types.GenerationConfig(temperature=0.0)
+            )
+
+            # Parse response (should be just a number)
+            choice_text = response.text.strip()
+            choice_num = int(choice_text)
+
+            if 1 <= choice_num <= len(icon_paths):
+                selected = icon_paths[choice_num - 1]
+                logger.info(f"Gemini selected icon for '{item_name}': {selected}")
+                return selected
+            else:
+                logger.warning(f"Gemini returned invalid choice {choice_num} for '{item_name}'")
+                return None
+
+        except Exception as e:
+            logger.error(f"Gemini icon selection failed for '{item_name}': {e}")
+            return None
+
+    async def get_icon_with_ai_fallback(
+        self,
+        search_term: str,
+        category: Optional[str] = None,
+        model_name: str = "gemini-2.0-flash"
+    ) -> Optional[str]:
+        """
+        Get icon using perfect word matching, falling back to Gemini if no perfect match.
+
+        This method first attempts perfect word matching (search words must appear as
+        complete words in icon filename). If no perfect match is found, it uses Gemini
+        to intelligently select from the category's icons.
+
+        Args:
+            search_term: Item/attack/trait name to match
+            category: Optional category to narrow search (e.g., "weapons", "magic")
+            model_name: Gemini model to use for AI selection
+
+        Returns:
+            Best matching icon path, or None if all methods fail
+
+        Example:
+            >>> icon = await cache.get_icon_with_ai_fallback("Flame Sword", category="weapons")
+            >>> # Perfect match: "sword" in "flame-sword-fire.webp"
+            >>> # Or Gemini selects best from weapon icons
+        """
+        if not self._loaded:
+            logger.warning("IconCache.get_icon_with_ai_fallback() called before load()")
+            return None
+
+        # Normalize search term and extract words
+        search_words = set(search_term.lower().replace("-", " ").split())
+
+        # Determine search pool
+        if category and category in self._icons_by_category:
+            search_pool = self._icons_by_category[category]
+        else:
+            search_pool = self._all_icons
+
+        if not search_pool:
+            return None
+
+        # Try perfect word matching first
+        for icon_path in search_pool:
+            filename = icon_path.split('/')[-1].rsplit('.', 1)[0]
+            icon_words = set(filename.lower().split('-'))
+
+            # Check if any search words are in icon words (perfect match)
+            if search_words & icon_words:  # Set intersection
+                logger.info(f"Perfect word match for '{search_term}' → '{icon_path}'")
+                return icon_path
+
+        # No perfect match found, use Gemini
+        logger.info(f"No perfect match for '{search_term}', using Gemini...")
+
+        # Get top 20 icons from category for Gemini to choose from
+        # (limit to 20 to keep prompt manageable)
+        candidate_icons = search_pool[:20] if len(search_pool) > 20 else search_pool
+
+        gemini_choice = await self._select_icon_with_gemini(
+            search_term,
+            candidate_icons,
+            model_name=model_name
+        )
+
+        if gemini_choice:
+            return gemini_choice
+
+        # If Gemini fails, return first icon as last resort
+        if search_pool:
+            logger.warning(f"Gemini failed for '{search_term}', using first icon from category")
+            return search_pool[0]
+
+        return None
+
+    async def get_icons_batch(
+        self,
+        items: List[Tuple[str, Optional[str]]],
+        model_name: str = "gemini-2.0-flash"
+    ) -> List[Optional[str]]:
+        """
+        Get icons for multiple items in parallel using perfect word match + AI fallback.
+
+        Args:
+            items: List of (search_term, category) tuples
+            model_name: Gemini model to use for AI selection
+
+        Returns:
+            List of icon paths (same order as input), None for failed matches
+
+        Example:
+            >>> items = [("Shortsword", "weapons"), ("Nimble Escape", "magic")]
+            >>> icons = await cache.get_icons_batch(items)
+        """
+        tasks = [
+            self.get_icon_with_ai_fallback(
+                search_term=term,
+                category=cat,
+                model_name=model_name
+            )
+            for term, cat in items
+        ]
+
+        return await asyncio.gather(*tasks, return_exceptions=False)

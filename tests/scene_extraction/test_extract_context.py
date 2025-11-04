@@ -27,7 +27,7 @@ class TestExtractChapterContext:
     @pytest.mark.integration
     def test_extract_context_calls_gemini(self, sample_xml_content):
         """Test that extract_chapter_context calls Gemini API with correct prompt."""
-        with patch('src.scene_extraction.extract_context.genai.GenerativeModel') as mock_model:
+        with patch('src.scene_extraction.extract_context.get_client') as mock_get_client:
             # Mock Gemini response
             mock_response = MagicMock()
             mock_response.text = """
@@ -40,16 +40,16 @@ class TestExtractChapterContext:
                 "additional_notes": "Forest cave system"
             }
             """
-            mock_instance = MagicMock()
-            mock_instance.generate_content.return_value = mock_response
-            mock_model.return_value = mock_instance
+            mock_client = MagicMock()
+            mock_client.models.generate_content.return_value = mock_response
+            mock_get_client.return_value = mock_client
 
             # Call function
             context = extract_chapter_context(sample_xml_content)
 
             # Verify Gemini was called
-            mock_model.assert_called_once()
-            mock_instance.generate_content.assert_called_once()
+            mock_get_client.assert_called()
+            mock_client.models.generate_content.assert_called_once()
 
             # Verify result is ChapterContext
             assert isinstance(context, ChapterContext)
@@ -58,12 +58,12 @@ class TestExtractChapterContext:
 
     def test_extract_context_handles_json_parsing(self):
         """Test that extract_context properly parses Gemini JSON response."""
-        with patch('src.scene_extraction.extract_context.genai.GenerativeModel') as mock_model:
+        with patch('src.scene_extraction.extract_context.get_client') as mock_get_client:
             mock_response = MagicMock()
             mock_response.text = '{"environment_type": "forest", "lighting": "dappled sunlight"}'
-            mock_instance = MagicMock()
-            mock_instance.generate_content.return_value = mock_response
-            mock_model.return_value = mock_instance
+            mock_client = MagicMock()
+            mock_client.models.generate_content.return_value = mock_response
+            mock_get_client.return_value = mock_client
 
             context = extract_chapter_context("<chapter></chapter>")
 
@@ -72,26 +72,26 @@ class TestExtractChapterContext:
 
     def test_extract_context_raises_on_invalid_json(self):
         """Test that extract_context raises error on malformed JSON."""
-        with patch('src.scene_extraction.extract_context.genai.GenerativeModel') as mock_model:
+        with patch('src.scene_extraction.extract_context.get_client') as mock_get_client:
             mock_response = MagicMock()
             mock_response.text = "Not valid JSON at all"
-            mock_instance = MagicMock()
-            mock_instance.generate_content.return_value = mock_response
-            mock_model.return_value = mock_instance
+            mock_client = MagicMock()
+            mock_client.models.generate_content.return_value = mock_response
+            mock_get_client.return_value = mock_client
 
             with pytest.raises(ValueError, match="Failed to parse.*JSON"):
                 extract_chapter_context("<chapter></chapter>")
 
     def test_extract_context_handles_markdown_json_same_line(self):
         """Test parsing when json identifier is on same line as backticks: ```json"""
-        with patch('src.scene_extraction.extract_context.genai.GenerativeModel') as mock_model:
+        with patch('src.scene_extraction.extract_context.get_client') as mock_get_client:
             mock_response = MagicMock()
             mock_response.text = '''```json
 {"environment_type": "forest", "lighting": "dappled sunlight"}
 ```'''
-            mock_instance = MagicMock()
-            mock_instance.generate_content.return_value = mock_response
-            mock_model.return_value = mock_instance
+            mock_client = MagicMock()
+            mock_client.models.generate_content.return_value = mock_response
+            mock_get_client.return_value = mock_client
 
             context = extract_chapter_context("<chapter></chapter>")
 
@@ -100,15 +100,15 @@ class TestExtractChapterContext:
 
     def test_extract_context_handles_markdown_json_separate_line(self):
         """Test parsing when json identifier is on separate line after backticks."""
-        with patch('src.scene_extraction.extract_context.genai.GenerativeModel') as mock_model:
+        with patch('src.scene_extraction.extract_context.get_client') as mock_get_client:
             mock_response = MagicMock()
             mock_response.text = '''```
 json
 {"environment_type": "underground", "atmosphere": "oppressive"}
 ```'''
-            mock_instance = MagicMock()
-            mock_instance.generate_content.return_value = mock_response
-            mock_model.return_value = mock_instance
+            mock_client = MagicMock()
+            mock_client.models.generate_content.return_value = mock_response
+            mock_get_client.return_value = mock_client
 
             context = extract_chapter_context("<chapter></chapter>")
 
@@ -117,14 +117,14 @@ json
 
     def test_extract_context_handles_markdown_no_json_identifier(self):
         """Test parsing when there's no json identifier, just backticks."""
-        with patch('src.scene_extraction.extract_context.genai.GenerativeModel') as mock_model:
+        with patch('src.scene_extraction.extract_context.get_client') as mock_get_client:
             mock_response = MagicMock()
             mock_response.text = '''```
 {"environment_type": "urban", "terrain": "cobblestone streets"}
 ```'''
-            mock_instance = MagicMock()
-            mock_instance.generate_content.return_value = mock_response
-            mock_model.return_value = mock_instance
+            mock_client = MagicMock()
+            mock_client.models.generate_content.return_value = mock_response
+            mock_get_client.return_value = mock_client
 
             context = extract_chapter_context("<chapter></chapter>")
 
