@@ -6,24 +6,9 @@ import os
 import requests
 from difflib import SequenceMatcher
 from typing import Dict, List, Optional, Tuple
-import google.generativeai as genai
+from google import genai
 
 logger = logging.getLogger(__name__)
-
-# Gemini client (lazy initialization)
-_gemini_client = None
-
-
-def _get_gemini_client():
-    """Get or create Gemini client (lazy initialization)."""
-    global _gemini_client
-    if _gemini_client is None:
-        api_key = os.getenv("GeminiImageAPI")
-        if not api_key:
-            raise ValueError("GeminiImageAPI environment variable not set")
-        genai.configure(api_key=api_key)
-        _gemini_client = genai
-    return _gemini_client
 
 
 class IconCache:
@@ -275,11 +260,12 @@ INSTRUCTIONS:
 Your response (number only):"""
 
         try:
-            # Use asyncio.to_thread since generate_content is synchronous
-            response = await asyncio.to_thread(
-                _get_gemini_client().GenerativeModel(model_name).generate_content,
-                prompt,
-                generation_config=genai.types.GenerationConfig(temperature=0.0)
+            # Initialize client and call Gemini
+            client = genai.Client(api_key=os.getenv("GeminiImageAPI") or os.getenv("GEMINI_API_KEY"))
+            response = await client.models.generate_content_async(
+                model=model_name,
+                contents=prompt,
+                config={'temperature': 0.0}
             )
 
             # Parse response (should be just a number)
