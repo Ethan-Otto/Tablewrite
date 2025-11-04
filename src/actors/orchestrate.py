@@ -1,5 +1,6 @@
 """Orchestrate full actor creation pipeline from description to FoundryVTT."""
 
+import asyncio
 import json
 import logging
 import os
@@ -224,3 +225,48 @@ async def create_actor_from_description(
     except Exception as e:
         logger.error(f"Actor creation failed: {e}")
         raise
+
+
+def create_actor_from_description_sync(
+    description: str,
+    challenge_rating: Optional[float] = None,
+    model_name: str = "gemini-2.0-flash",
+    output_dir_base: str = "output/runs",
+    spell_cache: Optional[SpellCache] = None,
+    foundry_client: Optional[FoundryClient] = None
+) -> ActorCreationResult:
+    """
+    Synchronous wrapper for create_actor_from_description().
+
+    This is a convenience function that runs the async pipeline in a synchronous context.
+    All parameters and return values are identical to the async version.
+
+    Args:
+        description: Natural language description of the actor
+        challenge_rating: Optional CR (0.125, 0.25, 0.5, 1-30). If None, Gemini determines it.
+        model_name: Gemini model to use (default: "gemini-2.0-flash")
+        output_dir_base: Base directory for output (default: "output/runs")
+        spell_cache: Optional pre-loaded SpellCache
+        foundry_client: Optional FoundryClient
+
+    Returns:
+        ActorCreationResult with all outputs and FoundryVTT UUID
+
+    Example:
+        # Simple synchronous usage
+        result = create_actor_from_description_sync(
+            "A cunning goblin assassin",
+            challenge_rating=2.0
+        )
+        print(f"Created: {result.foundry_uuid}")
+    """
+    return asyncio.run(
+        create_actor_from_description(
+            description=description,
+            challenge_rating=challenge_rating,
+            model_name=model_name,
+            output_dir_base=output_dir_base,
+            spell_cache=spell_cache,
+            foundry_client=foundry_client
+        )
+    )

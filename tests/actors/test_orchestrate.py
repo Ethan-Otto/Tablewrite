@@ -7,7 +7,12 @@ import tempfile
 import shutil
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from actors.orchestrate import _create_output_directory, _save_intermediate_file, create_actor_from_description
+from actors.orchestrate import (
+    _create_output_directory,
+    _save_intermediate_file,
+    create_actor_from_description,
+    create_actor_from_description_sync
+)
 from actors.models import StatBlock
 from foundry.actors.models import ParsedActorData
 
@@ -187,3 +192,29 @@ class TestCreateActorPipeline:
             assert result.description == "A sneaky goblin"
             assert result.foundry_uuid == "Actor.abc123"
             assert result.stat_block.name == "Goblin"
+
+
+class TestSyncWrapper:
+    """Test synchronous wrapper function."""
+
+    def test_sync_wrapper_calls_async_function(self, tmp_path):
+        """Test that sync wrapper properly calls the async function."""
+
+        # Mock asyncio.run to capture the call
+        with patch('actors.orchestrate.asyncio.run') as mock_run:
+            mock_result = MagicMock()
+            mock_run.return_value = mock_result
+
+            result = create_actor_from_description_sync(
+                description="Test goblin",
+                challenge_rating=0.25,
+                output_dir_base=str(tmp_path)
+            )
+
+            # Verify asyncio.run was called
+            assert mock_run.called
+            assert result == mock_result
+
+            # Verify the async function was passed to asyncio.run
+            call_args = mock_run.call_args
+            assert call_args is not None
