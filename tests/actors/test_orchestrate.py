@@ -11,9 +11,11 @@ from actors.orchestrate import (
     _create_output_directory,
     _save_intermediate_file,
     create_actor_from_description,
-    create_actor_from_description_sync
+    create_actor_from_description_sync,
+    create_actors_batch,
+    create_actors_batch_sync
 )
-from actors.models import StatBlock
+from actors.models import StatBlock, ActorCreationResult
 from foundry.actors.models import ParsedActorData
 
 
@@ -218,3 +220,188 @@ class TestSyncWrapper:
             # Verify the async function was passed to asyncio.run
             call_args = mock_run.call_args
             assert call_args is not None
+
+
+class TestBatchCreation:
+    """Test batch actor creation."""
+
+    @pytest.mark.asyncio
+    async def test_batch_validates_input_length(self):
+        """Test that mismatched list lengths raise error."""
+        descriptions = ["Goblin", "Dragon"]
+        crs = [0.25]  # Wrong length
+
+        with pytest.raises(ValueError, match="same length"):
+            await create_actors_batch(descriptions, challenge_ratings=crs)
+
+    @pytest.mark.asyncio
+    async def test_batch_creates_tasks_for_all_descriptions(self, tmp_path):
+        """Test that batch creates one task per description."""
+        descriptions = ["Goblin 1", "Goblin 2", "Goblin 3"]
+
+        with patch('actors.orchestrate.create_actor_from_description', new_callable=AsyncMock) as mock_create, \
+             patch('actors.orchestrate.asyncio.gather', new_callable=AsyncMock) as mock_gather, \
+             patch('actors.orchestrate.SpellCache') as mock_cache_class, \
+             patch('actors.orchestrate.FoundryClient') as mock_client_class:
+
+            mock_cache = MagicMock()
+            mock_cache_class.return_value = mock_cache
+
+            mock_client = MagicMock()
+            mock_client_class.return_value = mock_client
+
+            mock_gather.return_value = [MagicMock(), MagicMock(), MagicMock()]
+
+            results = await create_actors_batch(
+                descriptions,
+                output_dir_base=str(tmp_path)
+            )
+
+            # Verify create_actor_from_description was called 3 times
+            assert mock_create.call_count == 3
+
+            # Verify gather was called with return_exceptions=True
+            assert mock_gather.called
+            call_kwargs = mock_gather.call_args.kwargs
+            assert call_kwargs.get('return_exceptions') is True
+
+    @pytest.mark.asyncio
+    async def test_batch_returns_exceptions_for_failures(self, tmp_path):
+        """Test that individual failures are captured as exceptions."""
+        descriptions = ["Good", "Bad", "Ugly"]
+
+        with patch('actors.orchestrate.create_actor_from_description', new_callable=AsyncMock) as mock_create, \
+             patch('actors.orchestrate.SpellCache') as mock_cache_class, \
+             patch('actors.orchestrate.FoundryClient') as mock_client_class:
+
+            # Setup mocks
+            mock_cache = MagicMock()
+            mock_cache_class.return_value = mock_cache
+            mock_client = MagicMock()
+            mock_client_class.return_value = mock_client
+
+            # Mock results: success, failure, success
+            mock_result1 = MagicMock(spec=ActorCreationResult)
+            mock_error = ValueError("API failed")
+            mock_result3 = MagicMock(spec=ActorCreationResult)
+
+            # Use side_effect to return different values
+            mock_create.side_effect = [mock_result1, mock_error, mock_result3]
+
+            # Manually simulate asyncio.gather behavior with exceptions
+            with patch('actors.orchestrate.asyncio.gather', new_callable=AsyncMock) as mock_gather:
+                mock_gather.return_value = [mock_result1, mock_error, mock_result3]
+
+                results = await create_actors_batch(
+                    descriptions,
+                    output_dir_base=str(tmp_path)
+                )
+
+                assert len(results) == 3
+                assert results[0] == mock_result1
+                assert isinstance(results[1], ValueError)
+                assert results[2] == mock_result3
+
+    @pytest.mark.asyncio
+    async def test_batch_uses_provided_resources(self, tmp_path):
+        """Test that batch uses pre-loaded resources if provided."""
+        descriptions = ["Goblin", "Dragon"]
+        mock_cache = MagicMock()
+        mock_client = MagicMock()
+
+        with patch('actors.orchestrate.create_actor_from_description', new_callable=AsyncMock) as mock_create, \
+             patch('actors.orchestrate.asyncio.gather', new_callable=AsyncMock) as mock_gather:
+
+            mock_gather.return_value = [MagicMock(), MagicMock()]
+
+            await create_actors_batch(
+                descriptions,
+                output_dir_base=str(tmp_path),
+                spell_cache=mock_cache,
+                foundry_client=mock_client
+            )
+
+            # Verify both calls used the same cache and client
+            assert mock_create.call_count == 2
+            for call in mock_create.call_args_list:
+                kwargs = call.kwargs
+                assert kwargs['spell_cache'] is mock_cache
+                assert kwargs['foundry_client'] is mock_client
+
+    @pytest.mark.asyncio
+    async def test_batch_creates_resources_if_not_provided(self, tmp_path):
+        """Test that batch creates resources if not provided."""
+        descriptions = ["Goblin"]
+
+        with patch('actors.orchestrate.create_actor_from_description', new_callable=AsyncMock) as mock_create, \
+             patch('actors.orchestrate.asyncio.gather', new_callable=AsyncMock) as mock_gather, \
+             patch('actors.orchestrate.SpellCache') as mock_cache_class, \
+             patch('actors.orchestrate.FoundryClient') as mock_client_class:
+
+            mock_cache = MagicMock()
+            mock_cache_class.return_value = mock_cache
+
+            mock_client = MagicMock()
+            mock_client_class.return_value = mock_client
+
+            mock_gather.return_value = [MagicMock()]
+
+            await create_actors_batch(
+                descriptions,
+                output_dir_base=str(tmp_path)
+            )
+
+            # Verify resources were created
+            assert mock_cache_class.called
+            assert mock_cache.load.called
+            assert mock_client_class.called
+
+    @pytest.mark.asyncio
+    async def test_batch_with_challenge_ratings(self, tmp_path):
+        """Test batch processing with challenge ratings."""
+        descriptions = ["Goblin", "Dragon"]
+        crs = [0.25, 10.0]
+
+        with patch('actors.orchestrate.create_actor_from_description', new_callable=AsyncMock) as mock_create, \
+             patch('actors.orchestrate.asyncio.gather', new_callable=AsyncMock) as mock_gather, \
+             patch('actors.orchestrate.SpellCache') as mock_cache_class, \
+             patch('actors.orchestrate.FoundryClient') as mock_client_class:
+
+            mock_cache = MagicMock()
+            mock_cache_class.return_value = mock_cache
+            mock_client = MagicMock()
+            mock_client_class.return_value = mock_client
+
+            mock_gather.return_value = [MagicMock(), MagicMock()]
+
+            await create_actors_batch(
+                descriptions,
+                challenge_ratings=crs,
+                output_dir_base=str(tmp_path)
+            )
+
+            # Verify both calls were made with correct CRs
+            assert mock_create.call_count == 2
+            call1_kwargs = mock_create.call_args_list[0].kwargs
+            call2_kwargs = mock_create.call_args_list[1].kwargs
+
+            assert call1_kwargs['description'] == "Goblin"
+            assert call1_kwargs['challenge_rating'] == 0.25
+            assert call2_kwargs['description'] == "Dragon"
+            assert call2_kwargs['challenge_rating'] == 10.0
+
+    def test_sync_batch_wrapper(self, tmp_path):
+        """Test synchronous batch wrapper."""
+        descriptions = ["Goblin"]
+
+        with patch('actors.orchestrate.asyncio.run') as mock_run:
+            mock_result = [MagicMock()]
+            mock_run.return_value = mock_result
+
+            result = create_actors_batch_sync(
+                descriptions,
+                output_dir_base=str(tmp_path)
+            )
+
+            assert mock_run.called
+            assert result == mock_result

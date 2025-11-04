@@ -6,7 +6,7 @@ import logging
 import os
 from pathlib import Path
 from datetime import datetime
-from typing import Union, Optional
+from typing import Union, Optional, List
 from pydantic import BaseModel
 
 from actors.generate_actor_file import generate_actor_description
@@ -264,6 +264,131 @@ def create_actor_from_description_sync(
         create_actor_from_description(
             description=description,
             challenge_rating=challenge_rating,
+            model_name=model_name,
+            output_dir_base=output_dir_base,
+            spell_cache=spell_cache,
+            foundry_client=foundry_client
+        )
+    )
+
+
+async def create_actors_batch(
+    descriptions: List[str],
+    challenge_ratings: Optional[List[Optional[float]]] = None,
+    model_name: str = "gemini-2.0-flash",
+    output_dir_base: str = "output/runs",
+    spell_cache: Optional[SpellCache] = None,
+    foundry_client: Optional[FoundryClient] = None
+) -> List[Union[ActorCreationResult, Exception]]:
+    """
+    Create multiple actors in parallel from a list of descriptions.
+
+    This function processes all actors concurrently using asyncio.gather().
+    Individual failures are captured and returned in the results list.
+
+    Args:
+        descriptions: List of natural language descriptions
+        challenge_ratings: Optional list of CRs (same length as descriptions, or None)
+        model_name: Gemini model to use (default: "gemini-2.0-flash")
+        output_dir_base: Base directory for output (default: "output/runs")
+        spell_cache: Optional pre-loaded SpellCache (recommended for batch processing)
+        foundry_client: Optional FoundryClient (recommended for batch processing)
+
+    Returns:
+        List of ActorCreationResult or Exception objects (one per description)
+        Successful results are ActorCreationResult instances
+        Failed results are Exception instances
+
+    Example:
+        descriptions = [
+            "A fierce red dragon wyrmling",
+            "A cunning goblin assassin",
+            "An ancient treant guardian"
+        ]
+        crs = [2.0, 1.0, 9.0]
+
+        # Pre-load shared resources for efficiency
+        spell_cache = SpellCache()
+        spell_cache.load()
+        client = FoundryClient()
+
+        results = await create_actors_batch(
+            descriptions,
+            challenge_ratings=crs,
+            spell_cache=spell_cache,
+            foundry_client=client
+        )
+
+        # Process results
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                print(f"Failed: {descriptions[i]} - {result}")
+            else:
+                print(f"Created: {result.foundry_uuid}")
+    """
+    # Validate inputs
+    if challenge_ratings is not None and len(challenge_ratings) != len(descriptions):
+        raise ValueError("challenge_ratings must be same length as descriptions")
+
+    # Default challenge_ratings to all None
+    if challenge_ratings is None:
+        challenge_ratings = [None] * len(descriptions)
+
+    # Pre-load shared resources if not provided
+    if spell_cache is None:
+        logger.info("Loading spell cache for batch processing...")
+        spell_cache = SpellCache()
+        spell_cache.load()
+
+    if foundry_client is None:
+        logger.info("Creating FoundryVTT client for batch processing...")
+        foundry_client = FoundryClient(
+            target=os.getenv("FOUNDRY_TARGET", "local")
+        )
+
+    logger.info(f"Starting batch creation of {len(descriptions)} actors...")
+
+    # Create tasks for all actors
+    tasks = []
+    for desc, cr in zip(descriptions, challenge_ratings):
+        task = create_actor_from_description(
+            description=desc,
+            challenge_rating=cr,
+            model_name=model_name,
+            output_dir_base=output_dir_base,
+            spell_cache=spell_cache,
+            foundry_client=foundry_client
+        )
+        tasks.append(task)
+
+    # Run all tasks concurrently, capturing exceptions
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Log summary
+    successes = sum(1 for r in results if not isinstance(r, Exception))
+    failures = len(results) - successes
+    logger.info(f"Batch complete: {successes} succeeded, {failures} failed")
+
+    return results
+
+
+def create_actors_batch_sync(
+    descriptions: List[str],
+    challenge_ratings: Optional[List[Optional[float]]] = None,
+    model_name: str = "gemini-2.0-flash",
+    output_dir_base: str = "output/runs",
+    spell_cache: Optional[SpellCache] = None,
+    foundry_client: Optional[FoundryClient] = None
+) -> List[Union[ActorCreationResult, Exception]]:
+    """
+    Synchronous wrapper for create_actors_batch().
+
+    See create_actors_batch() for full documentation.
+    """
+    return asyncio.run(
+        create_actors_batch(
+            descriptions=descriptions,
+            challenge_ratings=challenge_ratings,
             model_name=model_name,
             output_dir_base=output_dir_base,
             spell_cache=spell_cache,
