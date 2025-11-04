@@ -296,6 +296,105 @@ actor_uuid = client.actors.create_actor(actor_json, spell_uuids=spell_uuids)
 uv run python scripts/delete_all_actors.py --yes
 ```
 
+### Actor Creation Orchestration
+
+**NEW**: Complete pipeline for creating D&D actors from natural language descriptions.
+
+**Module**: `src/actors/orchestrate.py`
+
+**Workflow**:
+```
+Natural Language Description
+    ↓
+Generate Stat Block Text (Gemini)
+    ↓
+Parse to StatBlock Model
+    ↓
+Parse to ParsedActorData
+    ↓
+Convert to FoundryVTT Format
+    ↓
+Upload to FoundryVTT Server
+```
+
+**Usage Examples**:
+
+```python
+from actors.orchestrate import create_actor_from_description_sync
+
+# Simple synchronous usage
+result = create_actor_from_description_sync(
+    description="A fierce red dragon wyrmling with fire breath",
+    challenge_rating=2.0
+)
+print(f"Created: {result.foundry_uuid}")
+print(f"Saved to: {result.output_dir}")
+
+# Async usage for more control
+from actors.orchestrate import create_actor_from_description
+
+result = await create_actor_from_description(
+    description="A cunning goblin assassin with poisoned daggers",
+    challenge_rating=1.0,
+    model_name="gemini-2.0-flash"
+)
+```
+
+**Batch Creation**:
+
+```python
+from actors.orchestrate import create_actors_batch_sync
+from foundry.actors.spell_cache import SpellCache
+from foundry.client import FoundryClient
+
+# Pre-load shared resources for efficiency
+spell_cache = SpellCache()
+spell_cache.load()
+client = FoundryClient()
+
+descriptions = [
+    "A fierce red dragon wyrmling",
+    "A cunning goblin assassin",
+    "An ancient treant guardian"
+]
+crs = [2.0, 1.0, 9.0]
+
+results = create_actors_batch_sync(
+    descriptions,
+    challenge_ratings=crs,
+    spell_cache=spell_cache,
+    foundry_client=client
+)
+
+# Process results
+for i, result in enumerate(results):
+    if isinstance(result, Exception):
+        print(f"Failed: {descriptions[i]} - {result}")
+    else:
+        print(f"Created: {result.foundry_uuid}")
+```
+
+**ActorCreationResult Fields**:
+- `description` - Input description
+- `challenge_rating` - CR used (or auto-determined)
+- `raw_stat_block_text` - Generated stat block text
+- `stat_block` - Parsed StatBlock model
+- `parsed_actor_data` - Detailed ParsedActorData
+- `foundry_uuid` - FoundryVTT actor UUID
+- `output_dir` - Directory with all intermediate files
+- `raw_text_file`, `stat_block_file`, `parsed_data_file`, `foundry_json_file` - Saved artifacts
+- `timestamp` - ISO timestamp
+- `model_used` - Gemini model name
+
+**Output Directory Structure**:
+```
+output/runs/<timestamp>/actors/
+├── 01_raw_stat_block.txt
+├── 02_stat_block.json
+├── 03_parsed_actor_data.json
+└── 04_foundry_actor.json
+```
+
 ### Self-Hosted Relay Server
 
 The project uses a **self-hosted local relay server** for local development.
