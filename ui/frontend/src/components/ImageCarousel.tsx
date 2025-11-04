@@ -5,16 +5,24 @@ interface ImageCarouselProps {
   data: ImageData;
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 export function ImageCarousel({ data }: ImageCarouselProps) {
+  console.log('[DEBUG] ImageCarousel rendering with data:', data);
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  // Convert relative URLs to absolute URLs
+  const imageUrls = data.image_urls.map(url =>
+    url.startsWith('http') ? url : `${API_BASE_URL}${url}`
+  );
+
   const nextImage = () => {
-    setCurrentIndex((prev) => (prev + 1) % data.image_urls.length);
+    setCurrentIndex((prev) => (prev + 1) % imageUrls.length);
   };
 
   const prevImage = () => {
     setCurrentIndex((prev) =>
-      prev === 0 ? data.image_urls.length - 1 : prev - 1
+      prev === 0 ? imageUrls.length - 1 : prev - 1
     );
   };
 
@@ -31,7 +39,7 @@ export function ImageCarousel({ data }: ImageCarouselProps) {
       {/* Image display */}
       <div className="relative">
         <img
-          src={data.image_urls[currentIndex]}
+          src={imageUrls[currentIndex]}
           alt={data.prompt}
           className="w-full h-auto rounded"
           style={{
@@ -40,7 +48,7 @@ export function ImageCarousel({ data }: ImageCarouselProps) {
         />
 
         {/* Navigation arrows (only show if multiple images) */}
-        {data.image_urls.length > 1 && (
+        {imageUrls.length > 1 && (
           <>
             <button
               onClick={prevImage}
@@ -55,6 +63,8 @@ export function ImageCarousel({ data }: ImageCarouselProps) {
               }}
               onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
               onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+              onMouseDown={(e) => e.currentTarget.style.transform = 'translateY(-50%) translateY(1px)'}
+              onMouseUp={(e) => e.currentTarget.style.transform = 'translateY(-50%)'}
             >
               ◀
             </button>
@@ -71,6 +81,8 @@ export function ImageCarousel({ data }: ImageCarouselProps) {
               }}
               onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
               onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+              onMouseDown={(e) => e.currentTarget.style.transform = 'translateY(-50%) translateY(1px)'}
+              onMouseUp={(e) => e.currentTarget.style.transform = 'translateY(-50%)'}
             >
               ▶
             </button>
@@ -79,7 +91,7 @@ export function ImageCarousel({ data }: ImageCarouselProps) {
       </div>
 
       {/* Image counter */}
-      {data.image_urls.length > 1 && (
+      {imageUrls.length > 1 && (
         <div
           className="text-center mt-3"
           style={{
@@ -89,7 +101,7 @@ export function ImageCarousel({ data }: ImageCarouselProps) {
             fontWeight: 600
           }}
         >
-          {currentIndex + 1} / {data.image_urls.length}
+          {currentIndex + 1} / {imageUrls.length}
         </div>
       )}
     </div>

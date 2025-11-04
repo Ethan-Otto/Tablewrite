@@ -1,11 +1,19 @@
 """Image generation tool using Gemini Imagen."""
 import asyncio
 import uuid
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import List
+from io import BytesIO
 from .base import BaseTool, ToolSchema, ToolResponse
 from ..config import settings
+
+# Add project src to path for GeminiAPI
+project_root = Path(__file__).parent.parent.parent.parent.parent
+sys.path.insert(0, str(project_root / "src"))
+from util.gemini import GeminiAPI  # noqa: E402
+from google.genai import types  # noqa: E402
 
 
 class ImageGeneratorTool(BaseTool):
@@ -16,6 +24,7 @@ class ImageGeneratorTool(BaseTool):
         self.output_dir = settings.IMAGE_OUTPUT_DIR
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.semaphore = asyncio.Semaphore(settings.IMAGEN_CONCURRENT_LIMIT)
+        self.api = GeminiAPI(model_name="imagen-3.0-generate-002")
 
     @property
     def name(self) -> str:
@@ -55,6 +64,8 @@ class ImageGeneratorTool(BaseTool):
         Returns:
             ToolResponse with image URLs
         """
+        print(f"[DEBUG] ImageGenerator.execute() called with prompt='{prompt}', count={count}")
+
         # Cap count at maximum
         count = min(count, settings.MAX_IMAGES_PER_REQUEST)
 
@@ -66,7 +77,7 @@ class ImageGeneratorTool(BaseTool):
             # Convert filenames to URLs
             image_urls = [f"/api/images/{fn}" for fn in filenames]
 
-            return ToolResponse(
+            response = ToolResponse(
                 type="image",
                 message=f"Generated {count} images based on your description.",
                 data={
@@ -74,6 +85,8 @@ class ImageGeneratorTool(BaseTool):
                     "prompt": prompt
                 }
             )
+            print(f"[DEBUG] ImageGenerator returning: {response}")
+            return response
 
         except Exception as e:
             return ToolResponse(
@@ -93,14 +106,49 @@ class ImageGeneratorTool(BaseTool):
             Filename of generated image
         """
         async with self.semaphore:
-            # TODO: Implement actual Gemini Imagen API call
-            # For now, return mock filename
+            # Generate unique filename
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             unique_id = uuid.uuid4().hex[:8]
             filename = f"{timestamp}_{unique_id}.png"
-
-            # Mock: create empty file
             filepath = self.output_dir / filename
-            filepath.touch()
+
+            # Generate image using Gemini Imagen
+            # Run blocking API call in thread pool
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(
+                None,
+                self._generate_and_save_image,
+                prompt,
+                filepath
+            )
 
             return filename
+
+    def _generate_and_save_image(self, prompt: str, filepath: Path):
+        """
+        Blocking call to generate and save image.
+
+        Args:
+            prompt: Image description
+            filepath: Where to save the image
+        """
+        # Generate image using Gemini Imagen
+        response = self.api.client.models.generate_images(
+            model="imagen-3.0-generate-002",
+            prompt=prompt,
+            config=types.GenerateImagesConfig(
+                number_of_images=1,
+            )
+        )
+
+        # Save the generated image
+        if response.generated_images:
+            generated_image = response.generated_images[0]
+            # Extract PIL image and convert to bytes
+            image_buffer = BytesIO()
+            generated_image.image._pil_image.save(image_buffer, format='PNG')
+            image_data = image_buffer.getvalue()
+
+            # Write to file
+            with open(filepath, 'wb') as f:
+                f.write(image_data)

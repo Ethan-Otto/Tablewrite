@@ -57,32 +57,38 @@ class GeminiService:
             Response dict with type and content
         """
         # Convert tool schemas to Gemini format
-        gemini_tools = [self._schema_to_gemini_tool(t) for t in tools]
+        gemini_functions = [self._schema_to_gemini_tool(t) for t in tools]
 
         # Build prompt with history
         prompt = self._build_chat_prompt(message, {}, conversation_history)
 
-        # Generate with tools if available
-        if gemini_tools:
-            # For now, simulate tool calling by checking keywords
-            # TODO: Implement actual Gemini function calling API when available
-            pass
-
-        # Generate response
-        response = self.api.generate_content(prompt)
+        # Generate with function calling
+        if gemini_functions:
+            response = self.api.client.models.generate_content(
+                model=self.api.model_name,
+                contents=prompt,
+                config={
+                    "tools": [{"function_declarations": gemini_functions}]
+                }
+            )
+        else:
+            # No tools available, regular generation
+            response = self.api.generate_content(prompt)
 
         # Check if response contains function call
         if hasattr(response, 'candidates') and response.candidates:
             candidate = response.candidates[0]
-            if hasattr(candidate, 'function_call') and candidate.function_call:
-                return {
-                    "type": "tool_call",
-                    "tool_call": {
-                        "name": candidate.function_call.name,
-                        "parameters": dict(candidate.function_call.args)
-                    },
-                    "text": None
-                }
+            if hasattr(candidate.content, 'parts') and candidate.content.parts:
+                for part in candidate.content.parts:
+                    if hasattr(part, 'function_call') and part.function_call:
+                        return {
+                            "type": "tool_call",
+                            "tool_call": {
+                                "name": part.function_call.name,
+                                "parameters": dict(part.function_call.args)
+                            },
+                            "text": None
+                        }
 
         # No tool call - return text response
         return {

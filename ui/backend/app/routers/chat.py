@@ -56,6 +56,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
 
             # Get all available tool schemas
             tool_schemas = registry.get_schemas()
+            print(f"[DEBUG] Available tools: {[t.name for t in tool_schemas]}")
 
             # Call Gemini with function calling enabled
             response = await gemini_service.generate_with_tools(
@@ -63,6 +64,8 @@ async def chat(request: ChatRequest) -> ChatResponse:
                 conversation_history=history_dicts,
                 tools=tool_schemas
             )
+            print(f"[DEBUG] Gemini response type: {response.get('type')}")
+            print(f"[DEBUG] Gemini response: {response}")
 
             # Check if Gemini wants to call a tool
             if response.get("type") == "tool_call":
