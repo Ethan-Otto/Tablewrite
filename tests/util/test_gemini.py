@@ -117,6 +117,7 @@ class TestGeminiAPIIntegration:
             if os.path.exists(temp_file_path):
                 os.remove(temp_file_path)
 
+    @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_generate_content_async_wrapper(self, check_api_key):
         """Test async wrapper for generate_content."""
