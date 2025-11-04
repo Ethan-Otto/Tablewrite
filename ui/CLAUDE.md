@@ -183,6 +183,49 @@ uvicorn app.main:app --reload --port 8000
 
 Runs on http://localhost:8000
 
+### Tool System
+
+The chat backend uses a modular tool system with Gemini function calling.
+
+**Architecture:**
+- `app/tools/base.py`: Base classes (BaseTool, ToolSchema, ToolResponse)
+- `app/tools/registry.py`: ToolRegistry for managing tools
+- `app/tools/image_generator.py`: Image generation tool
+- `app/tools/__init__.py`: Auto-registers all tools
+
+**Adding a New Tool:**
+
+1. Create tool class implementing BaseTool:
+```python
+class MyTool(BaseTool):
+    @property
+    def name(self) -> str:
+        return "my_tool"
+
+    def get_schema(self) -> ToolSchema:
+        # Define schema
+        pass
+
+    async def execute(self, **kwargs) -> ToolResponse:
+        # Implement logic
+        pass
+```
+
+2. Register in `app/tools/__init__.py`:
+```python
+from .my_tool import MyTool
+registry.register(MyTool())
+```
+
+3. Add frontend component if needed (see ImageCarousel for example)
+
+**Image Generation:**
+- Tool: `generate_images`
+- Default: 2 images
+- Max: 4 images
+- Storage: `app/output/chat_images/`
+- Endpoint: `GET /api/images/{filename}`
+
 ## Development Workflow
 
 ### Making UI Changes

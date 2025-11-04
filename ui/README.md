@@ -70,6 +70,27 @@ Create `.env.local` in `ui/frontend/`:
 VITE_API_URL=http://localhost:8000
 ```
 
+## Tool System
+
+The chat UI uses a modular tool system for handling specialized requests.
+
+### Available Tools
+
+**Image Generation:**
+- Command: `/generate-image [description]`
+- Natural language: "show me a dragon", "create an image of..."
+- Custom count: "generate 3 images of a forest"
+- Max: 4 images per request
+- UI: Carousel with navigation arrows
+
+### Adding New Tools
+
+1. Backend: Create tool class in `backend/app/tools/`
+2. Frontend: Add component in `frontend/src/components/`
+3. Update Message.tsx to dispatch based on response type
+
+See `backend/app/tools/image_generator.py` for reference implementation.
+
 ## Development
 
 See individual README files:
