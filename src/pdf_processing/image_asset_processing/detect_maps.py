@@ -55,7 +55,9 @@ If no map, respond with JSON:
 
     for attempt in range(MAX_RETRIES):
         try:
-            response = client.models.generate_content(
+            # Wrap blocking Gemini call in asyncio.to_thread() for true parallelization
+            response = await asyncio.to_thread(
+                client.models.generate_content,
                 model=GEMINI_MODEL,
                 contents=[
                     types.Part.from_bytes(data=page_image, mime_type="image/png"),
@@ -118,7 +120,9 @@ NOT A MAP:
 Respond with JSON: {"is_map": true} or {"is_map": false}"""
 
     try:
-        response = client.models.generate_content(
+        # Wrap blocking Gemini call in asyncio.to_thread() for true parallelization
+        response = await asyncio.to_thread(
+            client.models.generate_content,
             model=GEMINI_MODEL,
             contents=[
                 types.Part.from_bytes(data=image_bytes, mime_type="image/png"),
@@ -147,6 +151,16 @@ Respond with JSON: {"is_map": true} or {"is_map": false}"""
         return False
 
 
+def _render_single_page(pdf_path: str, page_num: int) -> tuple[int, bytes]:
+    """Render a single PDF page to PNG bytes (blocking operation for thread pool)."""
+    doc = fitz.open(pdf_path)
+    page = doc[page_num]
+    pix = page.get_pixmap(dpi=150)
+    img_bytes = pix.pil_tobytes(format="PNG")
+    doc.close()
+    return (page_num + 1, img_bytes)  # Return 1-indexed page number
+
+
 async def detect_maps_async(pdf_path: str) -> List[MapDetectionResult]:
     """Detect maps in all pages of PDF using async Gemini Vision calls.
 
@@ -162,25 +176,32 @@ async def detect_maps_async(pdf_path: str) -> List[MapDetectionResult]:
 
     client = genai.Client(api_key=api_key)
 
-    # Open PDF and render all pages to images
-    doc = fitz.open(pdf_path)
-    page_images = []
+    # Get page count
+    doc = await asyncio.to_thread(fitz.open, pdf_path)
+    page_count = len(doc)
+    await asyncio.to_thread(doc.close)
 
-    for page_num in range(len(doc)):
-        page = doc[page_num]
-        # Render at 150 DPI for good quality
-        pix = page.get_pixmap(dpi=150)
-        img_bytes = pix.pil_tobytes(format="PNG")
-        page_images.append((page_num + 1, img_bytes))
-
-    doc.close()
+    # Render all pages in parallel using thread pool
+    logger.debug(f"Rendering {page_count} pages in parallel...")
+    import time
+    start_render = time.time()
+    render_tasks = [
+        asyncio.to_thread(_render_single_page, pdf_path, page_num)
+        for page_num in range(page_count)
+    ]
+    page_images = await asyncio.gather(*render_tasks)
+    render_time = time.time() - start_render
+    logger.debug(f"Rendered {page_count} pages in {render_time:.1f}s")
 
     logger.info(f"Detecting maps in {len(page_images)} pages...")
 
     # Process all pages in parallel
+    start_detect = time.time()
     tasks = [detect_single_page(client, img_bytes, page_num)
              for page_num, img_bytes in page_images]
     results = await asyncio.gather(*tasks)
+    detect_time = time.time() - start_detect
+    logger.debug(f"Gemini detection calls completed in {detect_time:.1f}s")
 
     maps_found = sum(1 for r in results if r.has_map)
     logger.info(f"Detection complete: {maps_found}/{len(results)} pages have maps")
