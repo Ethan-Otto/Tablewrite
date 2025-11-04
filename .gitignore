@@ -21,6 +21,21 @@ tests/output/
 # OS-specific
 .DS_Store
 
+# Testing & Logs
+*.log
+tests_report.md
+
+# Playwright
+ui/frontend/playwright-report/
+ui/frontend/test-results/
+ui/frontend/.playwright/
+
+# UI Development Artifacts
+ui/frontend/*.png
+ui/frontend/*.jpg
+ui/frontend/background-mockups/
+ui/frontend/inspect-styles.cjs
+
 # Other
 api_keys.env.rtf
 Lost_Mine_of_Phandelver_Part1.xml
