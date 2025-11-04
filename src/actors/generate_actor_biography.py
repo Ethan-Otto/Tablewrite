@@ -7,6 +7,7 @@ from typing import Optional
 from google import genai
 
 from foundry.actors.models import ParsedActorData
+from util.gemini import generate_content_async
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +103,8 @@ Write ONLY the biography text (2-4 sentences), nothing else:"""
     try:
         # Initialize client and call Gemini
         client = genai.Client(api_key=os.getenv("GeminiImageAPI") or os.getenv("GEMINI_API_KEY"))
-        response = await client.models.generate_content_async(
+        response = await generate_content_async(
+            client=client,
             model=model_name,
             contents=prompt,
             config={

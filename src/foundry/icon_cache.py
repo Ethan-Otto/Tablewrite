@@ -8,6 +8,8 @@ from difflib import SequenceMatcher
 from typing import Dict, List, Optional, Tuple
 from google import genai
 
+from util.gemini import generate_content_async
+
 logger = logging.getLogger(__name__)
 
 
@@ -262,7 +264,8 @@ Your response (number only):"""
         try:
             # Initialize client and call Gemini
             client = genai.Client(api_key=os.getenv("GeminiImageAPI") or os.getenv("GEMINI_API_KEY"))
-            response = await client.models.generate_content_async(
+            response = await generate_content_async(
+                client=client,
                 model=model_name,
                 contents=prompt,
                 config={'temperature': 0.0}

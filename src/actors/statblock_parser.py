@@ -11,6 +11,7 @@ from google import genai
 from dotenv import load_dotenv
 
 from actors.models import StatBlock
+from util.gemini import generate_content_async
 
 # Load environment
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -141,7 +142,8 @@ OUTPUT ONLY VALID JSON. No explanations.
     # Initialize client
     client = genai.Client(api_key=os.getenv("GeminiImageAPI") or os.getenv("GEMINI_API_KEY"))
 
-    response = await client.models.generate_content_async(
+    response = await generate_content_async(
+        client=client,
         model=model_name,
         contents=prompt,
         config={

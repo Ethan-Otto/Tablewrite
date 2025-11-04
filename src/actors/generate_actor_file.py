@@ -17,6 +17,8 @@ from typing import Optional
 from google import genai
 from dotenv import load_dotenv
 
+from util.gemini import generate_content_async
+
 # Load environment
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 load_dotenv(PROJECT_ROOT / ".env")
@@ -250,7 +252,8 @@ OUTPUT ONLY THE STAT BLOCK AND BIO. No additional commentary or explanations.
     # Initialize client (uses GEMINI_API_KEY or GeminiImageAPI env var)
     client = genai.Client(api_key=os.getenv("GeminiImageAPI") or os.getenv("GEMINI_API_KEY"))
 
-    response = await client.models.generate_content_async(
+    response = await generate_content_async(
+        client=client,
         model=model_name,
         contents=prompt,
         config={'temperature': GENERATION_TEMPERATURE}

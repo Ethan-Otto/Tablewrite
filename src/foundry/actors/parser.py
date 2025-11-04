@@ -17,6 +17,7 @@ from foundry.actors.models import (
     SkillProficiency, DamageModification
 )
 from foundry.actors.spell_cache import SpellCache
+from util.gemini import generate_content_async
 
 # Load environment
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
@@ -217,7 +218,8 @@ OUTPUT ONLY VALID JSON. No explanations.
 
     # Call Gemini
     client = genai.Client(api_key=os.getenv("GeminiImageAPI") or os.getenv("GEMINI_API_KEY"))
-    response = await client.models.generate_content_async(
+    response = await generate_content_async(
+        client=client,
         model=model_name,
         contents=prompt,
         config={
@@ -310,7 +312,8 @@ OUTPUT ONLY VALID JSON. No explanations.
 """
 
         client = genai.Client(api_key=os.getenv("GeminiImageAPI") or os.getenv("GEMINI_API_KEY"))
-        response = await client.models.generate_content_async(
+        response = await generate_content_async(
+            client=client,
             model=model_name,
             contents=prompt,
             config={
@@ -380,7 +383,8 @@ OUTPUT ONLY VALID JSON. No explanations.
 """
 
     client = genai.Client(api_key=os.getenv("GeminiImageAPI") or os.getenv("GEMINI_API_KEY"))
-    response = await client.models.generate_content_async(
+    response = await generate_content_async(
+        client=client,
         model=model_name,
         contents=prompt,
         config={
