@@ -34,7 +34,7 @@ class TestIdentifySceneLocations:
     @pytest.mark.integration
     def test_identify_scenes_calls_gemini(self, sample_xml_content, sample_context):
         """Test that identify_scene_locations calls Gemini with XML and context."""
-        with patch('src.scene_extraction.identify_scenes.genai.GenerativeModel') as mock_model:
+        with patch('src.scene_extraction.identify_scenes.get_client') as mock_get_client:
             mock_response = MagicMock()
             mock_response.text = """
             [
@@ -47,15 +47,15 @@ class TestIdentifySceneLocations:
                 }
             ]
             """
-            mock_instance = MagicMock()
-            mock_instance.generate_content.return_value = mock_response
-            mock_model.return_value = mock_instance
+            mock_client = MagicMock()
+            mock_client.models.generate_content.return_value = mock_response
+            mock_get_client.return_value = mock_client
 
             scenes = identify_scene_locations(sample_xml_content, sample_context)
 
             # Verify Gemini called
-            mock_model.assert_called_once()
-            mock_instance.generate_content.assert_called_once()
+            mock_get_client.assert_called()
+            mock_client.models.generate_content.assert_called_once()
 
             # Verify result
             assert len(scenes) == 1
@@ -64,12 +64,12 @@ class TestIdentifySceneLocations:
 
     def test_identify_scenes_parses_json_array(self, sample_context):
         """Test parsing of JSON array response."""
-        with patch('src.scene_extraction.identify_scenes.genai.GenerativeModel') as mock_model:
+        with patch('src.scene_extraction.identify_scenes.get_client') as mock_get_client:
             mock_response = MagicMock()
             mock_response.text = '[{"section_path": "Ch1", "name": "Room", "description": "A room", "location_type": "interior"}]'
-            mock_instance = MagicMock()
-            mock_instance.generate_content.return_value = mock_response
-            mock_model.return_value = mock_instance
+            mock_client = MagicMock()
+            mock_client.models.generate_content.return_value = mock_response
+            mock_get_client.return_value = mock_client
 
             scenes = identify_scene_locations("<xml></xml>", sample_context)
 
@@ -78,12 +78,12 @@ class TestIdentifySceneLocations:
 
     def test_identify_scenes_returns_empty_list_on_no_scenes(self, sample_context):
         """Test that function returns empty list when no scenes found."""
-        with patch('src.scene_extraction.identify_scenes.genai.GenerativeModel') as mock_model:
+        with patch('src.scene_extraction.identify_scenes.get_client') as mock_get_client:
             mock_response = MagicMock()
             mock_response.text = "[]"
-            mock_instance = MagicMock()
-            mock_instance.generate_content.return_value = mock_response
-            mock_model.return_value = mock_instance
+            mock_client = MagicMock()
+            mock_client.models.generate_content.return_value = mock_response
+            mock_get_client.return_value = mock_client
 
             scenes = identify_scene_locations("<xml></xml>", sample_context)
 
@@ -91,14 +91,14 @@ class TestIdentifySceneLocations:
 
     def test_identify_scenes_handles_markdown_json_same_line(self, sample_context):
         """Test parsing when json identifier is on same line as backticks: ```json"""
-        with patch('src.scene_extraction.identify_scenes.genai.GenerativeModel') as mock_model:
+        with patch('src.scene_extraction.identify_scenes.get_client') as mock_get_client:
             mock_response = MagicMock()
             mock_response.text = '''```json
 [{"section_path": "Ch1", "name": "Forest Clearing", "description": "A sunlit clearing", "location_type": "outdoor"}]
 ```'''
-            mock_instance = MagicMock()
-            mock_instance.generate_content.return_value = mock_response
-            mock_model.return_value = mock_instance
+            mock_client = MagicMock()
+            mock_client.models.generate_content.return_value = mock_response
+            mock_get_client.return_value = mock_client
 
             scenes = identify_scene_locations("<xml></xml>", sample_context)
 
@@ -108,15 +108,15 @@ class TestIdentifySceneLocations:
 
     def test_identify_scenes_handles_markdown_json_separate_line(self, sample_context):
         """Test parsing when json identifier is on separate line after backticks."""
-        with patch('src.scene_extraction.identify_scenes.genai.GenerativeModel') as mock_model:
+        with patch('src.scene_extraction.identify_scenes.get_client') as mock_get_client:
             mock_response = MagicMock()
             mock_response.text = '''```
 json
 [{"section_path": "Ch2", "name": "Underground Chamber", "description": "A dark stone chamber", "location_type": "underground"}]
 ```'''
-            mock_instance = MagicMock()
-            mock_instance.generate_content.return_value = mock_response
-            mock_model.return_value = mock_instance
+            mock_client = MagicMock()
+            mock_client.models.generate_content.return_value = mock_response
+            mock_get_client.return_value = mock_client
 
             scenes = identify_scene_locations("<xml></xml>", sample_context)
 
@@ -126,14 +126,14 @@ json
 
     def test_identify_scenes_handles_markdown_no_json_identifier(self, sample_context):
         """Test parsing when there's no json identifier, just backticks."""
-        with patch('src.scene_extraction.identify_scenes.genai.GenerativeModel') as mock_model:
+        with patch('src.scene_extraction.identify_scenes.get_client') as mock_get_client:
             mock_response = MagicMock()
             mock_response.text = '''```
 [{"section_path": "Ch3", "name": "City Street", "description": "Cobblestone street", "location_type": "outdoor"}]
 ```'''
-            mock_instance = MagicMock()
-            mock_instance.generate_content.return_value = mock_response
-            mock_model.return_value = mock_instance
+            mock_client = MagicMock()
+            mock_client.models.generate_content.return_value = mock_response
+            mock_get_client.return_value = mock_client
 
             scenes = identify_scene_locations("<xml></xml>", sample_context)
 

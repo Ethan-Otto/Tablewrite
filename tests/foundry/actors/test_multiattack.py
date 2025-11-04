@@ -53,7 +53,7 @@ class TestMultiattackModel:
 class TestMultiattackConversion:
     """Tests for converting multiattack to FoundryVTT format."""
 
-    def test_converts_multiattack_to_feat(self):
+    async def test_converts_multiattack_to_feat(self):
         """Should convert multiattack to feat item."""
         actor = ParsedActorData(
             source_statblock_name="Test",
@@ -69,7 +69,7 @@ class TestMultiattackConversion:
             )
         )
 
-        result, spell_uuids = convert_to_foundry(actor)
+        result, spell_uuids = await convert_to_foundry(actor)
 
         # Check spell UUIDs (should be empty)
         assert spell_uuids == []

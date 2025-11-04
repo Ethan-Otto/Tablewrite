@@ -1,8 +1,10 @@
 """Tests for actor Pydantic models."""
 
 import pytest
+from datetime import datetime
+from pathlib import Path
 from pydantic import ValidationError
-from src.actors.models import StatBlock, NPC
+from src.actors.models import StatBlock, NPC, ActorCreationResult
 
 
 @pytest.mark.unit
@@ -102,3 +104,68 @@ class TestNPCModel:
                 description="Missing creature type"
                 # Missing creature_stat_block_name and plot_relevance
             )
+
+
+@pytest.mark.unit
+class TestActorCreationResult:
+    """Test ActorCreationResult dataclass."""
+
+    def test_actor_creation_result_basic(self):
+        """Test ActorCreationResult can be instantiated."""
+        stat_block = StatBlock(
+            name="Test Goblin",
+            raw_text="Goblin\nSmall humanoid...",
+            armor_class=15,
+            hit_points=7,
+            challenge_rating=0.25
+        )
+
+        result = ActorCreationResult(
+            description="A sneaky goblin",
+            challenge_rating=0.25,
+            raw_stat_block_text="Goblin\nSmall humanoid...",
+            stat_block=stat_block,
+            parsed_actor_data=None,  # We'll use a real one later
+            foundry_uuid="Actor.abc123",
+            output_dir=Path("/tmp/test"),
+            timestamp=datetime.now().isoformat(),
+            model_used="gemini-2.0-flash"
+        )
+
+        assert result.description == "A sneaky goblin"
+        assert result.foundry_uuid == "Actor.abc123"
+        assert result.stat_block.name == "Test Goblin"
+        assert result.challenge_rating == 0.25
+        assert result.model_used == "gemini-2.0-flash"
+
+    def test_actor_creation_result_with_file_paths(self):
+        """Test ActorCreationResult with optional file paths."""
+        stat_block = StatBlock(
+            name="Test Goblin",
+            raw_text="Goblin\nSmall humanoid...",
+            armor_class=15,
+            hit_points=7,
+            challenge_rating=0.25
+        )
+
+        output_dir = Path("/tmp/test/actor_output")
+        result = ActorCreationResult(
+            description="A sneaky goblin",
+            challenge_rating=0.25,
+            raw_stat_block_text="Goblin\nSmall humanoid...",
+            stat_block=stat_block,
+            parsed_actor_data=None,
+            foundry_uuid="Actor.abc123",
+            output_dir=output_dir,
+            raw_text_file=output_dir / "raw_text.txt",
+            stat_block_file=output_dir / "stat_block.json",
+            parsed_data_file=output_dir / "parsed_data.json",
+            foundry_json_file=output_dir / "foundry_actor.json",
+            timestamp=datetime.now().isoformat(),
+            model_used="gemini-2.0-flash"
+        )
+
+        assert result.raw_text_file == output_dir / "raw_text.txt"
+        assert result.stat_block_file == output_dir / "stat_block.json"
+        assert result.parsed_data_file == output_dir / "parsed_data.json"
+        assert result.foundry_json_file == output_dir / "foundry_actor.json"

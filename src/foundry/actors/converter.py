@@ -1,8 +1,9 @@
 """Convert ParsedActorData to FoundryVTT actor JSON format."""
 
+import asyncio
 import logging
 import secrets
-from typing import Dict, Any, Optional, TYPE_CHECKING
+from typing import Dict, Any, Optional, TYPE_CHECKING, List, Tuple
 from .models import ParsedActorData, Attack, AttackSave
 
 if TYPE_CHECKING:
@@ -135,11 +136,12 @@ def _create_ongoing_damage_activity(save: AttackSave, activity_id: str) -> dict:
     return base
 
 
-def convert_to_foundry(
+async def convert_to_foundry(
     parsed_actor: ParsedActorData,
     spell_cache: Optional['SpellCache'] = None,
     icon_cache: Optional['IconCache'] = None,
-    include_spells_in_payload: bool = False
+    include_spells_in_payload: bool = False,
+    use_ai_icons: bool = True
 ) -> tuple[Dict[str, Any], list[str]]:
     """
     Convert ParsedActorData to FoundryVTT actor JSON structure.
@@ -250,7 +252,11 @@ def convert_to_foundry(
             "value": parsed_actor.creature_type or "humanoid",
             "subtype": ""
         },
-        "alignment": parsed_actor.alignment or ""
+        "alignment": parsed_actor.alignment or "",
+        "biography": {
+            "value": parsed_actor.biography or "",
+            "public": ""
+        }
     }
 
     # Build traits (damage modifiers and condition immunities)
@@ -272,6 +278,41 @@ def convert_to_foundry(
         "skills": skills,
         "traits": traits_dict
     }
+
+    # Pre-fetch icons using AI if enabled
+    icon_map = {}  # Map from item name to icon path
+    if use_ai_icons and icon_cache and icon_cache.loaded:
+        logger.info(f"Using AI icon selection for {parsed_actor.name}...")
+
+        # Collect all items that need icons
+        items_for_icons: List[Tuple[str, Optional[str]]] = []
+
+        # Add attacks (weapons)
+        for attack in parsed_actor.attacks:
+            items_for_icons.append((attack.name, "weapons"))
+
+        # Add traits
+        for trait in parsed_actor.traits:
+            keywords = trait.name.lower().split()
+            # Use first keyword as search term
+            items_for_icons.append((trait.name, "magic"))
+
+        # Add multiattack if present
+        if parsed_actor.multiattack:
+            items_for_icons.append((parsed_actor.multiattack.name, "magic"))
+
+        # Batch fetch icons in parallel (perfect word match + Gemini)
+        icon_results = await icon_cache.get_icons_batch(
+            items_for_icons,
+            model_name="gemini-2.0-flash"
+        )
+
+        # Build map for easy lookup
+        for (item_name, _), icon_path in zip(items_for_icons, icon_results):
+            if icon_path:
+                icon_map[item_name] = icon_path
+
+        logger.info(f"✓ Selected {len(icon_map)} icons using AI")
 
     # Build items array (attacks, traits, spells)
     items = []
@@ -295,9 +336,11 @@ def convert_to_foundry(
                 dmg_id = _generate_activity_id()
                 activities[dmg_id] = _create_ongoing_damage_activity(attack.attack_save, dmg_id)
 
-        # Select appropriate icon from cache
+        # Select appropriate icon (from AI map if available, else fuzzy match)
         weapon_icon = "icons/weapons/swords/scimitar-guard-purple.webp"  # Default
-        if icon_cache and icon_cache.loaded:
+        if attack.name in icon_map:
+            weapon_icon = icon_map[attack.name]
+        elif icon_cache and icon_cache.loaded:
             matched_icon = icon_cache.get_icon(attack.name, category="weapons")
             if matched_icon:
                 weapon_icon = matched_icon
@@ -362,9 +405,11 @@ def convert_to_foundry(
             })
             activities[activity_id] = activity
 
-        # Select appropriate icon based on trait name
+        # Select appropriate icon (from AI map if available, else fuzzy match)
         trait_icon = "icons/magic/movement/trail-streak-zigzag-yellow.webp"  # Default
-        if icon_cache and icon_cache.loaded:
+        if trait.name in icon_map:
+            trait_icon = icon_map[trait.name]
+        elif icon_cache and icon_cache.loaded:
             # Try multiple keyword matches
             keywords = trait.name.lower().split()
             matched_icon = icon_cache.get_icon_by_keywords(keywords, category="magic")
@@ -378,6 +423,11 @@ def convert_to_foundry(
             "img": trait_icon,
             "system": {
                 "description": {"value": trait.description},
+                "activation": {
+                    "type": trait.activation,
+                    "value": None,
+                    "condition": ""
+                },
                 "activities": activities,
                 "uses": {"value": trait.uses, "max": trait.uses} if trait.uses else {}
             }
@@ -402,13 +452,24 @@ def convert_to_foundry(
             }
         })
 
+        # Get icon from AI map if available
+        multiattack_icon = icon_map.get(
+            parsed_actor.multiattack.name,
+            "icons/magic/movement/trail-streak-zigzag-yellow.webp"
+        )
+
         item = {
             "_id": _generate_activity_id(),
             "name": parsed_actor.multiattack.name,
             "type": "feat",
-            "img": "icons/magic/movement/trail-streak-zigzag-yellow.webp",
+            "img": multiattack_icon,
             "system": {
                 "description": {"value": parsed_actor.multiattack.description},
+                "activation": {
+                    "type": parsed_actor.multiattack.activation,
+                    "value": None,
+                    "condition": ""
+                },
                 "activities": {activity_id: activity},
                 "uses": {}
             }

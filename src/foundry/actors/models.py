@@ -40,6 +40,11 @@ class Attack(BaseModel):
     # NEW: Optional attack save (e.g., Pit Fiend Bite poison save)
     attack_save: Optional['AttackSave'] = None
 
+    @property
+    def range(self) -> Optional[int]:
+        """Alias for range_short for backwards compatibility."""
+        return self.range_short
+
 
 class Trait(BaseModel):
     """Parsed trait/feature."""
@@ -79,6 +84,7 @@ class InnateSpell(BaseModel):
     name: str
     frequency: str  # "at will", "3/day", "1/day", etc.
     uses: Optional[int] = None  # Max uses per day
+    uuid: Optional[str] = None  # Compendium UUID (resolved during parsing)
 
     model_config = ConfigDict(frozen=True)
 
@@ -102,7 +108,7 @@ class AttackSave(BaseModel):
 
     # Damage on failed save
     damage: List[DamageFormula] = Field(default_factory=list)
-    on_save: Literal["half", "none", "full"] = "none"  # Damage on successful save
+    on_save: Literal["half", "none", "full", "negates"] = "none"  # Damage on successful save
 
     # For ongoing effects (e.g., poison damage each turn)
     ongoing_damage: Optional[List[DamageFormula]] = None
@@ -140,6 +146,9 @@ class ParsedActorData(BaseModel):
     hit_points: int
     hit_dice: Optional[str] = None  # e.g., "27d10 + 189"
     challenge_rating: float
+
+    # Biography/description
+    biography: Optional[str] = None  # Full stat block text or generated description
 
     # Creature type
     size: Optional[str] = None  # "Small", "Medium", "Large", etc.

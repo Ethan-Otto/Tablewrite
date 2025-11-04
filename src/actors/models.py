@@ -1,5 +1,7 @@
 """Pydantic models for D&D 5e stat blocks and NPCs."""
 
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional, Dict, List
 from pydantic import BaseModel, field_validator
 
@@ -77,3 +79,33 @@ class NPC(BaseModel):
     plot_relevance: str
     location: Optional[str] = None
     first_appearance_section: Optional[str] = None  # Where NPC first appears in module
+
+
+@dataclass
+class ActorCreationResult:
+    """Complete result from actor creation pipeline with all intermediate outputs."""
+
+    # Input
+    description: str
+    challenge_rating: Optional[float]
+
+    # Intermediate outputs
+    raw_stat_block_text: str
+    stat_block: StatBlock
+    parsed_actor_data: 'ParsedActorData'  # Forward reference since ParsedActorData is in foundry/actors/models.py
+
+    # Final output
+    foundry_uuid: str
+
+    # File paths (for debugging/inspection)
+    output_dir: Path
+
+    # Metadata
+    timestamp: str  # ISO format timestamp
+    model_used: str  # e.g., "gemini-2.0-flash"
+
+    # Optional file paths
+    raw_text_file: Optional[Path] = None
+    stat_block_file: Optional[Path] = None
+    parsed_data_file: Optional[Path] = None
+    foundry_json_file: Optional[Path] = None

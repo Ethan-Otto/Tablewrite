@@ -52,7 +52,7 @@ class TestActorRoundTrip:
             data = json.load(f)
         return ParsedActorData(**data)
 
-    def test_upload_and_download_goblin(self, foundry_client, goblin_data):
+    async def test_upload_and_download_goblin(self, foundry_client, goblin_data):
         """
         Test complete cycle: Goblin ParsedActorData → FoundryVTT → verify.
 
@@ -63,7 +63,7 @@ class TestActorRoundTrip:
         4. Verify all critical fields are preserved
         """
         # Step 1: Convert to FoundryVTT format
-        foundry_json, spell_uuids = convert_to_foundry(goblin_data)
+        foundry_json, spell_uuids = await convert_to_foundry(goblin_data)
 
         # Verify conversion produced valid structure
         assert foundry_json["name"] == "Goblin"
@@ -96,7 +96,7 @@ class TestActorRoundTrip:
         trait_names = [item["name"] for item in items if item["type"] == "feat"]
         assert "Nimble Escape" in trait_names
 
-    def test_upload_and_download_mage(self, foundry_client, mage_data):
+    async def test_upload_and_download_mage(self, foundry_client, mage_data):
         """
         Test complete cycle: Mage ParsedActorData → FoundryVTT → verify.
 
@@ -107,7 +107,7 @@ class TestActorRoundTrip:
         """
         # Step 1: Convert to FoundryVTT format
         # Use backward compatibility mode since mage_data has fake spell UUIDs
-        foundry_json, spell_uuids = convert_to_foundry(mage_data, include_spells_in_payload=True)
+        foundry_json, spell_uuids = await convert_to_foundry(mage_data, include_spells_in_payload=True)
 
         # Verify conversion
         assert foundry_json["name"] == "Mage"
@@ -139,9 +139,9 @@ class TestActorRoundTrip:
         fireball = next(s for s in spells if s["name"] == "Fireball")
         assert fireball is not None
 
-    def test_conversion_preserves_all_attacks(self, goblin_data):
+    async def test_conversion_preserves_all_attacks(self, goblin_data):
         """Verify attacks are correctly converted to weapon items with activities."""
-        foundry_json, spell_uuids = convert_to_foundry(goblin_data)
+        foundry_json, spell_uuids = await convert_to_foundry(goblin_data)
 
         weapons = [item for item in foundry_json["items"] if item["type"] == "weapon"]
         assert len(weapons) == 2
@@ -171,9 +171,9 @@ class TestActorRoundTrip:
         assert shortbow["system"]["range"]["value"] == 80
         assert shortbow["system"]["range"]["long"] == 320
 
-    def test_conversion_preserves_all_traits(self, goblin_data):
+    async def test_conversion_preserves_all_traits(self, goblin_data):
         """Verify traits are correctly converted to feat items."""
-        foundry_json, spell_uuids = convert_to_foundry(goblin_data)
+        foundry_json, spell_uuids = await convert_to_foundry(goblin_data)
 
         feats = [item for item in foundry_json["items"] if item["type"] == "feat"]
         assert len(feats) == 1
@@ -183,9 +183,9 @@ class TestActorRoundTrip:
         assert nimble_escape["system"]["activation"]["type"] == "bonus"
         assert "Disengage or Hide" in nimble_escape["system"]["description"]["value"]
 
-    def test_conversion_preserves_spells(self, mage_data):
+    async def test_conversion_preserves_spells(self, mage_data):
         """Verify spells are correctly returned as UUIDs (not in payload)."""
-        foundry_json, spell_uuids = convert_to_foundry(mage_data)
+        foundry_json, spell_uuids = await convert_to_foundry(mage_data)
 
         # NEW behavior: Spells NOT in payload
         spells = [item for item in foundry_json["items"] if item["type"] == "spell"]
@@ -196,9 +196,9 @@ class TestActorRoundTrip:
         # All should be compendium UUIDs
         assert all(uuid.startswith("Compendium.") for uuid in spell_uuids)
 
-    def test_conversion_structure_matches_foundry_format(self, goblin_data):
+    async def test_conversion_structure_matches_foundry_format(self, goblin_data):
         """Verify converted JSON matches FoundryVTT expected structure."""
-        foundry_json, spell_uuids = convert_to_foundry(goblin_data)
+        foundry_json, spell_uuids = await convert_to_foundry(goblin_data)
 
         # Check required top-level fields
         assert "name" in foundry_json
@@ -226,7 +226,7 @@ class TestActorRoundTrip:
         assert "hp" in system["attributes"]
         assert "movement" in system["attributes"]
 
-    def test_weapon_activities_functional_in_foundry(self, foundry_client):
+    async def test_weapon_activities_functional_in_foundry(self, foundry_client):
         """Weapons should have working attack buttons in FoundryVTT."""
         goblin = ParsedActorData(
             source_statblock_name="Goblin",
@@ -244,7 +244,7 @@ class TestActorRoundTrip:
             )]
         )
 
-        foundry_json, spell_uuids = convert_to_foundry(goblin)
+        foundry_json, spell_uuids = await convert_to_foundry(goblin)
         actor_uuid = foundry_client.actors.create_actor(foundry_json)
 
         # Download and verify
@@ -262,7 +262,7 @@ class TestActorRoundTrip:
         assert attack_activity["attack"]["flat"] == True
         assert "damage" in attack_activity
 
-    def test_pit_fiend_bite_full_complexity(self, foundry_client):
+    async def test_pit_fiend_bite_full_complexity(self, foundry_client):
         """Pit Fiend bite should have attack + save + ongoing damage."""
         pit_fiend = ParsedActorData(
             source_statblock_name="Pit Fiend",
@@ -286,7 +286,7 @@ class TestActorRoundTrip:
             )]
         )
 
-        foundry_json, spell_uuids = convert_to_foundry(pit_fiend)
+        foundry_json, spell_uuids = await convert_to_foundry(pit_fiend)
         actor_uuid = foundry_client.actors.create_actor(foundry_json)
 
         downloaded = foundry_client.actors.get_actor(actor_uuid)

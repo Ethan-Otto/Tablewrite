@@ -7,7 +7,6 @@ from typing import Optional
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-from google.api_core import exceptions as google_exceptions
 from io import BytesIO
 
 from .models import Scene, ChapterContext
