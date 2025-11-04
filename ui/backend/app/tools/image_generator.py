@@ -15,6 +15,7 @@ class ImageGeneratorTool(BaseTool):
         """Initialize image generator."""
         self.output_dir = settings.IMAGE_OUTPUT_DIR
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.semaphore = asyncio.Semaphore(settings.IMAGEN_CONCURRENT_LIMIT)
 
     @property
     def name(self) -> str:
@@ -91,14 +92,15 @@ class ImageGeneratorTool(BaseTool):
         Returns:
             Filename of generated image
         """
-        # TODO: Implement actual Gemini Imagen API call
-        # For now, return mock filename
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        unique_id = uuid.uuid4().hex[:8]
-        filename = f"{timestamp}_{unique_id}.png"
+        async with self.semaphore:
+            # TODO: Implement actual Gemini Imagen API call
+            # For now, return mock filename
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            unique_id = uuid.uuid4().hex[:8]
+            filename = f"{timestamp}_{unique_id}.png"
 
-        # Mock: create empty file
-        filepath = self.output_dir / filename
-        filepath.touch()
+            # Mock: create empty file
+            filepath = self.output_dir / filename
+            filepath.touch()
 
-        return filename
+            return filename
