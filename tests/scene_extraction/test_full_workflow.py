@@ -37,38 +37,24 @@ class TestSceneProcessingWorkflow:
         output_dir = tmp_path / "output"
         output_dir.mkdir()
 
-        # Patch each module's genai import separately
-        # Note: extract_context and identify_scenes use old google.generativeai.GenerativeModel
-        #       generate_artwork uses new google.genai.Client
-        with patch('src.scene_extraction.extract_context.genai.GenerativeModel') as mock_context_model, \
-             patch('src.scene_extraction.identify_scenes.genai.GenerativeModel') as mock_scenes_model, \
+        # Patch get_client() helpers in each module (new API pattern)
+        with patch('src.scene_extraction.extract_context.get_client') as mock_context_get_client, \
+             patch('src.scene_extraction.identify_scenes.get_client') as mock_scenes_get_client, \
              patch('src.scene_extraction.generate_artwork.genai.Client') as mock_client_class:
 
-            # Set up context extraction mock
+            # Set up context extraction mock (new API)
             mock_context_response = MagicMock()
             mock_context_response.text = '{"environment_type": "forest", "lighting": "dappled sunlight"}'
-            mock_context_instance = MagicMock()
-            mock_context_instance.generate_content.return_value = mock_context_response
-            mock_context_model.return_value = mock_context_instance
+            mock_context_client = MagicMock()
+            mock_context_client.models.generate_content.return_value = mock_context_response
+            mock_context_get_client.return_value = mock_context_client
 
-            # Debug: verify mock setup and usage
-            print(f"DEBUG: mock_context_model = {mock_context_model}")
-            print(f"DEBUG: mock_context_model.return_value = {mock_context_model.return_value}")
-            print(f"DEBUG: mock_context_response.text = {mock_context_response.text}")
-
-            # Test that calling the model returns the instance
-            test_instance = mock_context_model("gemini-2.0-flash-exp")
-            print(f"DEBUG: Calling mock_context_model('gemini-2.0-flash-exp') returns: {test_instance}")
-            print(f"DEBUG: Is it the same as mock_context_instance? {test_instance is mock_context_instance}")
-            test_response = test_instance.generate_content("test")
-            print(f"DEBUG: test_response.text = {test_response.text}")
-
-            # Set up scene identification mock (old API)
+            # Set up scene identification mock (new API)
             mock_scenes_response = MagicMock()
             mock_scenes_response.text = '[{"section_path": "Test Chapter → Area 1", "name": "Forest Clearing", "description": "A dark forest clearing", "location_type": "outdoor", "xml_section_id": "area_1"}]'
-            mock_scenes_instance = MagicMock()
-            mock_scenes_instance.generate_content.return_value = mock_scenes_response
-            mock_scenes_model.return_value = mock_scenes_instance
+            mock_scenes_client = MagicMock()
+            mock_scenes_client.models.generate_content.return_value = mock_scenes_response
+            mock_scenes_get_client.return_value = mock_scenes_client
 
             # Set up image generation mock (new API with genai.Client)
             mock_pil_image = MagicMock()
