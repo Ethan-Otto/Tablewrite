@@ -306,7 +306,7 @@ class TestEndToEndWithRealPDF:
         from pathlib import Path
 
         # Path to monsters PDF directory
-        monsters_pdf_dir = Path("/Users/ethanotto/Documents/Projects/dnd_module_gen/pdf_sections/Lost_Mine_of_Phandelver")
+        monsters_pdf_dir = Path("/Users/ethanotto/Documents/Projects/dnd_module_gen/data/pdf_sections/Lost_Mine_of_Phandelver")
         monsters_pdf_name = "08_Appendix_B_Monsters.pdf"
         monsters_pdf = monsters_pdf_dir / monsters_pdf_name
 

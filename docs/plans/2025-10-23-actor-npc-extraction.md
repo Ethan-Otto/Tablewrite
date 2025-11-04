@@ -2345,7 +2345,7 @@ Scimitar. Melee Weapon Attack: +4 to hit...
 
 ```bash
 # Process test PDF to verify stat blocks are tagged
-uv run python src/pdf_processing/pdf_to_xml.py --file "data/pdf_sections/Lost_Mine_of_Phandelver_test/01_Introduction.pdf"
+uv run python src/pdf_processing/pdf_to_xml.py --file "data/data/pdf_sections/Lost_Mine_of_Phandelver_test/01_Introduction.pdf"
 ```
 
 Expected: Generated XML contains `<stat_block name="...">` tags

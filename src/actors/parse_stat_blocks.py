@@ -44,10 +44,11 @@ Extract the following fields:
 - speed (string, optional): Speed description
 - senses (string, optional): Senses description
 - languages (string, optional): Languages
-- traits (string, optional): Special traits (everything between stats and ACTIONS)
-- actions (string, optional): Actions section (everything after ACTIONS header)
+- traits (array of strings, optional): Each special trait as a separate string in array. If no traits, use empty array [].
+- actions (array of strings, optional): Each action as a separate string in array. If no actions, use empty array [].
 
 Return ONLY valid JSON with these exact field names. Do not include any markdown formatting or explanation.
+If a field has no value, use empty array [] for list fields or null for other optional fields.
 
 Stat block:
 {raw_text}"""

@@ -19,9 +19,8 @@ GEMINI_API_KEY = os.getenv("GeminiImageAPI")
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
-# Use gemini-2.0-flash-exp instead of gemini-2.5-pro for this structured extraction task
-# because it's faster and cheaper while still providing reliable JSON parsing for scene identification
-GEMINI_MODEL_NAME = "gemini-2.0-flash-exp"
+# Use gemini-2.0-flash for structured extraction - fast and reliable JSON parsing
+GEMINI_MODEL_NAME = "gemini-2.0-flash"
 
 
 def identify_scene_locations(xml_content: str, chapter_context: ChapterContext) -> List[Scene]:

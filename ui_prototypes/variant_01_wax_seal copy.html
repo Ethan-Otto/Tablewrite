@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Variant 1: Wax Seal</title>
+    <link href="https://fonts.googleapis.com/css2?family=IM+Fell+DW+Pica:ital@0;1&family=UnifrakturMaguntia&family=Crimson+Pro:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Crimson Pro', serif;
+            background: linear-gradient(135deg, #d4c4a8 0%, #c4b098 50%, #d4c4a8 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 1000px;
+            height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow:
+                0 30px 60px rgba(0, 0, 0, 0.4),
+                inset 0 0 100px rgba(0, 0, 0, 0.05);
+        }
+
+        .header {
+            background:
+                linear-gradient(180deg, rgba(92, 61, 46, 0.15) 0%, transparent 100%),
+                linear-gradient(180deg, #b89d7d 0%, #9d8565 100%);
+            border: 4px double #7d5a3d;
+            border-bottom: none;
+            padding: 20px 40px;
+            position: relative;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        .header h1 {
+            font-family: 'UnifrakturMaguntia', cursive;
+            text-align: center;
+            color: #5c3d2e;
+            font-size: 36px;
+            letter-spacing: 3px;
+            text-shadow: 2px 2px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        .header-flourish {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 28px;
+            color: #7d5a3d;
+        }
+
+        .header-flourish.left { left: 120px; }
+        .header-flourish.right { right: 120px; }
+
+        .chat-window {
+            flex: 1;
+            background:
+                repeating-linear-gradient(0deg, transparent 0px, rgba(125, 90, 61, 0.02) 1px, transparent 2px, transparent 20px),
+                repeating-linear-gradient(90deg, transparent 0px, rgba(125, 90, 61, 0.02) 1px, transparent 2px, transparent 20px),
+                radial-gradient(circle at 30% 30%, rgba(240, 230, 210, 1) 0%, rgba(230, 218, 195, 1) 100%);
+            border-left: 4px double #7d5a3d;
+            border-right: 4px double #7d5a3d;
+            overflow-y: auto;
+            padding: 40px;
+            position: relative;
+            box-shadow: inset 0 0 100px rgba(125, 90, 61, 0.06);
+        }
+
+        /* Aging spots */
+        .chat-window::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image:
+                radial-gradient(circle at 15% 25%, rgba(139, 90, 43, 0.08) 0%, transparent 4%),
+                radial-gradient(circle at 82% 45%, rgba(139, 90, 43, 0.06) 0%, transparent 3%),
+                radial-gradient(circle at 45% 78%, rgba(139, 90, 43, 0.07) 0%, transparent 5%),
+                radial-gradient(circle at 68% 12%, rgba(139, 90, 43, 0.05) 0%, transparent 3%);
+            pointer-events: none;
+        }
+
+        .message {
+            margin-bottom: 30px;
+            display: flex;
+            gap: 15px;
+            animation: fadeInParchment 0.6s ease-out;
+        }
+
+        @keyframes fadeInParchment {
+            from {
+                opacity: 0;
+                transform: translateY(10px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 3px double #7d5a3d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+            background: radial-gradient(circle, #e8dcc5 0%, #d4c4a8 100%);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+        }
+
+        .emoji-icon {
+            filter: grayscale(1) brightness(0);
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 20px 25px;
+            border-radius: 4px;
+            position: relative;
+            font-family: 'IM Fell DW Pica', serif;
+            line-height: 1.8;
+        }
+
+        .message.assistant .message-content {
+            background: linear-gradient(135deg, rgba(245, 238, 225, 0.9) 0%, rgba(235, 225, 210, 0.9) 100%);
+            color: #3d2817;
+            border: 2px solid #b89d7d;
+            border-left: 4px solid #7d5a3d;
+            box-shadow:
+                4px 4px 0 rgba(125, 90, 61, 0.12),
+                0 6px 15px rgba(0, 0, 0, 0.18);
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, rgba(184, 157, 125, 0.35) 0%, rgba(157, 133, 101, 0.35) 100%);
+            color: #3d2817;
+            border: 2px solid #7d5a3d;
+            border-right: 4px solid #5c3d2e;
+            box-shadow:
+                -4px 4px 0 rgba(125, 90, 61, 0.12),
+                0 6px 15px rgba(0, 0, 0, 0.18);
+        }
+
+        .message-label {
+            font-family: 'Crimson Pro', serif;
+            font-size: 11px;
+            font-weight: 600;
+            color: #7d5a3d;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .scene-card {
+            background: linear-gradient(135deg, rgba(245, 238, 225, 0.95) 0%, rgba(235, 225, 210, 0.95) 100%);
+            border: 3px double #7d5a3d;
+            border-radius: 8px;
+            padding: 30px;
+            margin: 30px 0;
+            box-shadow:
+                6px 6px 0 rgba(125, 90, 61, 0.18),
+                0 10px 30px rgba(0, 0, 0, 0.25);
+            position: relative;
+        }
+
+        .scene-card::before {
+            content: '❦';
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 40px;
+            color: #7d5a3d;
+            background: linear-gradient(135deg, #e8dcc5 0%, #d4c4a8 100%);
+            padding: 0 20px;
+        }
+
+        .scene-card h3 {
+            font-family: 'UnifrakturMaguntia', cursive;
+            color: #5c3d2e;
+            margin-bottom: 20px;
+            margin-top: 10px;
+            font-size: 28px;
+            text-align: center;
+            padding-bottom: 15px;
+            border-bottom: 2px double #7d5a3d;
+            letter-spacing: 2px;
+        }
+
+        .scene-image {
+            width: 100%;
+            height: 280px;
+            background:
+                repeating-linear-gradient(45deg, #c4b098 0px, #c4b098 2px, #b89d7d 2px, #b89d7d 4px),
+                linear-gradient(135deg, #d4c4a8 0%, #c4b098 100%);
+            border: 3px double #7d5a3d;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #7d5a3d;
+            font-style: italic;
+            margin-bottom: 20px;
+            box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.12);
+        }
+
+        .scene-description {
+            color: #3d2817;
+            line-height: 1.9;
+            font-size: 17px;
+            font-family: 'IM Fell DW Pica', serif;
+            text-align: justify;
+        }
+
+        .input-area {
+            background:
+                linear-gradient(180deg, rgba(92, 61, 46, 0.15) 0%, transparent 100%),
+                linear-gradient(180deg, #9d8565 0%, #b89d7d 100%);
+            border: 4px double #7d5a3d;
+            border-top: none;
+            padding: 25px 40px;
+            box-shadow: inset 0 -2px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .command-input {
+            flex: 1;
+            background: rgba(245, 238, 225, 0.95);
+            border: 2px solid #7d5a3d;
+            padding: 16px 24px;
+            font-family: 'IM Fell DW Pica', serif;
+            font-size: 16px;
+            color: #3d2817;
+            border-radius: 4px;
+            outline: none;
+            transition: all 0.3s ease;
+            box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.12);
+        }
+
+        .command-input::placeholder {
+            color: #9d8565;
+            font-style: italic;
+        }
+
+        .command-input:focus {
+            border-color: #5c3d2e;
+            box-shadow:
+                0 0 0 3px rgba(125, 90, 61, 0.25),
+                inset 2px 2px 5px rgba(0, 0, 0, 0.12);
+        }
+
+        /* WAX SEAL BUTTON - 2D flat seal on parchment */
+        .send-button {
+            width: 75px;
+            height: 75px;
+            background: #8b1a1a;
+            border: none;
+            border-radius: 48% 52% 47% 53% / 45% 50% 50% 55%;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+            box-shadow:
+                0 2px 6px rgba(0, 0, 0, 0.4),
+                0 0 0 2px rgba(139, 26, 26, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            position: relative;
+            filter: brightness(0.85) saturate(1.2);
+        }
+
+        /* Wax drips */
+        .send-button::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 12px;
+            background: #8b1a1a;
+            border-radius: 0 0 50% 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+            filter: brightness(0.8);
+        }
+
+        /* Embossed seal design - pressed into wax */
+        .send-button::before {
+            content: '';
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 3px solid rgba(0, 0, 0, 0.25);
+            box-shadow:
+                inset 0 0 8px rgba(0, 0, 0, 0.4),
+                inset 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Central emblem */
+        .send-button .seal-emblem {
+            font-family: 'UnifrakturMaguntia', cursive;
+            font-size: 36px;
+            color: rgba(0, 0, 0, 0.3);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+            z-index: 1;
+        }
+
+        .send-button:hover {
+            opacity: 0.9;
+        }
+
+        .send-button:active {
+            opacity: 0.95;
+            filter: brightness(0.8) saturate(1.2);
+        }
+
+        .command-hint {
+            font-family: 'IM Fell DW Pica', serif;
+            font-size: 13px;
+            color: #5c3d2e;
+            margin-top: 12px;
+            text-align: center;
+            font-style: italic;
+        }
+
+        .chat-window::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        .chat-window::-webkit-scrollbar-track {
+            background: rgba(184, 157, 125, 0.3);
+            border: 1px solid #b89d7d;
+        }
+
+        .chat-window::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #7d5a3d 0%, #5c3d2e 100%);
+            border-radius: 6px;
+            border: 2px solid #e8dcc5;
+        }
+
+        .chat-window::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #8d6a4d 0%, #6d4d3e 100%);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <div class="header-flourish left">❦</div>
+            <h1>Module Assistant</h1>
+            <div class="header-flourish right">❦</div>
+        </div>
+
+        <div class="chat-window">
+            <div class="message assistant">
+                <div class="message-avatar">✒</div>
+                <div class="message-content">
+                    <div class="message-label">Assistant</div>
+                    Greetings, adventurer! I am your Module Assistant. I can help you generate scenes, manage actors, and work with your D&D modules. Try typing <strong>/help</strong> to see available commands.
+                </div>
+            </div>
+
+            <div class="message user">
+                <div class="message-avatar"><span class="emoji-icon">🧙</span></div>
+                <div class="message-content">
+                    <div class="message-label">You</div>
+                    /generate-scene the entrance to the Cragmaw Hideout cave
+                </div>
+            </div>
+
+            <div class="message assistant">
+                <div class="message-avatar">✒</div>
+                <div class="message-content">
+                    <div class="message-label">Assistant</div>
+                    Generating scene for "the entrance to the Cragmaw Hideout cave"...
+                </div>
+            </div>
+
+            <div class="scene-card">
+                <h3>Cragmaw Hideout Entrance</h3>
+                <div class="scene-image">
+                    [Generated scene image would appear here]
+                </div>
+                <div class="scene-description">
+                    A narrow cave mouth opens before you, partially concealed by thick undergrowth and gnarled tree roots. The entrance is roughly seven feet high and ten feet wide, with jagged stone forming a natural archway. The sound of running water echoes from within, and muddy tracks suggest recent activity.
+                </div>
+            </div>
+
+            <div class="message user">
+                <div class="message-avatar"><span class="emoji-icon">🧙</span></div>
+                <div class="message-content">
+                    <div class="message-label">You</div>
+                    /list-scenes Chapter 2
+                </div>
+            </div>
+
+            <div class="message assistant">
+                <div class="message-avatar">✒</div>
+                <div class="message-content">
+                    <div class="message-label">Assistant</div>
+                    <strong>Scenes in Chapter 2:</strong><br><br>
+                    1. Cragmaw Hideout Entrance<br>
+                    2. Twin Pools Cave<br>
+                    3. Goblin Den<br>
+                    4. Klarg's Cave
+                </div>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <div class="input-wrapper">
+                <input type="text" class="command-input" placeholder="/generate-scene [description]" />
+                <button class="send-button">
+                    <span class="seal-emblem">⚜</span>
+                </button>
+            </div>
+            <div class="command-hint">
+                Variant 1: Wax Seal • Sealed with burgundy wax
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -11,7 +11,7 @@ venv/
 
 # Output
 output/
-pdf_sections/
+data/pdf_sections/
 tests/test_runs/
 tests/output/
 
@@ -20,6 +20,22 @@ tests/output/
 
 # OS-specific
 .DS_Store
+
+# Testing & Logs
+*.log
+tests_report.md
+
+# Playwright
+ui/frontend/playwright-report/
+ui/frontend/test-results/
+ui/frontend/.playwright/
+ui/frontend/e2e/
+
+# UI Development Artifacts
+ui/frontend/*.png
+ui/frontend/*.jpg
+ui/frontend/background-mockups/
+ui/frontend/inspect-styles.cjs
 
 # Other
 api_keys.env.rtf

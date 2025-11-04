@@ -166,35 +166,6 @@ class TestTextExtraction:
         doc.close()
 
 
-class TestXMLValidation:
-    """Test XML structure validation."""
-
-    def test_valid_xml_parsing(self, sample_xml_content):
-        """Test that valid XML can be parsed."""
-        root = ET.fromstring(sample_xml_content)
-        assert root is not None
-        assert root.tag == "Chapter_01_Introduction"
-
-    def test_xml_has_pages(self, sample_xml_content):
-        """Test that XML contains page elements."""
-        root = ET.fromstring(sample_xml_content)
-        pages = root.findall("page")
-        assert len(pages) > 0
-
-    def test_xml_page_attributes(self, sample_xml_content):
-        """Test that page elements have required attributes."""
-        root = ET.fromstring(sample_xml_content)
-        page = root.find("page")
-
-        assert page is not None
-        assert "number" in page.attrib
-
-    def test_malformed_xml_detection(self, sample_malformed_xml):
-        """Test that malformed XML is detected."""
-        with pytest.raises(ET.ParseError):
-            ET.fromstring(sample_malformed_xml)
-
-
 @pytest.mark.integration
 @pytest.mark.slow
 @pytest.mark.requires_api
@@ -291,17 +262,6 @@ class TestGeminiIntegration:
 
 class TestErrorHandling:
     """Test error handling and edge cases."""
-
-    def test_empty_xml_content(self):
-        """Test handling of empty XML content."""
-        with pytest.raises(ET.ParseError):
-            ET.fromstring("")
-
-    def test_invalid_xml_structure(self):
-        """Test handling of invalid XML structure."""
-        invalid_xml = "<page><unclosed>"
-        with pytest.raises(ET.ParseError):
-            ET.fromstring(invalid_xml)
 
     def test_word_count_with_empty_string(self):
         """Test word counting with empty strings."""

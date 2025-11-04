@@ -321,7 +321,7 @@ tests/pdf_processing/image_asset_processing/
 ### Extract from single chapter PDF
 ```bash
 uv run python src/pdf_processing/image_asset_processing/extract_map_assets.py \
-    --pdf pdf_sections/Lost_Mine_of_Phandelver/01_Introduction.pdf \
+    --pdf data/pdf_sections/Lost_Mine_of_Phandelver/01_Introduction.pdf \
     --chapter "Chapter 1"
 ```
 

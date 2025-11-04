@@ -4,7 +4,7 @@ Utilities for turning official Dungeons & Dragons PDFs into structured assets th
 
 ## Layout
 - `src/pdf_processing/` – PDF processing scripts:
-  - `split_pdf.py` – slices `data/pdfs/Lost_Mine_of_Phandelver.pdf` into chapter PDFs under `pdf_sections/`
+  - `split_pdf.py` – slices `data/pdfs/Lost_Mine_of_Phandelver.pdf` into chapter PDFs under `data/pdf_sections/`
   - `pdf_to_xml.py` – uploads each chapter page to Gemini (`GEMINI_MODEL_NAME`) and writes XML plus logs to `output/runs/<timestamp>/`
   - `get_toc.py` – extracts table of contents from PDF
   - `xml_to_html.py` – converts XML to browsable HTML (local previews and FoundryVTT uploads)
@@ -31,7 +31,7 @@ Utilities for turning official Dungeons & Dragons PDFs into structured assets th
 - `scripts/generate_scene_art.py` – scene artwork generation orchestration script
 - `src/logging_config.py` – centralized logging configuration
 - `xml_examples/` – reference markup while refining the converters
-- `pdf_sections/` – cache of manually curated chapter PDFs used as input for the XML step
+- `data/pdf_sections/` – cache of manually curated chapter PDFs used as input for the XML step
 
 ## Setup
 1. Install uv if not already installed: `curl -LsSf https://astral.sh/uv/install.sh | sh` (or `pip install uv`)
@@ -62,6 +62,74 @@ uv run python scripts/full_pipeline.py --skip-export             # Skip final ex
 Or activate the virtual environment first (`source .venv/bin/activate`) and use `python ...` directly.
 
 Each run preserves logs, raw model responses, and word-count checks beneath `output/runs/<timestamp>/`; avoid editing outputs in place so history stays intact.
+
+## Web UI
+
+The project includes a chat-based web UI for interacting with the D&D Module Assistant. The UI features a wax seal aesthetic with parchment textures and provides a conversational interface for working with D&D module content.
+
+### Architecture
+
+- **Frontend**: React 19 + TypeScript + Vite with Tailwind CSS
+- **Backend**: FastAPI (Python) with Google Gemini API
+- **Design**: Wax seal aesthetic with medieval typography and parchment backgrounds
+
+### Setup & Running
+
+**1. Backend Setup:**
+```bash
+cd ui/backend
+
+# Create virtual environment and install dependencies
+uv venv
+source .venv/bin/activate  # or .venv\Scripts\activate on Windows
+uv pip install -r requirements.txt
+
+# Create .env file with your Gemini API key
+echo "GEMINI_API_KEY=<your_api_key>" > .env
+echo "CORS_ORIGINS=http://localhost:5173" >> .env
+
+# Start the backend server
+uvicorn app.main:app --reload --port 8000
+```
+
+Backend runs on http://localhost:8000 (Swagger docs at http://localhost:8000/docs)
+
+**2. Frontend Setup:**
+```bash
+cd ui/frontend
+
+# Install dependencies
+npm install
+
+# Start the development server
+npm run dev
+```
+
+Frontend runs on http://localhost:5173
+
+**3. Access the UI:**
+Open your browser to http://localhost:5173
+
+### Features
+
+- **Chat Interface**: Conversational UI for working with D&D module content
+- **Conversation History**: Full chat history maintained across messages
+- **Markdown Support**: Rich text rendering for formatted responses
+- **Wax Seal Aesthetic**: Medieval-themed design with parchment textures
+- **Available Commands**:
+  - `/generate-scene [description]` - Generate a new scene
+  - `/list_scenes [chapter]` - List scenes in a chapter
+  - `/list_actors` - List all actors/NPCs
+  - `/help` - Show help
+
+### Development
+
+The UI uses hot module replacement for fast development:
+- Frontend changes reload automatically via Vite HMR
+- Backend changes reload automatically with `--reload` flag
+- Hard refresh (Cmd+Shift+R or Ctrl+Shift+R) to clear browser cache if needed
+
+See `ui/CLAUDE.md` for detailed architecture documentation, component breakdown, and development guidelines.
 
 ## FoundryVTT Integration
 

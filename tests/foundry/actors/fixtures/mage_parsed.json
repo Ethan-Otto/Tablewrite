@@ -1,0 +1,189 @@
+{
+  "source_statblock_name": "Mage",
+  "name": "Mage",
+  "armor_class": 12,
+  "hit_points": 40,
+  "hit_dice": "9d8",
+  "challenge_rating": 6.0,
+  "size": "Medium",
+  "creature_type": "humanoid",
+  "creature_subtype": "any race",
+  "alignment": "any alignment",
+  "abilities": {
+    "STR": 9,
+    "DEX": 14,
+    "CON": 11,
+    "INT": 17,
+    "WIS": 12,
+    "CHA": 11
+  },
+  "saving_throw_proficiencies": ["int", "wis"],
+  "skill_proficiencies": [
+    {
+      "skill": "Arcana",
+      "bonus": 6,
+      "proficiency_level": 1
+    },
+    {
+      "skill": "History",
+      "bonus": 6,
+      "proficiency_level": 1
+    }
+  ],
+  "damage_resistances": null,
+  "damage_immunities": null,
+  "damage_vulnerabilities": null,
+  "condition_immunities": [],
+  "speed_walk": 30,
+  "speed_fly": null,
+  "speed_swim": null,
+  "speed_burrow": null,
+  "speed_climb": null,
+  "speed_hover": false,
+  "darkvision": null,
+  "blindsight": null,
+  "tremorsense": null,
+  "truesight": null,
+  "passive_perception": 11,
+  "languages": ["Common", "Draconic", "Elvish"],
+  "telepathy": null,
+  "traits": [],
+  "attacks": [
+    {
+      "name": "Dagger",
+      "attack_type": "melee_ranged",
+      "attack_bonus": 5,
+      "reach": 5,
+      "range_short": 20,
+      "range_long": 60,
+      "damage": [
+        {
+          "number": 1,
+          "denomination": 4,
+          "bonus": "+2",
+          "type": "piercing"
+        }
+      ],
+      "additional_effects": null
+    }
+  ],
+  "reactions": [],
+  "multiattack_description": null,
+  "spells": [
+    {
+      "name": "Fire Bolt",
+      "level": 0,
+      "uuid": "Compendium.dnd5e.spells.Item.abc123",
+      "school": "evo",
+      "casting_time": "1 action"
+    },
+    {
+      "name": "Light",
+      "level": 0,
+      "uuid": "Compendium.dnd5e.spells.Item.def456",
+      "school": "evo",
+      "casting_time": "1 action"
+    },
+    {
+      "name": "Mage Hand",
+      "level": 0,
+      "uuid": "Compendium.dnd5e.spells.Item.ghi789",
+      "school": "con",
+      "casting_time": "1 action"
+    },
+    {
+      "name": "Prestidigitation",
+      "level": 0,
+      "uuid": "Compendium.dnd5e.spells.Item.jkl012",
+      "school": "tra",
+      "casting_time": "1 action"
+    },
+    {
+      "name": "Detect Magic",
+      "level": 1,
+      "uuid": "Compendium.dnd5e.spells.Item.mno345",
+      "school": "div",
+      "casting_time": "1 action"
+    },
+    {
+      "name": "Mage Armor",
+      "level": 1,
+      "uuid": "Compendium.dnd5e.spells.Item.pqr678",
+      "school": "abj",
+      "casting_time": "1 action"
+    },
+    {
+      "name": "Magic Missile",
+      "level": 1,
+      "uuid": "Compendium.dnd5e.spells.Item.stu901",
+      "school": "evo",
+      "casting_time": "1 action"
+    },
+    {
+      "name": "Shield",
+      "level": 1,
+      "uuid": "Compendium.dnd5e.spells.Item.vwx234",
+      "school": "abj",
+      "casting_time": "1 reaction"
+    },
+    {
+      "name": "Misty Step",
+      "level": 2,
+      "uuid": "Compendium.dnd5e.spells.Item.yza567",
+      "school": "con",
+      "casting_time": "1 bonus action"
+    },
+    {
+      "name": "Suggestion",
+      "level": 2,
+      "uuid": "Compendium.dnd5e.spells.Item.bcd890",
+      "school": "enc",
+      "casting_time": "1 action"
+    },
+    {
+      "name": "Counterspell",
+      "level": 3,
+      "uuid": "Compendium.dnd5e.spells.Item.efg123",
+      "school": "abj",
+      "casting_time": "1 reaction"
+    },
+    {
+      "name": "Fireball",
+      "level": 3,
+      "uuid": "Compendium.dnd5e.spells.Item.hij456",
+      "school": "evo",
+      "casting_time": "1 action"
+    },
+    {
+      "name": "Fly",
+      "level": 3,
+      "uuid": "Compendium.dnd5e.spells.Item.klm789",
+      "school": "tra",
+      "casting_time": "1 action"
+    },
+    {
+      "name": "Greater Invisibility",
+      "level": 4,
+      "uuid": "Compendium.dnd5e.spells.Item.nop012",
+      "school": "ill",
+      "casting_time": "1 action"
+    },
+    {
+      "name": "Ice Storm",
+      "level": 4,
+      "uuid": "Compendium.dnd5e.spells.Item.qrs345",
+      "school": "evo",
+      "casting_time": "1 action"
+    },
+    {
+      "name": "Cone of Cold",
+      "level": 5,
+      "uuid": "Compendium.dnd5e.spells.Item.tuv678",
+      "school": "evo",
+      "casting_time": "1 action"
+    }
+  ],
+  "spellcasting_ability": "int",
+  "spell_save_dc": 14,
+  "spell_attack_bonus": 6
+}

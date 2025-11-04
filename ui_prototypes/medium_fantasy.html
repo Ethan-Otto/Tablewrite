@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat UI - Medium Fantasy</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Lora', serif;
+            background: linear-gradient(135deg, #2a1f15 0%, #3d2f22 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 1000px;
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(90deg, #6d5544 0%, #8b6f47 50%, #6d5544 100%);
+            padding: 20px 30px;
+            border-bottom: 3px solid #d4a574;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header h1 {
+            font-family: 'Cinzel', serif;
+            color: #f4e8d0;
+            font-size: 22px;
+            letter-spacing: 1.5px;
+            font-weight: 600;
+        }
+
+        .header-icon {
+            color: #d4a574;
+            font-size: 24px;
+        }
+
+        /* Chat Window */
+        .chat-window {
+            flex: 1;
+            background: #f4e8d0;
+            background-image: radial-gradient(circle at 20% 50%, rgba(212, 165, 116, 0.08) 0%, transparent 50%),
+                              radial-gradient(circle at 80% 80%, rgba(139, 115, 85, 0.08) 0%, transparent 50%);
+            overflow-y: auto;
+            padding: 30px;
+        }
+
+        /* Messages */
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 12px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .message.user .message-avatar {
+            background: linear-gradient(135deg, #8b6f47 0%, #6d5544 100%);
+            border: 2px solid #d4a574;
+        }
+
+        .message.assistant .message-avatar {
+            background: linear-gradient(135deg, #d4a574 0%, #c89f6a 100%);
+            border: 2px solid #8b6f47;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 15px 18px;
+            border-radius: 12px;
+            line-height: 1.6;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #5d4a35 0%, #4a3829 100%);
+            color: #f4e8d0;
+            border: 1px solid #8b6f47;
+        }
+
+        .message.assistant .message-content {
+            background: rgba(255, 255, 255, 0.7);
+            color: #2a1f15;
+            border: 1px solid #d4a574;
+        }
+
+        .message-label {
+            font-family: 'Cinzel', serif;
+            font-size: 11px;
+            color: #8b7355;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        /* Scene Card */
+        .scene-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
+            border: 2px solid #d4a574;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .scene-card h3 {
+            font-family: 'Cinzel', serif;
+            color: #3d2a1f;
+            margin-bottom: 15px;
+            font-size: 18px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #d4a574;
+        }
+
+        .scene-image {
+            width: 100%;
+            height: 280px;
+            background: linear-gradient(135deg, #2a1f15 0%, #3d2f22 50%, #2a1f15 100%);
+            border: 1px solid #8b6f47;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #8b7355;
+            font-style: italic;
+            margin-bottom: 12px;
+        }
+
+        .scene-description {
+            color: #2a1f15;
+            line-height: 1.7;
+            font-size: 15px;
+        }
+
+        /* Input Area */
+        .input-area {
+            background: linear-gradient(180deg, #6d5544 0%, #5d4a35 100%);
+            padding: 20px 30px;
+            border-top: 2px solid #8b6f47;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: stretch;
+        }
+
+        .command-input {
+            flex: 1;
+            background: rgba(244, 232, 208, 0.95);
+            border: 1px solid #d4a574;
+            padding: 14px 18px;
+            font-family: 'Lora', serif;
+            font-size: 15px;
+            color: #1a0f0a;
+            border-radius: 8px;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .command-input::placeholder {
+            color: #8b7355;
+            font-style: italic;
+        }
+
+        .command-input:focus {
+            border-color: #ffd700;
+            box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
+        }
+
+        .send-button {
+            background: linear-gradient(135deg, #d4a574 0%, #c89f6a 100%);
+            border: 1px solid #8b6f47;
+            color: #2a1f15;
+            padding: 14px 26px;
+            font-family: 'Cinzel', serif;
+            font-size: 13px;
+            letter-spacing: 1px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 600;
+        }
+
+        .send-button:hover {
+            background: linear-gradient(135deg, #e0b586 0%, #d4a574 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .send-button:active {
+            transform: translateY(0);
+        }
+
+        /* Command hint */
+        .command-hint {
+            font-size: 12px;
+            color: #d4a574;
+            margin-top: 8px;
+            font-style: italic;
+        }
+
+        /* Scrollbar */
+        .chat-window::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .chat-window::-webkit-scrollbar-track {
+            background: rgba(139, 115, 85, 0.1);
+        }
+
+        .chat-window::-webkit-scrollbar-thumb {
+            background: #c89f6a;
+            border-radius: 5px;
+        }
+
+        .chat-window::-webkit-scrollbar-thumb:hover {
+            background: #d4a574;
+        }
+
+        /* Code/command styling */
+        strong {
+            font-weight: 600;
+            color: #5d4a35;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-icon">⚔</div>
+            <h1>Module Assistant</h1>
+            <div class="header-icon">🗡</div>
+        </div>
+
+        <!-- Chat Window -->
+        <div class="chat-window">
+            <!-- Example conversation -->
+            <div class="message assistant">
+                <div class="message-avatar">🧙</div>
+                <div class="message-content">
+                    <div class="message-label">Assistant</div>
+                    Greetings! I'm your Module Assistant. I can help you generate scenes, manage actors, and work with your D&D modules. Try typing <strong>/help</strong> to see available commands.
+                </div>
+            </div>
+
+            <div class="message user">
+                <div class="message-avatar">👤</div>
+                <div class="message-content">
+                    <div class="message-label">You</div>
+                    /generate-scene the entrance to the Cragmaw Hideout cave
+                </div>
+            </div>
+
+            <div class="message assistant">
+                <div class="message-avatar">🧙</div>
+                <div class="message-content">
+                    <div class="message-label">Assistant</div>
+                    Generating scene for "the entrance to the Cragmaw Hideout cave"...
+                </div>
+            </div>
+
+            <!-- Scene Card -->
+            <div class="scene-card">
+                <h3>Cragmaw Hideout Entrance</h3>
+                <div class="scene-image">
+                    [Generated scene image would appear here]
+                </div>
+                <div class="scene-description">
+                    A narrow cave mouth opens before you, partially concealed by thick undergrowth and gnarled tree roots. The entrance is roughly seven feet high and ten feet wide, with jagged stone forming a natural archway. The sound of running water echoes from within, and muddy tracks suggest recent activity. Crude wooden stakes have been driven into the ground nearby, marking territory in the goblinoid fashion.
+                </div>
+            </div>
+
+            <div class="message user">
+                <div class="message-avatar">👤</div>
+                <div class="message-content">
+                    <div class="message-label">You</div>
+                    /list-scenes Chapter 2
+                </div>
+            </div>
+
+            <div class="message assistant">
+                <div class="message-avatar">🧙</div>
+                <div class="message-content">
+                    <div class="message-label">Assistant</div>
+                    <strong>Scenes in Chapter 2:</strong><br><br>
+                    1. Cragmaw Hideout Entrance<br>
+                    2. Twin Pools Cave<br>
+                    3. Goblin Den<br>
+                    4. Klarg's Cave
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-area">
+            <div class="input-wrapper">
+                <input type="text" class="command-input" placeholder="/generate-scene [description]" />
+                <button class="send-button">Send</button>
+            </div>
+            <div class="command-hint">
+                Try: /generate-scene, /list-scenes, /show-context, /help
+            </div>
+        </div>
+    </div>
+</body>
+</html>

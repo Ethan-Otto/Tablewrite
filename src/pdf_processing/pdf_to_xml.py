@@ -665,7 +665,7 @@ if __name__ == "__main__":
     parser.add_argument("--file", type=str, help="The name of a single PDF file to process.")
     args = parser.parse_args()
 
-    pdf_sections_dir = os.path.join(PROJECT_ROOT, "pdf_sections", "Lost_Mine_of_Phandelver")
+    pdf_sections_dir = os.path.join(PROJECT_ROOT, "data", "pdf_sections", "Lost_Mine_of_Phandelver")
     runs_output_dir = os.path.join(PROJECT_ROOT, "output", "runs")
 
     main(pdf_sections_dir, runs_output_dir, single_file=args.file)

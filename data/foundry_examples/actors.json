@@ -1,0 +1,4412 @@
+[
+  {
+    "name": "Ape",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmApe00000000000"
+  },
+  {
+    "name": "Ape",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.K5cKmPoFkpuOotis"
+  },
+  {
+    "name": "Ape",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobApe0000000"
+  },
+  {
+    "name": "Azer",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.IiEDPMWqBlzkggYD"
+  },
+  {
+    "name": "Ankheg",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.Wcsjbl25uiUsyQwn"
+  },
+  {
+    "name": "Ankheg",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAnkheg00000000"
+  },
+  {
+    "name": "Airship",
+    "type": "vehicle",
+    "uuid": "Compendium.dnd5e.actors24.VBTtG9kjHNQstG0a"
+  },
+  {
+    "name": "Acolyte",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.CHEUjiYrVM9X0vIT"
+  },
+  {
+    "name": "Aboleth",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.shhHtE7b92PefCWB"
+  },
+  {
+    "name": "Aboleth",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAboleth0000000"
+  },
+  {
+    "name": "Airship",
+    "type": "vehicle",
+    "uuid": "Compendium.dnd-players-handbook.actors.VBTtG9kjHNQstG0a"
+  },
+  {
+    "name": "Archelon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmArchelon000000"
+  },
+  {
+    "name": "Axe Beak",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAxeBeak0000000"
+  },
+  {
+    "name": "Assassin",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAssassin000000"
+  },
+  {
+    "name": "Archmage",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.B7lBOr1AahNZs4a6"
+  },
+  {
+    "name": "Axe Beak",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.SXXvwaLBNuzBymp3"
+  },
+  {
+    "name": "Archmage",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmArchmage000000"
+  },
+  {
+    "name": "Assassin",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.EMvcuOpu7ABCmBWi"
+  },
+  {
+    "name": "Arcane Eye",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbsplArcaneEye0"
+  },
+  {
+    "name": "Arcane Eye",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.tuHyePQ9GazMTyc0"
+  },
+  {
+    "name": "Arcane Eye",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbsplArcaneEye0"
+  },
+  {
+    "name": "Allosaurus",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAllosaurus0000"
+  },
+  {
+    "name": "Arcane Hand",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.iHj5Tkm6HRgXuaWP"
+  },
+  {
+    "name": "Arcane Hand",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbsplBigbysHand"
+  },
+  {
+    "name": "Androsphinx",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.nEC1BRwM8Lx9hLXW"
+  },
+  {
+    "name": "Ankylosaurus",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAnkylosaurus00"
+  },
+  {
+    "name": "Arcane Sword",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbsplMordSword0"
+  },
+  {
+    "name": "Arcane Sword",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.Tac7eq0AXJco0nml"
+  },
+  {
+    "name": "Awakened Tree",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAwakenedTree00"
+  },
+  {
+    "name": "Air Elemental",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAirElemental00"
+  },
+  {
+    "name": "Awakened Tree",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.UR2gWLFHmFwG7ReH"
+  },
+  {
+    "name": "Air Elemental",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.banHjKDMCegbUwYE"
+  },
+  {
+    "name": "Azer Sentinel",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAzerSentinel00"
+  },
+  {
+    "name": "Awakened Shrub",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAwakenedShrub0"
+  },
+  {
+    "name": "Animated Armor",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAnimatedArmor0"
+  },
+  {
+    "name": "Avenger Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbcesAngelSpiri"
+  },
+  {
+    "name": "Animated Armor",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.eORmAXuV5v3nWsQL"
+  },
+  {
+    "name": "Awakened Shrub",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.gaSTr7DFZJLmgI2J"
+  },
+  {
+    "name": "Avatar of Death",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.dmgAvatarofDeath"
+  },
+  {
+    "name": "Aberrant Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobAberrantSp"
+  },
+  {
+    "name": "Avatar of Death",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.XiSWKZzAUxdmFOLL"
+  },
+  {
+    "name": "Adult Red Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.ZyIBOoZZD0nDaO2s"
+  },
+  {
+    "name": "Adult Red Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAdultRedDragon"
+  },
+  {
+    "name": "Giant Ape",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.8MuL8xisavJW9bnw"
+  },
+  {
+    "name": "Giant Ape",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantApe000000"
+  },
+  {
+    "name": "Adult Gold Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.MO382D2sxtAIuUC5"
+  },
+  {
+    "name": "Adult Blue Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.cGM3iVYTtCsYXjzO"
+  },
+  {
+    "name": "Adult Blue Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAdultBlueDrago"
+  },
+  {
+    "name": "Adult Gold Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAdultGoldDrago"
+  },
+  {
+    "name": "Adult White Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAdultWhiteDrag"
+  },
+  {
+    "name": "Adult Black Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.M4eX4Mu5IHCr3TMf"
+  },
+  {
+    "name": "Ancient Red Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.vFeFRlF2FOgf2HIL"
+  },
+  {
+    "name": "Ancient Red Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAncientRedDrag"
+  },
+  {
+    "name": "Adult Black Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAdultBlackDrag"
+  },
+  {
+    "name": "Adult Green Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAdultGreenDrag"
+  },
+  {
+    "name": "Adult Brass Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAdultBrassDrag"
+  },
+  {
+    "name": "Adult Brass Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.7vswgicsiMfS4ZTS"
+  },
+  {
+    "name": "Adult Green Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.GP8JMSDugRxuLOD2"
+  },
+  {
+    "name": "Aoth (Human Druid)",
+    "type": "character",
+    "uuid": "Compendium.dnd5e.heroes.ZGDys30OS76uYaIO"
+  },
+  {
+    "name": "Adult White Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.3uIursokd3KdZrW3"
+  },
+  {
+    "name": "Adult Copper Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.irz834sqAxRihtSG"
+  },
+  {
+    "name": "Adult Silver Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.geM2F7HvVGhtk3h4"
+  },
+  {
+    "name": "Adult Copper Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAdultCopperDra"
+  },
+  {
+    "name": "Ancient Gold Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAncientGoldDra"
+  },
+  {
+    "name": "Adult Silver Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAdultSilverDra"
+  },
+  {
+    "name": "Ancient Blue Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAncientBlueDra"
+  },
+  {
+    "name": "Adult Bronze Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAdultBronzeDra"
+  },
+  {
+    "name": "Adult Bronze Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.VCuG0Z3MrO8kfDU0"
+  },
+  {
+    "name": "Ancient Gold Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.ckOF3vQrnjFnZIDU"
+  },
+  {
+    "name": "Ancient Blue Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.SNT0JNVSngUTsj4m"
+  },
+  {
+    "name": "Ancient Black Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAncientBlackDr"
+  },
+  {
+    "name": "Ancient Green Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAncientGreenDr"
+  },
+  {
+    "name": "Air Elemental Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbelsAirElement"
+  },
+  {
+    "name": "Ancient White Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAncientWhiteDr"
+  },
+  {
+    "name": "Ancient Brass Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAncientBrassDr"
+  },
+  {
+    "name": "Ancient Black Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.qNdFhY3JOkCfhG3d"
+  },
+  {
+    "name": "Ancient Brass Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.pAuiNDr7nvpsW9nG"
+  },
+  {
+    "name": "Ancient White Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.aTITHYYxthuZBPBn"
+  },
+  {
+    "name": "Ancient Green Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.zjqjcRWKDMc59Tnx"
+  },
+  {
+    "name": "Animated Flying Sword",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAnimatedFlying"
+  },
+  {
+    "name": "Ancient Copper Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.u0FWdplSOMTXGnN1"
+  },
+  {
+    "name": "Ancient Bronze Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAncientBronzeD"
+  },
+  {
+    "name": "Ancient Copper Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAncientCopperD"
+  },
+  {
+    "name": "Ancient Silver Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.gf9QbHdMAfvFtxcv"
+  },
+  {
+    "name": "Ancient Silver Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAncientSilverD"
+  },
+  {
+    "name": "Apparatus of the Crab",
+    "type": "vehicle",
+    "uuid": "Compendium.dnd5e.actors24.dmgApparatusofKw"
+  },
+  {
+    "name": "Ancient Bronze Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.35Y64PEFFdvQS0ra"
+  },
+  {
+    "name": "Priest Acolyte",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmPriestAcolyte0"
+  },
+  {
+    "name": "Akra (Dragonborn Cleric)",
+    "type": "character",
+    "uuid": "Compendium.dnd5e.heroes.kfzBL0q1Y7LgGs2x"
+  },
+  {
+    "name": "Tiny Animated Object",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbtaoAnimatedOb"
+  },
+  {
+    "name": "Huge Animated Object",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbhaoAnimatedOb"
+  },
+  {
+    "name": "Huge Animated Object",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbhaoAnimatedOb"
+  },
+  {
+    "name": "Tiny Animated Object",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbtaoAnimatedOb"
+  },
+  {
+    "name": "Animated Rug of Smothering",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmAnimatedRugOfS"
+  },
+  {
+    "name": "Small Animated Object",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbsaoAnimatedOb"
+  },
+  {
+    "name": "Large Animated Object",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phblaoAnimatedOb"
+  },
+  {
+    "name": "Small Animated Object",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbsaoAnimatedOb"
+  },
+  {
+    "name": "Large Animated Object",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phblaoAnimatedOb"
+  },
+  {
+    "name": "Bestial Air Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbbesBestialAir"
+  },
+  {
+    "name": "Medium Animated Object",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbmaoAnimatedOb"
+  },
+  {
+    "name": "Medium Animated Object",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmaoAnimatedOb"
+  },
+  {
+    "name": "Conjured Animals",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbSpectralAnima"
+  },
+  {
+    "name": "Conjured Animals",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbSpectralAnima"
+  },
+  {
+    "name": "Conjured Air Elemental",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbsplConjuredEl"
+  },
+  {
+    "name": "Conjured Air Elemental",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbsplConjuredEl"
+  },
+  {
+    "name": "Cat",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmCat00000000000"
+  },
+  {
+    "name": "Cat",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobCat0000000"
+  },
+  {
+    "name": "Bat",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBat00000000000"
+  },
+  {
+    "name": "Rat",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmRat00000000000"
+  },
+  {
+    "name": "Bat",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.qav2dvMIUiMQCCsy"
+  },
+  {
+    "name": "Rat",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.pozQUPTnLZW8epox"
+  },
+  {
+    "name": "Cat",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.hIf83RD3ZVW4Egfi"
+  },
+  {
+    "name": "Rat",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobRat0000000"
+  },
+  {
+    "name": "Bat",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobBat0000000"
+  },
+  {
+    "name": "Hawk",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmHawk0000000000"
+  },
+  {
+    "name": "Mage",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmMage0000000000"
+  },
+  {
+    "name": "Mage",
+    "type": "npc",
+    "uuid": "Actor.X6Nx9djA4h1NM6gu"
+  },
+  {
+    "name": "Hawk",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobHawk000000"
+  },
+  {
+    "name": "Hawk",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.fnkPNfIpS62LqOu4"
+  },
+  {
+    "name": "Bard",
+    "type": "character",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbprgBard000000"
+  },
+  {
+    "name": "Mage",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.mQnsXanewsPiV7QE"
+  },
+  {
+    "name": "Harpy",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.CqQ6pXQA5WXZNOm3"
+  },
+  {
+    "name": "Raven",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobRaven00000"
+  },
+  {
+    "name": "Balor",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBalor000000000"
+  },
+  {
+    "name": "Eagle",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.EI8w6XjzCZICkox9"
+  },
+  {
+    "name": "Satyr",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSatyr000000000"
+  },
+  {
+    "name": "Raven",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmRaven000000000"
+  },
+  {
+    "name": "Harpy",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmHarpy000000000"
+  },
+  {
+    "name": "Camel",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobCamel00000"
+  },
+  {
+    "name": "Eagle",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmEagle000000000"
+  },
+  {
+    "name": "Satyr",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.8xhuJXYMnlQD7LF6"
+  },
+  {
+    "name": "Camel",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmCamel000000000"
+  },
+  {
+    "name": "Lamia",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.MnoL59nOOfYatAkQ"
+  },
+  {
+    "name": "Balor",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.uZ8NrRenwYZ4qNf6"
+  },
+  {
+    "name": "Raven",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.LPdX5YLlwci0NDZx"
+  },
+  {
+    "name": "Lamia",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmLamia000000000"
+  },
+  {
+    "name": "Camel",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.FQMFuzzSh73d0Nrd"
+  },
+  {
+    "name": "Magmin",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.8MD1vRBTcgSXXk3u"
+  },
+  {
+    "name": "Galley",
+    "type": "vehicle",
+    "uuid": "Compendium.dnd5e.actors24.phbmobGalley0000"
+  },
+  {
+    "name": "Badger",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobBadger0000"
+  },
+  {
+    "name": "Jackal",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmJackal00000000"
+  },
+  {
+    "name": "Bandit",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBandit00000000"
+  },
+  {
+    "name": "Badger",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBadger00000000"
+  },
+  {
+    "name": "Baboon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBaboon00000000"
+  },
+  {
+    "name": "Jackal",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.MZYCPIVoBs918qGZ"
+  },
+  {
+    "name": "Ranger",
+    "type": "character",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbprgRanger0000"
+  },
+  {
+    "name": "Galley",
+    "type": "vehicle",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobGalley0000"
+  },
+  {
+    "name": "Badger",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.oQvORD924obyPdCc"
+  },
+  {
+    "name": "Baboon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.JW8bXggOMBx1S6tF"
+  },
+  {
+    "name": "Magmin",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmMagmin00000000"
+  },
+  {
+    "name": "Bandit",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.n4TEv7inVUkyZviN"
+  },
+  {
+    "name": "Panther",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.AijNdqMurWxDxUSl"
+  },
+  {
+    "name": "Mastiff",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.YTpL2c3NO4sOn2UA"
+  },
+  {
+    "name": "Warship",
+    "type": "vehicle",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobWarship000"
+  },
+  {
+    "name": "Warship",
+    "type": "vehicle",
+    "uuid": "Compendium.dnd5e.actors24.phbmobWarship000"
+  },
+  {
+    "name": "Panther",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmPanther0000000"
+  },
+  {
+    "name": "Mastiff",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmMastiff0000000"
+  },
+  {
+    "name": "Mammoth",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmMammoth0000000"
+  },
+  {
+    "name": "Mammoth",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.MiYRAIHwm9It1in8"
+  },
+  {
+    "name": "Paladin",
+    "type": "character",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbprgPaladin000"
+  },
+  {
+    "name": "Vampire",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmVampire0000000"
+  },
+  {
+    "name": "Warlock",
+    "type": "character",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbprgWarlock000"
+  },
+  {
+    "name": "Mastiff",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobMastiff000"
+  },
+  {
+    "name": "Vampire",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.DDO9lDCDtNHkfShP"
+  },
+  {
+    "name": "Panther",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobPanther000"
+  },
+  {
+    "name": "Marilith",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.egsSDYbqoLCelb0J"
+  },
+  {
+    "name": "Warhorse",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.T1xZTDCGuvMBSq8d"
+  },
+  {
+    "name": "Rakshasa",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmRakshasa000000"
+  },
+  {
+    "name": "Marilith",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmMarilith000000"
+  },
+  {
+    "name": "Gargoyle",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGargoyle000000"
+  },
+  {
+    "name": "Basilisk",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBasilisk000000"
+  },
+  {
+    "name": "Rakshasa",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.qXzMsRTHEodqO8l2"
+  },
+  {
+    "name": "Gargoyle",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.0m8QyDN52qw9zzOM"
+  },
+  {
+    "name": "Sahuagin",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.lyNBFmJdbh4NLRzz"
+  },
+  {
+    "name": "Basilisk",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.hqj2yXtgwt64v3Lj"
+  },
+  {
+    "name": "Warhorse",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobWarhorse00"
+  },
+  {
+    "name": "Warhorse",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmWarhorse000000"
+  },
+  {
+    "name": "Mage Hand",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbsplMageHand00"
+  },
+  {
+    "name": "Tarrasque",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmTarrasque00000"
+  },
+  {
+    "name": "Barbarian",
+    "type": "character",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbprgBarbarian0"
+  },
+  {
+    "name": "Manticore",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmManticore00000"
+  },
+  {
+    "name": "Mage Hand",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.zwT2WjWo7cTm2631"
+  },
+  {
+    "name": "Mage Hand",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbsplMageHand00"
+  },
+  {
+    "name": "Manticore",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.MAoCGF5VkQwhmgvI"
+  },
+  {
+    "name": "Tarrasque",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.KCvt4FdOVJbuZ3T0"
+  },
+  {
+    "name": "Salamander",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSalamander0000"
+  },
+  {
+    "name": "Nalfeshnee",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmNalfeshnee0000"
+  },
+  {
+    "name": "Darkmantle",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmDarkmantle0000"
+  },
+  {
+    "name": "Salamander",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.yVNPVJIBpQ2Mp3Xa"
+  },
+  {
+    "name": "Nalfeshnee",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.rUg5JMnKNnZNBAq9"
+  },
+  {
+    "name": "Darkmantle",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.g7FSu2oU4YHPgWNA"
+  },
+  {
+    "name": "Half-Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmHalfdragon0000"
+  },
+  {
+    "name": "Sailing Ship",
+    "type": "vehicle",
+    "uuid": "Compendium.dnd5e.actors24.phbmobSailingShi"
+  },
+  {
+    "name": "Magma Mephit",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmMagmaMephit000"
+  },
+  {
+    "name": "Barbed Devil",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBarbedDevil000"
+  },
+  {
+    "name": "Barbed Devil",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.sLdpiuaZF8lujJQy"
+  },
+  {
+    "name": "Magma Mephit",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.oJCOB9X2BPsBkWW5"
+  },
+  {
+    "name": "Sailing Ship",
+    "type": "vehicle",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobSailingShi"
+  },
+  {
+    "name": "Vampire Spawn",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmVampireSpawn00"
+  },
+  {
+    "name": "Vampire Spawn",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.zpaZb7I8alY32vWV"
+  },
+  {
+    "name": "Boar",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBoar0000000000"
+  },
+  {
+    "name": "Boar",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobBoar000000"
+  },
+  {
+    "name": "Boar",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.lZR4lhNmYSf89s4Q"
+  },
+  {
+    "name": "Behir",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBehir000000000"
+  },
+  {
+    "name": "Behir",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.x47ZnpHfYl0ptDM9"
+  },
+  {
+    "name": "Bugbear",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.QtJairF0h18BRhEM"
+  },
+  {
+    "name": "Bulette",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.1ES45ODWg3pCrkzv"
+  },
+  {
+    "name": "Bulette",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBulette0000000"
+  },
+  {
+    "name": "Berserker",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.kz1t6xeXVwODpYb2"
+  },
+  {
+    "name": "Berserker",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBerserker00000"
+  },
+  {
+    "name": "Blink Dog",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.jOANE6M0My6UJF4e"
+  },
+  {
+    "name": "Blink Dog",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBlinkDog000000"
+  },
+  {
+    "name": "Bone Devil",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBoneDevil00000"
+  },
+  {
+    "name": "Brown Bear",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBrownBear00000"
+  },
+  {
+    "name": "Black Bear",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobBlackBear0"
+  },
+  {
+    "name": "Blood Hawk",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBloodHawk00000"
+  },
+  {
+    "name": "Black Bear",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.D5WjGwKskeUT8HXa"
+  },
+  {
+    "name": "Blood Hawk",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.AJiJW7K957aJJCN6"
+  },
+  {
+    "name": "Brown Bear",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobBrownBear0"
+  },
+  {
+    "name": "Brown Bear",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.omcDpBoB69esCXeM"
+  },
+  {
+    "name": "Bone Devil",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.AnseLn7HwuP97grf"
+  },
+  {
+    "name": "Black Bear",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBlackBear00000"
+  },
+  {
+    "name": "Bigby's Hand",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbsplBigbysHand"
+  },
+  {
+    "name": "Bearded Devil",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.9ggQBmAKXraOtz7S"
+  },
+  {
+    "name": "Black Pudding",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.NwQpeeaMxAC3fRft"
+  },
+  {
+    "name": "Black Pudding",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBlackPudding00"
+  },
+  {
+    "name": "Bearded Devil",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBeardedDevil00"
+  },
+  {
+    "name": "Bandit Captain",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.rb7OJt822wIO52qY"
+  },
+  {
+    "name": "Bestial Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobBestialSpi"
+  },
+  {
+    "name": "Bandit Captain",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBanditCaptain0"
+  },
+  {
+    "name": "Bugbear Warrior",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBugbearWarrior"
+  },
+  {
+    "name": "Bugbear Stalker",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBugbearStalker"
+  },
+  {
+    "name": "Beast of the Sea",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbBeastoftheSea"
+  },
+  {
+    "name": "Beast of the Sky",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbBeastoftheSky"
+  },
+  {
+    "name": "Bullywug Warrior",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBullywugWarrio"
+  },
+  {
+    "name": "Giant Bat",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.SoK7l5zJQKxTVgLL"
+  },
+  {
+    "name": "Giant Bat",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantBat000000"
+  },
+  {
+    "name": "Beast of the Land",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbBeastoftheLan"
+  },
+  {
+    "name": "Bullywug Bog Sage",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBullywugBogSag"
+  },
+  {
+    "name": "Giant Boar",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.SsuCaF2fIEoDdFA3"
+  },
+  {
+    "name": "Polar Bear",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.hb6pjvdCNYmLLp8V"
+  },
+  {
+    "name": "Tough Boss",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmToughBoss00000"
+  },
+  {
+    "name": "Polar Bear",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmPolarBear00000"
+  },
+  {
+    "name": "Giant Boar",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantBoar00000"
+  },
+  {
+    "name": "Beholderkin Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbabsBeholderki"
+  },
+  {
+    "name": "Bestial Land Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbbesBestialLan"
+  },
+  {
+    "name": "Giant Badger",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobGiantBadge"
+  },
+  {
+    "name": "Giant Badger",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.cJGY1ZywUOo6heNR"
+  },
+  {
+    "name": "Giant Badger",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantBadger000"
+  },
+  {
+    "name": "Blue Dragon Wyrmling",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.najtPRiHLR6buSWe"
+  },
+  {
+    "name": "Bestial Water Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbbesBestialWat"
+  },
+  {
+    "name": "Blue Dragon Wyrmling",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBlueDragonWyrm"
+  },
+  {
+    "name": "Goblin Boss",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGoblinBoss0000"
+  },
+  {
+    "name": "Beiro (Half-Elf Bard)",
+    "type": "character",
+    "uuid": "Compendium.dnd5e.heroes.xVmbM44RXyI2Eqq3"
+  },
+  {
+    "name": "Black Dragon Wyrmling",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.IZMbiAHqQpzPo0CX"
+  },
+  {
+    "name": "Brass Dragon Wyrmling",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBrassDragonWyr"
+  },
+  {
+    "name": "Brass Dragon Wyrmling",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.azCbLQt5LAYwTI7U"
+  },
+  {
+    "name": "Black Dragon Wyrmling",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBlackDragonWyr"
+  },
+  {
+    "name": "Bronze Dragon Wyrmling",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.hY9ptpO5Xl2tfkcj"
+  },
+  {
+    "name": "Bronze Dragon Wyrmling",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmBronzeDragonWy"
+  },
+  {
+    "name": "Young Blue Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmYoungBlueDrago"
+  },
+  {
+    "name": "Young Blue Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.mNijwXPMhwR7yYfc"
+  },
+  {
+    "name": "Young Brass Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.FzvZ6xl3U9GoL9ju"
+  },
+  {
+    "name": "Young Brass Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmYoungBrassDrag"
+  },
+  {
+    "name": "Young Black Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmYoungBlackDrag"
+  },
+  {
+    "name": "Young Black Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.bcapsJdIhY5WktpT"
+  },
+  {
+    "name": "Young Bronze Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.NmQLj0zv4FmfuSan"
+  },
+  {
+    "name": "Young Bronze Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmYoungBronzeDra"
+  },
+  {
+    "name": "Swarm of Bats",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.PcZ0QjIG6bHpffp9"
+  },
+  {
+    "name": "Swarm of Bats",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSwarmOfBats000"
+  },
+  {
+    "name": "Swarm of Beetles",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.dZZFmG8LiBlgWi76"
+  },
+  {
+    "name": "Giant Fire Beetle",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantFireBeetl"
+  },
+  {
+    "name": "Giant Fire Beetle",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.Z0GiAv3bJxTjUfjM"
+  },
+  {
+    "name": "Minotaur of Baphomet",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmMinotaurOfBaph"
+  },
+  {
+    "name": "Merric (Halfling Barbarian)",
+    "type": "character",
+    "uuid": "Compendium.dnd5e.heroes.irWonyO6ZLh47sN7"
+  },
+  {
+    "name": "Carpet of Flying (6 by 9 ft.)",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.dmg6x9CarpetofFl"
+  },
+  {
+    "name": "Carpet of Flying (4 by 6 ft.)",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.dmg4x6CarpetofFl"
+  },
+  {
+    "name": "Carpet of Flying (5 by 7 ft.)",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.dmg5x7CarpetofFl"
+  },
+  {
+    "name": "Carpet of Flying (3 by 5 ft.)",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.dmg3x5CarpetofFl"
+  },
+  {
+    "name": "Noble",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmNoble000000000"
+  },
+  {
+    "name": "Noble",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.GlaCGcgIP6YjBjGc"
+  },
+  {
+    "name": "Goblin",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.TjWQOgI3A4UAl7lC"
+  },
+  {
+    "name": "Kobold",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.5ngbctIMeEnuC1p1"
+  },
+  {
+    "name": "Hobgoblin",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.6qnT52lZtZblgGw8"
+  },
+  {
+    "name": "Goblin Minion",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGoblinMinion00"
+  },
+  {
+    "name": "Kobold Warrior",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmKoboldWarrior0"
+  },
+  {
+    "name": "Goblin Warrior",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGoblinWarrior0"
+  },
+  {
+    "name": "Gibbering Mouther",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.8pX2JhWUpTNNRBVx"
+  },
+  {
+    "name": "Hobgoblin Warrior",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmHobgoblinWarri"
+  },
+  {
+    "name": "Hobgoblin Captain",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmHobgoblinCapta"
+  },
+  {
+    "name": "Gibbering Mouther",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGibberingMouth"
+  },
+  {
+    "name": "Saber-Toothed Tiger",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.tYYoifu9teGLetVI"
+  },
+  {
+    "name": "Saber-Toothed Tiger",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSabertoothedTi"
+  },
+  {
+    "name": "Crab",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobCrab000000"
+  },
+  {
+    "name": "Crab",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.8RgUhb31VvjUNZU1"
+  },
+  {
+    "name": "Crab",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmCrab0000000000"
+  },
+  {
+    "name": "Chuul",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmChuul000000000"
+  },
+  {
+    "name": "Chuul",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.P6qC8jB3pnEH0tIE"
+  },
+  {
+    "name": "Couatl",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.ZaP1H91t4FzbRqR5"
+  },
+  {
+    "name": "Cleric",
+    "type": "character",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbprgCleric0000"
+  },
+  {
+    "name": "Couatl",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmCouatl00000000"
+  },
+  {
+    "name": "Chimera",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmChimera0000000"
+  },
+  {
+    "name": "Cloaker",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.HPUO3weiwRQnql0d"
+  },
+  {
+    "name": "Cultist",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.qkLNA1lKMMJpxuWg"
+  },
+  {
+    "name": "Centaur",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.5kZNNWzZ6HrfKuWf"
+  },
+  {
+    "name": "Chimera",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.kr6r8bhSehACPfZ8"
+  },
+  {
+    "name": "Cultist",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmCultist0000000"
+  },
+  {
+    "name": "Cloaker",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmCloaker0000000"
+  },
+  {
+    "name": "Commoner",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.SqZRuJ8lt2KGJBbq"
+  },
+  {
+    "name": "Commoner",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmCommoner000000"
+  },
+  {
+    "name": "Crocodile",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobCrocodile0"
+  },
+  {
+    "name": "Crocodile",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmCrocodile00000"
+  },
+  {
+    "name": "Crocodile",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.8aCTKP5qaBPFOqxM"
+  },
+  {
+    "name": "Clay Golem",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmClayGolem00000"
+  },
+  {
+    "name": "Cockatrice",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.EpYl7qifM5pq6W6B"
+  },
+  {
+    "name": "Cockatrice",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmCockatrice0000"
+  },
+  {
+    "name": "Clay Golem",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.YOqhbf8WsX0jH9Fu"
+  },
+  {
+    "name": "Cloud Giant",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmCloudGiant0000"
+  },
+  {
+    "name": "Chain Devil",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmChainDevil0000"
+  },
+  {
+    "name": "Chain Devil",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.KtM6IV9I5l1MWUDk"
+  },
+  {
+    "name": "Cloud Giant",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.Aw2wmqGIatxe2ImI"
+  },
+  {
+    "name": "Conjured Fey",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbsplConjuredFe"
+  },
+  {
+    "name": "Conjured Fey",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbsplConjuredFe"
+  },
+  {
+    "name": "Cult Fanatic",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.tYfQIxCJT0WaaKmc"
+  },
+  {
+    "name": "Cultist Fanatic",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmCultistFanatic"
+  },
+  {
+    "name": "Celestial Steed",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbostCelestial0"
+  },
+  {
+    "name": "Centaur Trooper",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmCentaurTrooper"
+  },
+  {
+    "name": "Carrion Crawler",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmCarrionCrawler"
+  },
+  {
+    "name": "Celestial Steed",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbostCelestial0"
+  },
+  {
+    "name": "Celestial Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobCelestialS"
+  },
+  {
+    "name": "Construct Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobConstructS"
+  },
+  {
+    "name": "Constrictor Snake",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmConstrictorSna"
+  },
+  {
+    "name": "Constrictor Snake",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.UTuKdTah1DKfPwWe"
+  },
+  {
+    "name": "Constrictor Snake",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobConstricto"
+  },
+  {
+    "name": "Giant Crab",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantCrab00000"
+  },
+  {
+    "name": "Giant Crab",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobGiantCrab0"
+  },
+  {
+    "name": "Giant Crab",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.AOJvmk1IchxNxQzP"
+  },
+  {
+    "name": "Guard Captain",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGuardCaptain00"
+  },
+  {
+    "name": "Clay Construct Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbcosClayConstr"
+  },
+  {
+    "name": "Secret Chest",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbsplSecretChes"
+  },
+  {
+    "name": "Secret Chest",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbsplSecretChes"
+  },
+  {
+    "name": "Copper Dragon Wyrmling",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmCopperDragonWy"
+  },
+  {
+    "name": "Copper Dragon Wyrmling",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.AyvniEKtyroOe83p"
+  },
+  {
+    "name": "Giant Centipede",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantCentipede"
+  },
+  {
+    "name": "Giant Crocodile",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.3YwmvDupMwycWNCO"
+  },
+  {
+    "name": "Giant Centipede",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbginGiantCenti"
+  },
+  {
+    "name": "Giant Crocodile",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantCrocodile"
+  },
+  {
+    "name": "Giant Centipede",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.Hn8FFLEzscgT7azz"
+  },
+  {
+    "name": "Conjured Fire Elemental",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbConjuredFireE"
+  },
+  {
+    "name": "Conjured Fire Elemental",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbConjuredFireE"
+  },
+  {
+    "name": "Pirate Captain",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmPirateCaptain0"
+  },
+  {
+    "name": "Conjured Water Elemental",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbConjuredWater"
+  },
+  {
+    "name": "Conjured Water Elemental",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbConjuredWater"
+  },
+  {
+    "name": "Conjured Earth Elemental",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbConjuredEarth"
+  },
+  {
+    "name": "Conjured Earth Elemental",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbConjuredEarth"
+  },
+  {
+    "name": "Young Copper Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmYoungCopperDra"
+  },
+  {
+    "name": "Young Copper Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.qW8cBwg7ghCA4Cw6"
+  },
+  {
+    "name": "Stone Construct Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbcosStoneConst"
+  },
+  {
+    "name": "Metal Construct Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbcosMetalConst"
+  },
+  {
+    "name": "Giant Constrictor Snake",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantConstrict"
+  },
+  {
+    "name": "Giant Constrictor Snake",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.NpvwE1feOHyEqAbP"
+  },
+  {
+    "name": "Illusory Creature",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbiluCreature00"
+  },
+  {
+    "name": "Illusory Creature",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbiluCreature00"
+  },
+  {
+    "name": "Illusory Creature",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.dmgIllusoryCreat"
+  },
+  {
+    "name": "Swarm of Centipedes",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.KC4tYOolARhajP18"
+  },
+  {
+    "name": "Swarm of Crawling Claws",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSwarmOfCrawlin"
+  },
+  {
+    "name": "Gelatinous Cube",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.3fzQVYQhXxCXRa2o"
+  },
+  {
+    "name": "Gelatinous Cube",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGelatinousCube"
+  },
+  {
+    "name": "Scout",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmScout000000000"
+  },
+  {
+    "name": "Scout",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.O3ABqI55Ir1du1Xa"
+  },
+  {
+    "name": "Octopus",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmOctopus0000000"
+  },
+  {
+    "name": "Octopus",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.3UUNbGiG2Yf1ZPxM"
+  },
+  {
+    "name": "Octopus",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobOctopus000"
+  },
+  {
+    "name": "Scorpion",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmScorpion000000"
+  },
+  {
+    "name": "Scorpion",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.Y0vxQVF7w2P38FK2"
+  },
+  {
+    "name": "Scorpion",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobScorpion00"
+  },
+  {
+    "name": "Ice Devil",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmIceDevil000000"
+  },
+  {
+    "name": "Ice Devil",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.1zzRQps9jZdLZGqI"
+  },
+  {
+    "name": "Ice Mephit",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmIceMephit00000"
+  },
+  {
+    "name": "Ice Mephit",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.ESEm3fGUfSKjzVUc"
+  },
+  {
+    "name": "Ochre Jelly",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmOchreJelly0000"
+  },
+  {
+    "name": "Ochre Jelly",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.xBhG7Dos3tkg9jWz"
+  },
+  {
+    "name": "Roc",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.p980augbCIdpK9ZX"
+  },
+  {
+    "name": "Roc",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmRoc00000000000"
+  },
+  {
+    "name": "Orc",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.HB49mCOVBXwWeKWQ"
+  },
+  {
+    "name": "Lich",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.bfh29vIEoGzI240e"
+  },
+  {
+    "name": "Lich",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmLich0000000000"
+  },
+  {
+    "name": "Incubus",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmIncubus0000000"
+  },
+  {
+    "name": "Succubus",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSuccubus000000"
+  },
+  {
+    "name": "Succubus/Incubus",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.VmdyZDjqAc8vdncY"
+  },
+  {
+    "name": "Deva",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmDeva0000000000"
+  },
+  {
+    "name": "Deva",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.m4H3hjamBNMH09S9"
+  },
+  {
+    "name": "Deer",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.4EODJbmPlpnNGVR7"
+  },
+  {
+    "name": "Deer",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmDeer0000000000"
+  },
+  {
+    "name": "Drow",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.1vaBSMUfOy6JPJ14"
+  },
+  {
+    "name": "Dryad",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.KOHVWl5RU9XBR8Jb"
+  },
+  {
+    "name": "Druid",
+    "type": "character",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbprgDruid00000"
+  },
+  {
+    "name": "Druid",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.K15Yl8JmB5iPircc"
+  },
+  {
+    "name": "Dryad",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmDryad000000000"
+  },
+  {
+    "name": "Druid",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmDruid000000000"
+  },
+  {
+    "name": "Dretch",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.kz2fW9xb5CcvXLX4"
+  },
+  {
+    "name": "Drider",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.1OQbxoZI5BtlB2ME"
+  },
+  {
+    "name": "Djinni",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmDjinni00000000"
+  },
+  {
+    "name": "Drider",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmDrider00000000"
+  },
+  {
+    "name": "Dretch",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmDretch00000000"
+  },
+  {
+    "name": "Djinni",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.5P1VGAZQwOilwZQf"
+  },
+  {
+    "name": "Duergar",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.iGBdQA3IuKsurcUy"
+  },
+  {
+    "name": "Duplicate",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbDuplicate0000"
+  },
+  {
+    "name": "Dire Wolf",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobDireWolf00"
+  },
+  {
+    "name": "Duplicate",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbDuplicate0000"
+  },
+  {
+    "name": "Death Dog",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmDeathDog000000"
+  },
+  {
+    "name": "Dire Wolf",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.EYiQZ3rFL25fEJY5"
+  },
+  {
+    "name": "Death Dog",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.PH78NBdvoaszAb61"
+  },
+  {
+    "name": "Dire Wolf",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmDireWolf000000"
+  },
+  {
+    "name": "Deep Gnome",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.ZM1P6LoYSwMiIJN9"
+  },
+  {
+    "name": "Dust Mephit",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmDustMephit0000"
+  },
+  {
+    "name": "Draft Horse",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.Bupo3E9X5Ptx6XeT"
+  },
+  {
+    "name": "Draft Horse",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobDraftHorse"
+  },
+  {
+    "name": "Dust Mephit",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.BUCfQ7ihaXX75Vai"
+  },
+  {
+    "name": "Draft Horse",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmDraftHorse0000"
+  },
+  {
+    "name": "Doppelganger",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmDoppelganger00"
+  },
+  {
+    "name": "Doppelganger",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.mWbrPhcKOz6oLXMV"
+  },
+  {
+    "name": "Demon Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbfisDemonSpiri"
+  },
+  {
+    "name": "Devil Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbfisDevilSpiri"
+  },
+  {
+    "name": "Dragon Turtle",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.ijsfYEDqSuwQXwNN"
+  },
+  {
+    "name": "Dancing Sword",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.dmggwsDancingSwo"
+  },
+  {
+    "name": "Dragon Turtle",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmDragonTurtle00"
+  },
+  {
+    "name": "Defender Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbcesDefenderSp"
+  },
+  {
+    "name": "Draconic Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbmobDraconicSp"
+  },
+  {
+    "name": "Draconic Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobDraconicSp"
+  },
+  {
+    "name": "Dancing Light (Tiny)",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbsplTinyDancin"
+  },
+  {
+    "name": "Dancing Light (Tiny)",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbsplTinyDancin"
+  },
+  {
+    "name": "Dancing Lights (tiny)",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.UrXp9O9N7DvdH9nL"
+  },
+  {
+    "name": "Horned Devil",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.MADGs8pWMVyyFOf1"
+  },
+  {
+    "name": "Horned Devil",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmHornedDevil000"
+  },
+  {
+    "name": "Dancing Light (Medium)",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbsplMediumDanc"
+  },
+  {
+    "name": "Dancing Light (Medium)",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbsplMediumDanc"
+  },
+  {
+    "name": "Red Dragon Wyrmling",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.zgWkII3VoE4AHCND"
+  },
+  {
+    "name": "Red Dragon Wyrmling",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmRedDragonWyrml"
+  },
+  {
+    "name": "Dancing Lights (medium)",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.JNmHqTwkWayvkH37"
+  },
+  {
+    "name": "Gold Dragon Wyrmling",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.naSoHU9KbkgeNIwB"
+  },
+  {
+    "name": "Gold Dragon Wyrmling",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGoldDragonWyrm"
+  },
+  {
+    "name": "White Dragon Wyrmling",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.vc2TAgIuq4yInjbf"
+  },
+  {
+    "name": "Green Dragon Wyrmling",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.KH6ZrUiUOKQCOlRH"
+  },
+  {
+    "name": "White Dragon Wyrmling",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmWhiteDragonWyr"
+  },
+  {
+    "name": "Green Dragon Wyrmling",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGreenDragonWyr"
+  },
+  {
+    "name": "Floating Disk",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbsplFloatingDi"
+  },
+  {
+    "name": "Floating Disk",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbsplFloatingDi"
+  },
+  {
+    "name": "Silver Dragon Wyrmling",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.J1QVPd8POvcPaqx4"
+  },
+  {
+    "name": "Silver Dragon Wyrmling",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSilverDragonWy"
+  },
+  {
+    "name": "Young Red Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.qrasJNDC7SGj7xzG"
+  },
+  {
+    "name": "Young Red Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmYoungRedDragon"
+  },
+  {
+    "name": "Riswynn (Dwarf Rogue)",
+    "type": "character",
+    "uuid": "Compendium.dnd5e.heroes.bzlxBO5km3zCQA8G"
+  },
+  {
+    "name": "Half-Red Dragon Veteran",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.5TmstVMURpVtmNR3"
+  },
+  {
+    "name": "Young Gold Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.QSytPah5WKoFJ1zt"
+  },
+  {
+    "name": "Young Gold Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmYoungGoldDrago"
+  },
+  {
+    "name": "Giant Rat (Diseased)",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.z0zvgcIugizwcuxJ"
+  },
+  {
+    "name": "Young Green Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.85ahD1jEo9B3POaQ"
+  },
+  {
+    "name": "Young White Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.u1UQfHutP5eEKkjM"
+  },
+  {
+    "name": "Young White Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmYoungWhiteDrag"
+  },
+  {
+    "name": "Young Green Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmYoungGreenDrag"
+  },
+  {
+    "name": "Young Silver Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.eykRfV85DQJoCkmc"
+  },
+  {
+    "name": "Young Silver Dragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmYoungSilverDra"
+  },
+  {
+    "name": "Hydra",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.K4vsSlHqbBAHUDHY"
+  },
+  {
+    "name": "Hydra",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmHydra000000000"
+  },
+  {
+    "name": "Medusa",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmMedusa00000000"
+  },
+  {
+    "name": "Medusa",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.eiifqZwYGi71r2Yl"
+  },
+  {
+    "name": "Riding Horse",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobRidingHors"
+  },
+  {
+    "name": "Riding Horse",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmRidingHorse000"
+  },
+  {
+    "name": "Riding Horse",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.rz8UTUnFT87BsAFR"
+  },
+  {
+    "name": "Undead Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobUndeadSpir"
+  },
+  {
+    "name": "Elk",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmElk00000000000"
+  },
+  {
+    "name": "Elk",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.55PkbskG5iBZGrgR"
+  },
+  {
+    "name": "Elk",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobElk0000000"
+  },
+  {
+    "name": "Ettin",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.KLCkHep28HBfdsky"
+  },
+  {
+    "name": "Ettin",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmEttin000000000"
+  },
+  {
+    "name": "Erinyes",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmErinyes0000000"
+  },
+  {
+    "name": "Efreeti",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.LTomFUTBrkRi0Pj5"
+  },
+  {
+    "name": "Erinyes",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.3o2rQBqpzjIHmrBW"
+  },
+  {
+    "name": "Efreeti",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmEfreeti0000000"
+  },
+  {
+    "name": "Elephant",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmElephant000000"
+  },
+  {
+    "name": "Elephant",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.jLPhaBnMtAbB5dp1"
+  },
+  {
+    "name": "Elephant",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobElephant00"
+  },
+  {
+    "name": "Ettercap",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmEttercap000000"
+  },
+  {
+    "name": "Ettercap",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.aKt7vFAS1J0x3FQm"
+  },
+  {
+    "name": "Earth Elemental",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmEarthElemental"
+  },
+  {
+    "name": "Earth Elemental",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.sApYLZj9PTZ40wJr"
+  },
+  {
+    "name": "Elemental Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobElementalS"
+  },
+  {
+    "name": "Giant Elk",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.hQt3qIahnB1Odb40"
+  },
+  {
+    "name": "Giant Elk",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantElk000000"
+  },
+  {
+    "name": "Giant Eagle",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantEagle0000"
+  },
+  {
+    "name": "Giant Eagle",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.9bHoR8k5D2DKHaF3"
+  },
+  {
+    "name": "Fire Elemental",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmFireElemental0"
+  },
+  {
+    "name": "Fire Elemental",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.8SMQl75HLjhuSeau"
+  },
+  {
+    "name": "Earth Elemental Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbelsEarthEleme"
+  },
+  {
+    "name": "Water Elemental",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmWaterElemental"
+  },
+  {
+    "name": "Water Elemental",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.namJz755U1EhvEJa"
+  },
+  {
+    "name": "Fire Elemental Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbelsFireElemen"
+  },
+  {
+    "name": "Water Elemental Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbelsWaterEleme"
+  },
+  {
+    "name": "Quillathe (Elf Ranger)",
+    "type": "character",
+    "uuid": "Compendium.dnd5e.heroes.cYD0wRXLW4B17aoY"
+  },
+  {
+    "name": "Sefris (Half-Elf Warlock)",
+    "type": "character",
+    "uuid": "Compendium.dnd5e.heroes.Jw8DeuPjt1qpusdB"
+  },
+  {
+    "name": "Weasel",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobWeasel0000"
+  },
+  {
+    "name": "Weasel",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmWeasel00000000"
+  },
+  {
+    "name": "Hezrou",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmHezrou00000000"
+  },
+  {
+    "name": "Weasel",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.WOdeacKCYVhgLDuN"
+  },
+  {
+    "name": "Lemure",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmLemure00000000"
+  },
+  {
+    "name": "Hezrou",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.ec3lhsNv1ZRu7Qaq"
+  },
+  {
+    "name": "Lemure",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.tubcO7kaQ4w0soxS"
+  },
+  {
+    "name": "Merrow",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.1cwfYaACm5F0l4y3"
+  },
+  {
+    "name": "Merrow",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmMerrow00000000"
+  },
+  {
+    "name": "Wererat",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmWererat0000000"
+  },
+  {
+    "name": "Pegasus",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmPegasus0000000"
+  },
+  {
+    "name": "Merfolk",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.KUpbXdn1XmHEeOPk"
+  },
+  {
+    "name": "Sea Hag",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.OQqybZoMeDFn5AFD"
+  },
+  {
+    "name": "Veteran",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.J8xjoG4Dxb8WkHtV"
+  },
+  {
+    "name": "Pegasus",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.EIgAW1dWVPpyWLUh"
+  },
+  {
+    "name": "Sea Hag",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSeaHag00000000"
+  },
+  {
+    "name": "Wererat",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.CrnUJhTbkdZjCZsH"
+  },
+  {
+    "name": "Werewolf",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmWerewolf000000"
+  },
+  {
+    "name": "Werebear",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmWerebear000000"
+  },
+  {
+    "name": "Seahorse",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSeahorse000000"
+  },
+  {
+    "name": "Werewolf",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.7tRhrxuknTpHpYcA"
+  },
+  {
+    "name": "Remorhaz",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.VBzqw2rOUvTuNOPI"
+  },
+  {
+    "name": "Wereboar",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmWereboar000000"
+  },
+  {
+    "name": "Keelboat",
+    "type": "vehicle",
+    "uuid": "Compendium.dnd5e.actors24.phbmobKeelboat00"
+  },
+  {
+    "name": "Remorhaz",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmRemorhaz000000"
+  },
+  {
+    "name": "Keelboat",
+    "type": "vehicle",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobKeelboat00"
+  },
+  {
+    "name": "Wereboar",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.J9hgSaZODGjrNl9B"
+  },
+  {
+    "name": "Werebear",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.oRBnO5OHoOZzlCOr"
+  },
+  {
+    "name": "Fey Steed",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbostFey0000000"
+  },
+  {
+    "name": "Weretiger",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmWeretiger00000"
+  },
+  {
+    "name": "Fey Steed",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbostFey0000000"
+  },
+  {
+    "name": "Weretiger",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.zIr3NaNF0mWz5Ahq"
+  },
+  {
+    "name": "Sea Horse",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.FWSDiq9SZsdiBAa8"
+  },
+  {
+    "name": "Reef Shark",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.F0yILX4xKKt4dxKY"
+  },
+  {
+    "name": "Hell Hound",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.iSCL4Q82ivnYelzc"
+  },
+  {
+    "name": "Fey Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobFeySpirit0"
+  },
+  {
+    "name": "Reef Shark",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmReefShark00000"
+  },
+  {
+    "name": "Hell Hound",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmHellHound00000"
+  },
+  {
+    "name": "Reef Shark",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobReefShark0"
+  },
+  {
+    "name": "Venomous Snake",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmVenomousSnake0"
+  },
+  {
+    "name": "Venomous Snake",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobVenomousSn"
+  },
+  {
+    "name": "Merfolk Skirmisher",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmMerfolkSkirmis"
+  },
+  {
+    "name": "Perrin (Halfling Monk)",
+    "type": "character",
+    "uuid": "Compendium.dnd5e.heroes.125qFnXvT9z0iOic"
+  },
+  {
+    "name": "Hyena",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.cDr1JtzEV26bP5Ym"
+  },
+  {
+    "name": "Hyena",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmHyena000000000"
+  },
+  {
+    "name": "Treant",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmTreant00000000"
+  },
+  {
+    "name": "Treant",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.NB6wUgVqeOQtsQKu"
+  },
+  {
+    "name": "Specter",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSpecter0000000"
+  },
+  {
+    "name": "Specter",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.PuPo4H4Dcxigf0fY"
+  },
+  {
+    "name": "Skeleton",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSkeleton000000"
+  },
+  {
+    "name": "Skeleton",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobSkeleton00"
+  },
+  {
+    "name": "Skeleton",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.nU8GN8La8DCt8SDb"
+  },
+  {
+    "name": "Green Hag",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGreenHag000000"
+  },
+  {
+    "name": "Green Hag",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.saq6WM959pKHuaqP"
+  },
+  {
+    "name": "Pteranodon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmPteranodon0000"
+  },
+  {
+    "name": "Fiend Steed",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbostFiend00000"
+  },
+  {
+    "name": "Flesh Golem",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmFleshGolem0000"
+  },
+  {
+    "name": "Fiend Steed",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbostFiend00000"
+  },
+  {
+    "name": "Flesh Golem",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.Hm4o2FgPZsdbXjLq"
+  },
+  {
+    "name": "Pseudodragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.fkCNtbvPOMd7mipF"
+  },
+  {
+    "name": "Steam Mephit",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSteamMephit000"
+  },
+  {
+    "name": "Pseudodragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmPseudodragon00"
+  },
+  {
+    "name": "Plesiosaurus",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmPlesiosaurus00"
+  },
+  {
+    "name": "Plesiosaurus",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.4OeZZguYgJcsZoM9"
+  },
+  {
+    "name": "Steam Mephit",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.UthHOT7QfZfEIUue"
+  },
+  {
+    "name": "Pseudodragon",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobPseudodrag"
+  },
+  {
+    "name": "Skeletal Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbudsSkeletalSp"
+  },
+  {
+    "name": "Fiendish Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobFiendishSp"
+  },
+  {
+    "name": "Frog",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.EZgiprHXA2D7Uyb3"
+  },
+  {
+    "name": "Frog",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmFrog0000000000"
+  },
+  {
+    "name": "Frog",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobFrog000000"
+  },
+  {
+    "name": "Fighter",
+    "type": "character",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbprgFighter000"
+  },
+  {
+    "name": "Fire Giant",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.45Z5kogZEhawX1Ey"
+  },
+  {
+    "name": "Fire Giant",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmFireGiant00000"
+  },
+  {
+    "name": "Frost Giant",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.Buxe6dDK5Mw7kxe6"
+  },
+  {
+    "name": "Frost Giant",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmFrostGiant0000"
+  },
+  {
+    "name": "Flying Snake",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmFlyingSnake000"
+  },
+  {
+    "name": "Flying Sword",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.EqJUA3Z3181RSSFU"
+  },
+  {
+    "name": "Flying Snake",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.SMfgOsfPgf6rb01k"
+  },
+  {
+    "name": "Pit Fiend",
+    "type": "npc",
+    "uuid": "Actor.iFFddHsnn1gUqM6V"
+  },
+  {
+    "name": "Pit Fiend",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmPitFiend000000"
+  },
+  {
+    "name": "Pit Fiend",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.RCv5y7iWlfNxkinx"
+  },
+  {
+    "name": "Floating Whip",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.dmgqftFloatingWh"
+  },
+  {
+    "name": "Faithful Hound",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobFaithfulHo"
+  },
+  {
+    "name": "Faithful Hound",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbmobFaithfulHo"
+  },
+  {
+    "name": "Flaming Sphere",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbsplFlamingSph"
+  },
+  {
+    "name": "Flaming Sphere",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbsplFlamingSph"
+  },
+  {
+    "name": "Giant Fly",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.dmgGiantFly00000"
+  },
+  {
+    "name": "Giant Fly",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.rLl22hYeAH3ljhdI"
+  },
+  {
+    "name": "Fuming Fey Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbelsFumingFeyS"
+  },
+  {
+    "name": "Giant Frog",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantFrog00000"
+  },
+  {
+    "name": "Giant Frog",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.kSAi2KRonL4G4JpO"
+  },
+  {
+    "name": "Violet Fungus",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmVioletFungus00"
+  },
+  {
+    "name": "Violet Fungus",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.7EmUVycEASn7SFL0"
+  },
+  {
+    "name": "Mind Flayer Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbabsMindFlayer"
+  },
+  {
+    "name": "Vampire Familiar",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmVampireFamilia"
+  },
+  {
+    "name": "Tricksy Fey Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbelsTricksyFey"
+  },
+  {
+    "name": "Shrieker Fungus",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmShriekerFungus"
+  },
+  {
+    "name": "Mirthful Fey Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbelsMirthfulFe"
+  },
+  {
+    "name": "Guardian of Faith",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbsplGuardianof"
+  },
+  {
+    "name": "Guardian of Faith",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbsplGuardianof"
+  },
+  {
+    "name": "Randal (Human Fighter)",
+    "type": "character",
+    "uuid": "Compendium.dnd5e.heroes.2Pdtnswo8Nj2nafY"
+  },
+  {
+    "name": "Goat",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobGoat000000"
+  },
+  {
+    "name": "Goat",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.y8sRU8Ks2lcrGsaf"
+  },
+  {
+    "name": "Goat",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGoat0000000000"
+  },
+  {
+    "name": "Ghoul",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.OBujQLLPSmlJiZnL"
+  },
+  {
+    "name": "Gnoll",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.R2GPY9BhRmmwZwkh"
+  },
+  {
+    "name": "Ghast",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGhast000000000"
+  },
+  {
+    "name": "Grick",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGrick000000000"
+  },
+  {
+    "name": "Ghost",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGhost000000000"
+  },
+  {
+    "name": "Ghost",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.qoFEjfrANBdrCP6m"
+  },
+  {
+    "name": "Guard",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGuard000000000"
+  },
+  {
+    "name": "Ghast",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.IyIybE5t2adMEVUM"
+  },
+  {
+    "name": "Grick",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.tFJX45zj3QDc3Zli"
+  },
+  {
+    "name": "Guard",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.E9CvDPDg5dFEpVjS"
+  },
+  {
+    "name": "Ghoul",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGhoul000000000"
+  },
+  {
+    "name": "Gorgon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGorgon00000000"
+  },
+  {
+    "name": "Gorgon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.nZthq6WHLhcdu3te"
+  },
+  {
+    "name": "Griffon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.h052EIIUmRwJum65"
+  },
+  {
+    "name": "Griffon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGriffon0000000"
+  },
+  {
+    "name": "Grimlock",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.GpeQYtlo8oGvGlkM"
+  },
+  {
+    "name": "Grimlock",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGrimlock000000"
+  },
+  {
+    "name": "Glabrezu",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGlabrezu000000"
+  },
+  {
+    "name": "Glabrezu",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.OGPHF4sCVOAi87TU"
+  },
+  {
+    "name": "Giant Owl",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantOwl000000"
+  },
+  {
+    "name": "Giant Rat",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantRat000000"
+  },
+  {
+    "name": "Giant Rat",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.q1YJIeIt6rK8fCKn"
+  },
+  {
+    "name": "Gladiator",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.fsPruAIDOg4tVrgb"
+  },
+  {
+    "name": "Gray Ooze",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.fqbFYtbtkrL53FOC"
+  },
+  {
+    "name": "Giant Owl",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.VVXly3ue0i3YgGrB"
+  },
+  {
+    "name": "Gray Ooze",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGrayOoze000000"
+  },
+  {
+    "name": "Gladiator",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGladiator00000"
+  },
+  {
+    "name": "Giant Wasp",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantWasp00000"
+  },
+  {
+    "name": "Giant Goat",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantGoat00000"
+  },
+  {
+    "name": "Giant Wasp",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbginGiantWasp0"
+  },
+  {
+    "name": "Giant Toad",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.Ixo5shumxy4I9qyD"
+  },
+  {
+    "name": "Giant Wasp",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.4tl0s2SnaLjkoDiI"
+  },
+  {
+    "name": "Giant Goat",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.rjqk7ToMD8sGr3n4"
+  },
+  {
+    "name": "Giant Toad",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantToad00000"
+  },
+  {
+    "name": "Giant Goat",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobGiantGoat0"
+  },
+  {
+    "name": "Gynosphinx",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.6wbasdWWqtXeIAyD"
+  },
+  {
+    "name": "Giant Hyena",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.aAqfEHPiVbhMwZ6j"
+  },
+  {
+    "name": "Giant Shark",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.MWlwLlKXh8jUUxOL"
+  },
+  {
+    "name": "Giant Hyena",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantHyena0000"
+  },
+  {
+    "name": "Giant Shark",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantShark0000"
+  },
+  {
+    "name": "Giant Spider",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantSpider000"
+  },
+  {
+    "name": "Giant Weasel",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobGiantWease"
+  },
+  {
+    "name": "Giant Lizard",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.pLzSh4dA517Tn73E"
+  },
+  {
+    "name": "Giant Lizard",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantLizard000"
+  },
+  {
+    "name": "Giant Spider",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobGiantSpide"
+  },
+  {
+    "name": "Giant Insect",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobGiantInsec"
+  },
+  {
+    "name": "Giant Weasel",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.8VXxqeBvN54rPh81"
+  },
+  {
+    "name": "Giant Spider",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbginGiantSpide"
+  },
+  {
+    "name": "Giant Weasel",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantWeasel000"
+  },
+  {
+    "name": "Giant Insect",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbmobGiantInsec"
+  },
+  {
+    "name": "Giant Spider",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.v99wOosUJjUgcUNF"
+  },
+  {
+    "name": "Gnoll Warrior",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGnollWarrior00"
+  },
+  {
+    "name": "Giant Vulture",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantVulture00"
+  },
+  {
+    "name": "Giant Octopus",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantOctopus00"
+  },
+  {
+    "name": "Grasping Vine",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbsplGraspingVi"
+  },
+  {
+    "name": "Guardian Naga",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.8ExSFCar5Lbhdo7u"
+  },
+  {
+    "name": "Giant Vulture",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.4ZlUHt4xmB7GdPfk"
+  },
+  {
+    "name": "Grasping Vine",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbsplGraspingVi"
+  },
+  {
+    "name": "Guardian Naga",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGuardianNaga00"
+  },
+  {
+    "name": "Giant Octopus",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.p9Xnr820UAZBOIVN"
+  },
+  {
+    "name": "Giant Scorpion",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantScorpion0"
+  },
+  {
+    "name": "Ghostly Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbudsGhostlySpi"
+  },
+  {
+    "name": "Giant Seahorse",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobGiantSeaho"
+  },
+  {
+    "name": "Giant Seahorse",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantSeahorse0"
+  },
+  {
+    "name": "Giant Scorpion",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.GxgIVRX5GbVTifiF"
+  },
+  {
+    "name": "Iron Golem",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.h98AuPfomEPcCibP"
+  },
+  {
+    "name": "Giant Sea Horse",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.c9XDGsTJRy9HUaxQ"
+  },
+  {
+    "name": "Hill Giant",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.9g4N9sjyh8Ql46to"
+  },
+  {
+    "name": "Iron Golem",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmIronGolem00000"
+  },
+  {
+    "name": "Hill Giant",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmHillGiant00000"
+  },
+  {
+    "name": "Giant Wolf Spider",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantWolfSpide"
+  },
+  {
+    "name": "Goat of Traveling",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.dmgGoatofTraveli"
+  },
+  {
+    "name": "Giant Wolf Spider",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.f9JbhBfWucrY2eDA"
+  },
+  {
+    "name": "Stone Giant",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.SOin81NWijHRvXFK"
+  },
+  {
+    "name": "Stone Golem",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.z3gSIXHHWYaHjfBT"
+  },
+  {
+    "name": "Storm Giant",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.68bAMIpe4jvDeR9G"
+  },
+  {
+    "name": "Storm Giant",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmStormGiant0000"
+  },
+  {
+    "name": "Stone Golem",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmStoneGolem0000"
+  },
+  {
+    "name": "Stone Giant",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmStoneGiant0000"
+  },
+  {
+    "name": "Giant Venomous Snake",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmGiantVenomousS"
+  },
+  {
+    "name": "Giant Poisonous Snake",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.ZW39DE2zI3TXVYC9"
+  },
+  {
+    "name": "Shield Guardian",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.z85EsGS2GVWj46qE"
+  },
+  {
+    "name": "Shield Guardian",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmShieldGuardian"
+  },
+  {
+    "name": "Zanna (Gnome Wizard)",
+    "type": "character",
+    "uuid": "Compendium.dnd5e.heroes.4Jsv5vYaJ1atUEDV"
+  },
+  {
+    "name": "Ogre",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.eIGowKTkEBC9gUzx"
+  },
+  {
+    "name": "Ogre",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmOgre0000000000"
+  },
+  {
+    "name": "Ogre Zombie",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.RenLfmDT2XlbCF4x"
+  },
+  {
+    "name": "Ogre Zombie",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmOgreZombie0000"
+  },
+  {
+    "name": "Light",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbsplLight00000"
+  },
+  {
+    "name": "Tiger",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobTiger00000"
+  },
+  {
+    "name": "Wight",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.rbyp54px2D0ql4QK"
+  },
+  {
+    "name": "Rogue",
+    "type": "character",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbprgRogue00000"
+  },
+  {
+    "name": "Light",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbsplLight00000"
+  },
+  {
+    "name": "Tiger",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.FayqbnjBMszO6Pat"
+  },
+  {
+    "name": "Wight",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmWight000000000"
+  },
+  {
+    "name": "Tiger",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmTiger000000000"
+  },
+  {
+    "name": "Nightmare",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.5SgVGhQBswgWRwsF"
+  },
+  {
+    "name": "Night Hag",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.xvh2UOKv1bh03Gih"
+  },
+  {
+    "name": "Nightmare",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmNightmare00000"
+  },
+  {
+    "name": "Night Hag",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmNightHag000000"
+  },
+  {
+    "name": "Yugoloth Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbfisYugolothSp"
+  },
+  {
+    "name": "Rug of Smothering",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.f6HaKROPIcBRmSd1"
+  },
+  {
+    "name": "Homunculus",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmHomunculus0000"
+  },
+  {
+    "name": "Hippogriff",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.T2PExQE84ZcIbAXz"
+  },
+  {
+    "name": "Hippogriff",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmHippogriff0000"
+  },
+  {
+    "name": "Homunculus",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.ZQTCZfTV9ZoTjNCU"
+  },
+  {
+    "name": "Hunter Shark",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.siBUEAj4UVdaiH6p"
+  },
+  {
+    "name": "Hunter Shark",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmHunterShark000"
+  },
+  {
+    "name": "Hippopotamus",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmHippopotamus00"
+  },
+  {
+    "name": "Krusk (Half-Orc Paladin)",
+    "type": "character",
+    "uuid": "Compendium.dnd5e.heroes.Dh1AA6w104V17V6w"
+  },
+  {
+    "name": "Thug",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.Cy3A0rsNMPLZozam"
+  },
+  {
+    "name": "Shadow",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.QGcQYZbVl4bWzi4E"
+  },
+  {
+    "name": "Shadow",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmShadow00000000"
+  },
+  {
+    "name": "Shrieker",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.TaK6nQMGqZ0y8gt7"
+  },
+  {
+    "name": "Rhinoceros",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.SBCe2BSa6opTS5M4"
+  },
+  {
+    "name": "Rhinoceros",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmRhinoceros0000"
+  },
+  {
+    "name": "Phase Spider",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.llSG0Hi4eGlRlQ4o"
+  },
+  {
+    "name": "Phase Spider",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmPhaseSpider000"
+  },
+  {
+    "name": "Phantom Steed",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbsumPhantomSte"
+  },
+  {
+    "name": "Phantom Steed",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbsumPhantomSte"
+  },
+  {
+    "name": "Shambling Mound",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.gGeLeV411iQ5Yijs"
+  },
+  {
+    "name": "Shambling Mound",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmShamblingMound"
+  },
+  {
+    "name": "Sphinx of Lore",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSphinxOfLore00"
+  },
+  {
+    "name": "Sphinx of Valor",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSphinxOfValor0"
+  },
+  {
+    "name": "Sphinx of Wonder",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobSphinxofWo"
+  },
+  {
+    "name": "Sphinx of Wonder",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSphinxOfWonder"
+  },
+  {
+    "name": "Sahuagin Warrior",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSahuaginWarrio"
+  },
+  {
+    "name": "Otherworldly Steed",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobOtherworld"
+  },
+  {
+    "name": "Otherworldly Steed",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbmobOtherworld"
+  },
+  {
+    "name": "Imp",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.dLQiESMsfsXijD5c"
+  },
+  {
+    "name": "Imp",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobImp0000000"
+  },
+  {
+    "name": "Imp",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmImp00000000000"
+  },
+  {
+    "name": "Illusory Object",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbiluObject0000"
+  },
+  {
+    "name": "Illusory Object",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbiluObject0000"
+  },
+  {
+    "name": "Invisible Sensor",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbInvisibleSens"
+  },
+  {
+    "name": "Invisible Sensor",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbInvisibleSens"
+  },
+  {
+    "name": "Invisible Stalker",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.oDspGxRQFBhE74L2"
+  },
+  {
+    "name": "Invisible Stalker",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmInvisibleStalk"
+  },
+  {
+    "name": "Illusory Phenomenon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbiluSensory000"
+  },
+  {
+    "name": "Illusory Phenomenon",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbiluSensory000"
+  },
+  {
+    "name": "Warrior Infantry",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmWarriorInfantr"
+  },
+  {
+    "name": "Swarm of Insects",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSwarmOfInsects"
+  },
+  {
+    "name": "Swarm of Insects",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.S0zDrv6lbnwWaz9E"
+  },
+  {
+    "name": "Lion",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.hjhERRzafCiFFVLA"
+  },
+  {
+    "name": "Lion",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmLion0000000000"
+  },
+  {
+    "name": "Lion",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobLion000000"
+  },
+  {
+    "name": "Mimic",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmMimic000000000"
+  },
+  {
+    "name": "Mimic",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.hx240PG5r5qpRet3"
+  },
+  {
+    "name": "Lizard",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmLizard00000000"
+  },
+  {
+    "name": "Lizard",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.I2x01hzOjVN4NUjf"
+  },
+  {
+    "name": "Lizard",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobLizard0000"
+  },
+  {
+    "name": "Wizard",
+    "type": "character",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbprgWizard0000"
+  },
+  {
+    "name": "Pirate",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmPirate00000000"
+  },
+  {
+    "name": "Piranha",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmPiranha0000000"
+  },
+  {
+    "name": "Minotaur",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.pOPQU4UnR27zA0jf"
+  },
+  {
+    "name": "Lizardfolk",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.57DofLgRQx16ARoc"
+  },
+  {
+    "name": "Winter Wolf",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.yGTh874etxUckmAf"
+  },
+  {
+    "name": "Winter Wolf",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmWinterWolf0000"
+  },
+  {
+    "name": "Killer Whale",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmKillerWhale000"
+  },
+  {
+    "name": "Will-o'-Wisp",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.8KSVpQZyzius93ko"
+  },
+  {
+    "name": "Will-o'-Wisp",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmWillowisp00000"
+  },
+  {
+    "name": "Killer Whale",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.ciLSItjCpwT7nMmk"
+  },
+  {
+    "name": "Minotaur Skeleton",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.xple5bvGj42uGgdd"
+  },
+  {
+    "name": "Minotaur Skeleton",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmMinotaurSkelet"
+  },
+  {
+    "name": "Oni",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.L1w8yBkInMscfJ3F"
+  },
+  {
+    "name": "Oni",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmOni00000000000"
+  },
+  {
+    "name": "Knight",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmKnight00000000"
+  },
+  {
+    "name": "Spider",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.28gU50HtG8Kp7uIz"
+  },
+  {
+    "name": "Priest",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.PVD5wRdyO7iCJPs1"
+  },
+  {
+    "name": "Spider",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobSpider0000"
+  },
+  {
+    "name": "Knight",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.D5UqYD1EnTrJaMTO"
+  },
+  {
+    "name": "Stirge",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.gKRtiMNAjZiCVfwz"
+  },
+  {
+    "name": "Stirge",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmStirge00000000"
+  },
+  {
+    "name": "Spider",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSpider00000000"
+  },
+  {
+    "name": "Priest",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmPriest00000000"
+  },
+  {
+    "name": "Quipper",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.nkyCGJ9wXeAZkyyz"
+  },
+  {
+    "name": "Unicorn",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.G9PENY6nw0xRxCJW"
+  },
+  {
+    "name": "Unicorn",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmUnicorn0000000"
+  },
+  {
+    "name": "Kraken",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.kVg37NlPcACAzjCT"
+  },
+  {
+    "name": "Kraken",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmKraken00000000"
+  },
+  {
+    "name": "Longship",
+    "type": "vehicle",
+    "uuid": "Compendium.dnd5e.actors24.phbmobLongship00"
+  },
+  {
+    "name": "Longship",
+    "type": "vehicle",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobLongship00"
+  },
+  {
+    "name": "Mummy Lord",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmMummyLord00000"
+  },
+  {
+    "name": "Troll Limb",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmTrollLimb00000"
+  },
+  {
+    "name": "Mummy Lord",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.UFW8M3JHzHkxUEGM"
+  },
+  {
+    "name": "Planetar",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmPlanetar000000"
+  },
+  {
+    "name": "Planetar",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.XEByBLeOkDgL3mrr"
+  },
+  {
+    "name": "Slaad Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbabsSlaadSpiri"
+  },
+  {
+    "name": "Slaad Tadpole",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobSlaadTadpo"
+  },
+  {
+    "name": "Slaad Tadpole",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSlaadTadpole00"
+  },
+  {
+    "name": "Owl",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobOwl0000000"
+  },
+  {
+    "name": "Owl",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmOwl00000000000"
+  },
+  {
+    "name": "Owl",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.d0prpsGSAorDadec"
+  },
+  {
+    "name": "Wolf",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.yawTeS8u2FCfzzZH"
+  },
+  {
+    "name": "Wolf",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmWolf0000000000"
+  },
+  {
+    "name": "Mule",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmMule0000000000"
+  },
+  {
+    "name": "Wolf",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobWolf000000"
+  },
+  {
+    "name": "Mule",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobMule000000"
+  },
+  {
+    "name": "Mule",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.Vk7uHVkJ5b26gaTh"
+  },
+  {
+    "name": "Solar",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSolar000000000"
+  },
+  {
+    "name": "Solar",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.lOYt73eaJojBDxAV"
+  },
+  {
+    "name": "Owlbear",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.zY3W5MG7FjssENf6"
+  },
+  {
+    "name": "Vulture",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmVulture0000000"
+  },
+  {
+    "name": "Owlbear",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmOwlbear0000000"
+  },
+  {
+    "name": "Vulture",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.fkJ8Z8zi2JtlcHh9"
+  },
+  {
+    "name": "Monk",
+    "type": "character",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbprgMonk000000"
+  },
+  {
+    "name": "Mummy",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmMummy000000000"
+  },
+  {
+    "name": "Mummy",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.t8WYD7ak07X7xpx8"
+  },
+  {
+    "name": "Rust Monster",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.WJsxqbHU28D64lWT"
+  },
+  {
+    "name": "Rust Monster",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmRustMonster000"
+  },
+  {
+    "name": "Mordenkainen\u2019s Sword",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbsplMordSword0"
+  },
+  {
+    "name": "Morthos (Tiefling Sorcerer)",
+    "type": "character",
+    "uuid": "Compendium.dnd5e.heroes.xT2C2Itv2XambDYp"
+  },
+  {
+    "name": "Zombie",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.NAISFPoNNgUCsEyW"
+  },
+  {
+    "name": "Zombie",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobZombie0000"
+  },
+  {
+    "name": "Zombie",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmZombie00000000"
+  },
+  {
+    "name": "Nothic",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmNothic00000000"
+  },
+  {
+    "name": "Spirit Naga",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.BAT6ld8qJZetpycL"
+  },
+  {
+    "name": "Spirit Naga",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSpiritNaga0000"
+  },
+  {
+    "name": "Unseen Servant",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.BTQz2q4JJVQn8W5W"
+  },
+  {
+    "name": "Unseen Servant",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbsplUnseenServ"
+  },
+  {
+    "name": "Unseen Servant",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbsplUnseenServ"
+  },
+  {
+    "name": "Pony",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.PHO4J98zK2p4KNyc"
+  },
+  {
+    "name": "Pony",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmPony0000000000"
+  },
+  {
+    "name": "Pony",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobPony000000"
+  },
+  {
+    "name": "Otyugh",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmOtyugh00000000"
+  },
+  {
+    "name": "Otyugh",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.jcZblJ6lqtW0ePxe"
+  },
+  {
+    "name": "Swarm of Rats",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSwarmOfRats000"
+  },
+  {
+    "name": "Swarm of Rats",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.8ihbbjkaOFTPbI73"
+  },
+  {
+    "name": "Swarm of Wasps",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.YUaprnengdFDNG8P"
+  },
+  {
+    "name": "Swarm of Ravens",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSwarmOfRavens0"
+  },
+  {
+    "name": "Swarm of Ravens",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.g40zN6xMye6bSS94"
+  },
+  {
+    "name": "Swarm of Spiders",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.4udpeEneFSZK9NTB"
+  },
+  {
+    "name": "Swarm of Piranhas",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSwarmOfPiranha"
+  },
+  {
+    "name": "Swarm of Quippers",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.KXG5XLIwKhn1V0Y5"
+  },
+  {
+    "name": "Swarm of Venomous Snakes",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSwarmOfVenomou"
+  },
+  {
+    "name": "Swarm of Poisonous Snakes",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.XfQMBoTh892XSnCX"
+  },
+  {
+    "name": "Worg",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.VBkp2rGQKvMcCOus"
+  },
+  {
+    "name": "Xorn",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmXorn0000000000"
+  },
+  {
+    "name": "Worg",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmWorg0000000000"
+  },
+  {
+    "name": "Xorn",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.2MZNHeOZweXAYbv1"
+  },
+  {
+    "name": "Roper",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.qZyLwdx7lj5d1wfD"
+  },
+  {
+    "name": "Tough",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmTough000000000"
+  },
+  {
+    "name": "Roper",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmRoper000000000"
+  },
+  {
+    "name": "Rowboat",
+    "type": "vehicle",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobRowboat000"
+  },
+  {
+    "name": "Rowboat",
+    "type": "vehicle",
+    "uuid": "Compendium.dnd5e.actors24.phbmobRowboat000"
+  },
+  {
+    "name": "Sorcerer",
+    "type": "character",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbprgSorcerer00"
+  },
+  {
+    "name": "Poisonous Snake",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.D5rwVIxmfFrdyyxT"
+  },
+  {
+    "name": "Vrock",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmVrock000000000"
+  },
+  {
+    "name": "Vrock",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.6oc29m5uzzzb0pk3"
+  },
+  {
+    "name": "Purple Worm",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmPurpleWorm0000"
+  },
+  {
+    "name": "Purple Worm",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.PtotS52HpHX596cZ"
+  },
+  {
+    "name": "Putrid Spirit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbudsPutridSpir"
+  },
+  {
+    "name": "Spy",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.13K3XK2A3wwxVKLD"
+  },
+  {
+    "name": "Spy",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSpy00000000000"
+  },
+  {
+    "name": "Sprite",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.MUpBNDoJEr09bLaO"
+  },
+  {
+    "name": "Sprite",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobSprite0000"
+  },
+  {
+    "name": "Sprite",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmSprite00000000"
+  },
+  {
+    "name": "Spiritual Weapon",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbsplSpiritualW"
+  },
+  {
+    "name": "Spiritual Weapon",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.phbsplSpiritualW"
+  },
+  {
+    "name": "Quasit",
+    "type": "npc",
+    "uuid": "Compendium.dnd-players-handbook.actors.phbmobQuasit0000"
+  },
+  {
+    "name": "Quasit",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmQuasit00000000"
+  },
+  {
+    "name": "Quasit",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.bwtkdzavdNHISgp4"
+  },
+  {
+    "name": "Tyrannosaurus Rex",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.HlddcPm4cWptj3ka"
+  },
+  {
+    "name": "Tyrannosaurus Rex",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmTyrannosaurusR"
+  },
+  {
+    "name": "Troll",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.ZHAFrnCwCz17dmLc"
+  },
+  {
+    "name": "Troll",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmTroll000000000"
+  },
+  {
+    "name": "Wraith",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.ET4PEVEiNJLU4f7c"
+  },
+  {
+    "name": "Wraith",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmWraith00000000"
+  },
+  {
+    "name": "Triceratops",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.e5IQxSJO7ySEDdSH"
+  },
+  {
+    "name": "Triceratops",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmTriceratops000"
+  },
+  {
+    "name": "Tribal Warrior",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.nREPw9g94Bsb9sIl"
+  },
+  {
+    "name": "Warhorse Skeleton",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmWarhorseSkelet"
+  },
+  {
+    "name": "Warhorse Skeleton",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.7KJ5vjnp0FJrdu6T"
+  },
+  {
+    "name": "Warrior Veteran",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmWarriorVeteran"
+  },
+  {
+    "name": "Wyvern",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.monsters.7198siHjPJf8g0cG"
+  },
+  {
+    "name": "Wyvern",
+    "type": "npc",
+    "uuid": "Compendium.dnd5e.actors24.mmWyvern00000000"
+  }
+]

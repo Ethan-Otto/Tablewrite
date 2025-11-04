@@ -16,6 +16,7 @@ from src.pdf_processing.image_asset_processing.models import MapMetadata, MapDet
 @pytest.mark.integration
 @pytest.mark.slow
 class TestExtractMapsFromPDF:
+    @pytest.mark.timeout(360)  # 6 minute timeout (test expects < 5 min)
     def test_full_extraction_performance_and_quality(self, test_pdf_path, test_output_dir, check_api_key):
         """Comprehensive test of extraction performance on real PDF.
 
@@ -103,6 +104,7 @@ class TestExtractMapsFromPDF:
         print(f"✓ All quality checks passed")
         print(f"{'='*60}\n")
 
+    @pytest.mark.timeout(300)  # 5 minute timeout
     def test_extract_maps_returns_list_of_metadata(self, test_pdf_path, test_output_dir, check_api_key):
         """Test that extract_maps_from_pdf returns list of MapMetadata objects."""
         maps = asyncio.run(extract_maps_from_pdf(test_pdf_path, test_output_dir))
@@ -110,6 +112,7 @@ class TestExtractMapsFromPDF:
         assert isinstance(maps, list)
         assert all(isinstance(m, MapMetadata) for m in maps)
 
+    @pytest.mark.timeout(300)  # 5 minute timeout
     def test_extracted_maps_have_correct_structure(self, test_pdf_path, test_output_dir, check_api_key):
         """Test that extracted maps have all required metadata fields."""
         maps = asyncio.run(extract_maps_from_pdf(test_pdf_path, test_output_dir, chapter_name="Test Chapter"))
@@ -122,6 +125,7 @@ class TestExtractMapsFromPDF:
                 assert map_meta.type in ["navigation_map", "battle_map"]
                 assert map_meta.source in ["extracted", "segmented"]
 
+    @pytest.mark.timeout(300)  # 5 minute timeout
     def test_output_files_exist(self, test_pdf_path, test_output_dir, check_api_key):
         """Test that output PNG files are created for extracted maps."""
         maps = asyncio.run(extract_maps_from_pdf(test_pdf_path, test_output_dir))
@@ -136,6 +140,7 @@ class TestExtractMapsFromPDF:
                 filepath = os.path.join(test_output_dir, png_file)
                 assert os.path.getsize(filepath) > 1000  # At least 1KB
 
+    @pytest.mark.timeout(300)  # 5 minute timeout
     def test_temp_directory_created_for_segmentation(self, test_pdf_path, test_output_dir, check_api_key):
         """Test that temp/ directory is created when Imagen segmentation is used."""
         maps = asyncio.run(extract_maps_from_pdf(test_pdf_path, test_output_dir))
@@ -151,6 +156,7 @@ class TestExtractMapsFromPDF:
             # Should have at least preprocessed and red_perimeter images
             assert len(debug_files) >= 2
 
+    @pytest.mark.timeout(300)  # 5 minute timeout
     def test_parallel_processing_timing(self, test_pdf_path, test_output_dir, check_api_key):
         """Test that pages are processed in parallel (not sequential).
 
@@ -242,6 +248,7 @@ class TestMetadataSaving:
 @pytest.mark.integration
 @pytest.mark.slow
 class TestExtractSinglePage:
+    @pytest.mark.timeout(120)  # 2 minute timeout (single page)
     def test_extract_single_page_with_detection(self, test_pdf_path, test_output_dir, check_api_key):
         """Test extracting a single page with a map detection result."""
         # Create a mock detection result

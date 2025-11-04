@@ -1,11 +1,11 @@
 """Pydantic models for D&D 5e stat blocks and NPCs."""
 
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 from pydantic import BaseModel, field_validator
 
 
 class StatBlock(BaseModel):
-    """D&D 5e stat block structure."""
+    """D&D 5e stat block structure with pre-split sections for parallel processing."""
 
     # Always preserve original text
     name: str
@@ -16,7 +16,7 @@ class StatBlock(BaseModel):
     hit_points: int
     challenge_rating: float
 
-    # Optional fields
+    # Optional structured fields
     size: Optional[str] = None
     type: Optional[str] = None
     alignment: Optional[str] = None
@@ -24,8 +24,23 @@ class StatBlock(BaseModel):
     speed: Optional[str] = None
     senses: Optional[str] = None
     languages: Optional[str] = None
-    traits: Optional[str] = None  # Special traits/features
-    actions: Optional[str] = None  # Actions section
+
+    # Proficiencies (extracted from raw text)
+    saving_throws: Optional[Dict[str, int]] = None  # {"dex": 8, "con": 13, "wis": 10}
+    skills: Optional[Dict[str, int]] = None  # {"perception": 4, "stealth": 5}
+
+    # Damage modifiers
+    damage_resistances: Optional[str] = None  # e.g., "Fire, Cold; Bludgeoning from Nonmagical Attacks"
+    damage_immunities: Optional[str] = None
+    damage_vulnerabilities: Optional[str] = None
+    condition_immunities: Optional[str] = None  # e.g., "Poisoned, Charmed"
+
+    # Split into lists for parallel processing
+    # Each item is a complete entry (e.g., "Scimitar. Melee Weapon Attack: +4 to hit...")
+    traits: List[str] = []  # Special abilities (includes innate spellcasting if present)
+    actions: List[str] = []  # Actions (includes multiattack if present)
+    reactions: List[str] = []  # Reactions
+    legendary_actions: List[str] = []  # Legendary actions
 
     @field_validator('armor_class')
     @classmethod

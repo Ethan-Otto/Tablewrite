@@ -100,6 +100,26 @@ def check_api_key():
 
 
 @pytest.fixture(scope="session")
+def check_foundry_credentials():
+    """Check if FoundryVTT API credentials are available."""
+    from dotenv import load_dotenv
+    load_dotenv(PROJECT_ROOT / ".env")
+
+    relay_url = os.getenv("FOUNDRY_RELAY_URL")
+    api_key = os.getenv("FOUNDRY_LOCAL_API_KEY")
+    client_id = os.getenv("FOUNDRY_LOCAL_CLIENT_ID")
+
+    if not all([relay_url, api_key, client_id]):
+        pytest.skip("FoundryVTT credentials not found. Set FOUNDRY_RELAY_URL, FOUNDRY_LOCAL_API_KEY, and FOUNDRY_LOCAL_CLIENT_ID in .env file.")
+
+    return {
+        "relay_url": relay_url,
+        "api_key": api_key,
+        "client_id": client_id
+    }
+
+
+@pytest.fixture(scope="session")
 def sample_xml_content():
     """Return sample XML content for testing."""
     return """<Chapter_01_Introduction>
