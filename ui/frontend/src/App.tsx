@@ -16,7 +16,8 @@ function App() {
       right: '0',
       bottom: '0'
     }}>
-      <div className="w-full max-w-[1000px] flex flex-col h-full mx-auto" style={{
+      <div className="w-full max-w-[1000px] flex flex-col mx-auto" style={{
+        height: 'calc(100% - 40px)',
         boxShadow: '0 30px 60px rgba(0, 0, 0, 0.4), inset 0 0 100px rgba(0, 0, 0, 0.05)'
       }}>
         <Header />
