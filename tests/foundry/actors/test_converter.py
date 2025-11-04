@@ -15,7 +15,7 @@ from foundry.actors.models import ParsedActorData, Attack, Trait, DamageFormula,
 class TestConverter:
     """Tests for convert_to_foundry implementation."""
 
-    def test_converts_basic_actor(self):
+    async def test_converts_basic_actor(self):
         """Should convert minimal actor to FoundryVTT format."""
         goblin = ParsedActorData(
             source_statblock_name="Goblin",
@@ -33,7 +33,7 @@ class TestConverter:
             }
         )
 
-        result, spell_uuids = convert_to_foundry(goblin)
+        result, spell_uuids = await convert_to_foundry(goblin)
 
         # Check top-level structure
         assert result["name"] == "Goblin"
@@ -55,7 +55,7 @@ class TestConverter:
         # Check details
         assert result["system"]["details"]["cr"] == 0.25
 
-    def test_converts_actor_with_attacks(self):
+    async def test_converts_actor_with_attacks(self):
         """Should convert attacks to weapon items with activities."""
         goblin = ParsedActorData(
             source_statblock_name="Goblin",
@@ -75,7 +75,7 @@ class TestConverter:
             ]
         )
 
-        result, spell_uuids = convert_to_foundry(goblin)
+        result, spell_uuids = await convert_to_foundry(goblin)
         weapon = result["items"][0]
 
         # Check spell UUIDs (should be empty)
@@ -100,7 +100,7 @@ class TestConverter:
         assert weapon["system"]["damage"]["base"]["number"] == 1
         assert weapon["system"]["damage"]["base"]["denomination"] == 6
 
-    def test_converts_actor_with_traits(self):
+    async def test_converts_actor_with_traits(self):
         """Should convert traits to feat items."""
         goblin = ParsedActorData(
             source_statblock_name="Goblin",
@@ -118,7 +118,7 @@ class TestConverter:
             ]
         )
 
-        result, spell_uuids = convert_to_foundry(goblin)
+        result, spell_uuids = await convert_to_foundry(goblin)
 
         # Check spell UUIDs (should be empty)
         assert spell_uuids == []
@@ -234,7 +234,7 @@ class TestActivityHelpers:
 class TestWeaponActivities:
     """Tests for weapon conversion with v10+ activities structure."""
 
-    def test_converts_attack_with_save(self):
+    async def test_converts_attack_with_save(self):
         """Should create weapon with attack + save activities."""
         actor = ParsedActorData(
             source_statblock_name="Test",
@@ -260,7 +260,7 @@ class TestWeaponActivities:
             ]
         )
 
-        result, spell_uuids = convert_to_foundry(actor)
+        result, spell_uuids = await convert_to_foundry(actor)
         weapon = result["items"][0]
 
         # Check spell UUIDs (should be empty)
@@ -273,7 +273,7 @@ class TestWeaponActivities:
         assert any(a["type"] == "attack" for a in activities)
         assert any(a["type"] == "save" for a in activities)
 
-    def test_converts_attack_with_ongoing_damage(self):
+    async def test_converts_attack_with_ongoing_damage(self):
         """Should create weapon with attack + save + ongoing damage activities."""
         pit_fiend = ParsedActorData(
             source_statblock_name="Pit Fiend",
@@ -299,7 +299,7 @@ class TestWeaponActivities:
             ]
         )
 
-        result, spell_uuids = convert_to_foundry(pit_fiend)
+        result, spell_uuids = await convert_to_foundry(pit_fiend)
         bite = result["items"][0]
 
         # Check spell UUIDs (should be empty)
@@ -321,7 +321,7 @@ class TestWeaponActivities:
 class TestIconCacheIntegration:
     """Tests for icon cache integration with converter."""
 
-    def test_convert_to_foundry_uses_icon_cache(self):
+    async def test_convert_to_foundry_uses_icon_cache(self):
         """Test converter selects appropriate icons from cache."""
         from foundry.actors.converter import convert_to_foundry
         from foundry.actors.models import ParsedActorData, Attack, DamageFormula
@@ -358,7 +358,7 @@ class TestIconCacheIntegration:
             ]
         )
 
-        foundry_json, _ = convert_to_foundry(parsed_actor, icon_cache=icon_cache)
+        foundry_json, _ = await convert_to_foundry(parsed_actor, icon_cache=icon_cache, use_ai_icons=False)
 
         # Find scimitar item
         scimitar = next(item for item in foundry_json['items'] if item['name'] == 'Scimitar')

@@ -175,7 +175,7 @@ def test_multiple_actors_with_spells(check_foundry_credentials):
 
 
 @pytest.mark.unit
-def test_converter_return_format():
+async def test_converter_return_format():
     """Test that converter returns tuple of (actor_json, spell_uuids)."""
     actor = ParsedActorData(
         source_statblock_name="Test",
@@ -189,7 +189,7 @@ def test_converter_return_format():
         attacks=[]
     )
 
-    result = convert_to_foundry(actor, spell_cache=None)
+    result = await convert_to_foundry(actor, spell_cache=None)
 
     # Verify return type
     assert isinstance(result, tuple), "Should return a tuple"

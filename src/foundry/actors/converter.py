@@ -423,6 +423,11 @@ async def convert_to_foundry(
             "img": trait_icon,
             "system": {
                 "description": {"value": trait.description},
+                "activation": {
+                    "type": trait.activation,
+                    "value": None,
+                    "condition": ""
+                },
                 "activities": activities,
                 "uses": {"value": trait.uses, "max": trait.uses} if trait.uses else {}
             }
@@ -460,6 +465,11 @@ async def convert_to_foundry(
             "img": multiattack_icon,
             "system": {
                 "description": {"value": parsed_actor.multiattack.description},
+                "activation": {
+                    "type": parsed_actor.multiattack.activation,
+                    "value": None,
+                    "condition": ""
+                },
                 "activities": {activity_id: activity},
                 "uses": {}
             }

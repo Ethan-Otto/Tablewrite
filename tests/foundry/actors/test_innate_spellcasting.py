@@ -72,7 +72,7 @@ class TestInnateSpellcastingModel:
 class TestInnateSpellcastingConversion:
     """Tests for converting innate spellcasting to FoundryVTT format."""
 
-    def test_converts_innate_spellcasting_to_feat(self):
+    async def test_converts_innate_spellcasting_to_feat(self):
         """Should create Innate Spellcasting feat."""
         actor = ParsedActorData(
             source_statblock_name="Pit Fiend",
@@ -91,7 +91,7 @@ class TestInnateSpellcastingConversion:
             )
         )
 
-        result, spell_uuids = convert_to_foundry(actor)
+        result, spell_uuids = await convert_to_foundry(actor)
 
         # Should have Innate Spellcasting feat
         feats = [item for item in result["items"] if item["type"] == "feat"]
@@ -100,7 +100,7 @@ class TestInnateSpellcastingConversion:
         assert innate_feat is not None
         assert "charisma" in innate_feat["system"]["description"]["value"].lower()
 
-    def test_converts_innate_spells_to_spell_items(self):
+    async def test_converts_innate_spells_to_spell_items(self):
         """Should create spell items for innate spells."""
         actor = ParsedActorData(
             source_statblock_name="Pit Fiend",
@@ -119,7 +119,7 @@ class TestInnateSpellcastingConversion:
             )
         )
 
-        result, spell_uuids = convert_to_foundry(actor, include_spells_in_payload=True)
+        result, spell_uuids = await convert_to_foundry(actor, include_spells_in_payload=True)
 
         # Should have spell items in payload
         spells = [item for item in result["items"] if item["type"] == "spell"]
