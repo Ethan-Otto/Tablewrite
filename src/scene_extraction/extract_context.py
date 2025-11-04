@@ -13,19 +13,6 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# Configure Gemini API (lazy initialization)
-_client = None
-
-def get_client():
-    """Get or create the Gemini client."""
-    global _client
-    if _client is None:
-        api_key = os.getenv("GeminiImageAPI")
-        if not api_key:
-            raise ValueError("GeminiImageAPI environment variable not set")
-        _client = genai.Client(api_key=api_key)
-    return _client
-
 GEMINI_MODEL_NAME = "gemini-2.0-flash"
 
 
@@ -65,7 +52,8 @@ Return ONLY valid JSON, no markdown formatting:
 """
 
     try:
-        response = get_client().models.generate_content(
+        client = genai.Client(api_key=os.getenv("GeminiImageAPI") or os.getenv("GEMINI_API_KEY"))
+        response = client.models.generate_content(
             model=GEMINI_MODEL_NAME,
             contents=prompt
         )

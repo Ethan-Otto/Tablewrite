@@ -1,151 +1,321 @@
-"""Generate D&D 5e actor descriptions from natural language using Gemini."""
+"""Generate D&D 5e actor text files from descriptions using Gemini.
+
+This module uses Gemini to create complete stat blocks and bios from natural
+language descriptions. The generated text files can then be processed through
+the existing pipeline:
+  1. Text file → parse_raw_text_to_statblock() → StatBlock
+  2. StatBlock → parse_stat_block_parallel() → ParsedActorData
+  3. ParsedActorData → convert_to_foundry() → FoundryVTT actor JSON
+"""
 
 import asyncio
 import logging
 import os
+from pathlib import Path
 from typing import Optional
+
 from google import genai
 from dotenv import load_dotenv
 
 # Load environment
-load_dotenv()
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+load_dotenv(PROJECT_ROOT / ".env")
 
 logger = logging.getLogger(__name__)
 
-# Configure Gemini (lazy initialization)
-_client = None
-
-def get_client():
-    """Get or create the Gemini client."""
-    global _client
-    if _client is None:
-        api_key = os.getenv("GeminiImageAPI") or os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            raise ValueError("Gemini API key not set (GeminiImageAPI or GEMINI_API_KEY)")
-        _client = genai.Client(api_key=api_key)
-    return _client
-
 # Model configuration
-DEFAULT_MODEL = "gemini-2.0-flash"
+DEFAULT_MODEL = "gemini-2.5-pro"
 GENERATION_TEMPERATURE = 0.7  # Creative but consistent
 
 
-async def generate_actor_description(
+async def generate_actor_from_description(
     description: str,
     challenge_rating: Optional[float] = None,
-    model_name: str = "gemini-2.0-flash"
-) -> str:
+    name: Optional[str] = None,
+    bio_context: Optional[str] = None,
+    output_path: Optional[Path] = None,
+    model_name: str = DEFAULT_MODEL
+) -> Path:
     """
-    Generate a complete D&D 5e stat block from natural language description.
+    Generate a complete D&D 5e actor file from a description using Gemini.
 
     Args:
-        description: Natural language description of the actor
-                    Example: "A fierce red dragon wyrmling with fire breath"
-        challenge_rating: Optional CR to target (0.125-30). If None, Gemini determines it.
-        model_name: Gemini model to use (default: "gemini-2.0-flash")
+        description: Natural language description of the creature/NPC
+        challenge_rating: Optional CR (0.125, 0.25, 0.5, 1-30). If not provided, Gemini will determine appropriate CR.
+        name: Optional custom name (Gemini will generate if not provided)
+        bio_context: Optional additional context for biography
+        output_path: Optional custom output path (defaults to data/actors/<name>.txt)
+        model_name: Gemini model to use (default: gemini-2.5-pro)
 
     Returns:
-        Generated stat block text in D&D 5e format
-
-    Raises:
-        RuntimeError: If Gemini API call fails
-        ValueError: If response is invalid
+        Path to generated file
 
     Example:
-        raw_text = await generate_actor_description(
-            "A cunning goblin assassin with poisoned daggers",
-            challenge_rating=2.0
-        )
+        >>> # With explicit CR
+        >>> path = await generate_actor_from_description(
+        ...     description="A mutated sea creature with acidic tentacles and telepathic abilities",
+        ...     challenge_rating=5,
+        ...     bio_context="Found in the ruins of an underwater temple"
+        ... )
+        >>> # Let Gemini determine CR
+        >>> path = await generate_actor_from_description(
+        ...     description="An ancient lich with reality-warping powers",
+        ...     bio_context="Destroyed kingdoms millennia ago"
+        ... )
     """
-    logger.info(f"Generating stat block for: {description[:50]}...")
+    # Build comprehensive prompt
+    cr_examples = {
+        0.125: "CR 1/8 (25 XP) - weak creatures like kobolds",
+        0.25: "CR 1/4 (50 XP) - goblins, skeletons",
+        0.5: "CR 1/2 (100 XP) - orcs, giant wasps",
+        1: "CR 1 (200 XP) - dire wolves, animated armor",
+        2: "CR 2 (450 XP) - ogres, griffons",
+        5: "CR 5 (1,800 XP) - hill giants, troll",
+        10: "CR 10 (5,900 XP) - stone golems, young dragons",
+        20: "CR 20 (25,000 XP) - pit fiends, ancient dragons"
+    }
 
-    # Build CR instruction
     if challenge_rating is not None:
-        cr_instruction = f"Challenge Rating: MUST be exactly {challenge_rating}"
-    else:
-        cr_instruction = "Challenge Rating: Determine an appropriate CR based on the description"
+        cr_guidance = cr_examples.get(challenge_rating, f"CR {challenge_rating}")
+        cr_instruction = f"""CHALLENGE RATING: {challenge_rating} ({cr_guidance})
 
-    prompt = f"""Generate a complete D&D 5e stat block for the following creature.
+Use this exact CR for the stat block."""
+    else:
+        cr_instruction = """CHALLENGE RATING: Not specified - you must determine the appropriate CR.
+
+REASONING PROCESS:
+1. Analyze the description for power indicators:
+   - Magical abilities (spells, innate magic)
+   - Physical capabilities (size, strength, special attacks)
+   - Defensive abilities (resistances, immunities, regeneration)
+   - Tactical complexity (legendary actions, lair actions)
+   - Narrative role (minion, boss, world-ending threat)
+
+2. Consider CR benchmarks:
+   - CR 0-1/4: Weak creatures (kobolds, skeletons, commoners)
+   - CR 1/2-2: Common threats (orcs, goblins, zombies)
+   - CR 3-5: Dangerous foes (ogres, griffons, basic spellcasters)
+   - CR 6-10: Serious threats (giants, young dragons, mages)
+   - CR 11-15: Deadly encounters (adult dragons, powerful demons)
+   - CR 16-20: Legendary threats (ancient dragons, pit fiends)
+   - CR 21-30: World-ending entities (demon lords, gods)
+
+3. Select the most appropriate CR based on your analysis.
+4. State your reasoning briefly after the stat block (before the Bio section).
+
+Format:
+[Stat block]
+
+CR Reasoning: [1-2 sentences explaining why you chose this CR]
+
+Bio
+[Biography]"""
+
+    prompt = f"""Generate a complete D&D 5e stat block and biography for a creature.
 
 DESCRIPTION:
 {description}
 
+{cr_instruction}
+{f"NAME: {name}" if name else ""}
+{f"BIO CONTEXT: {bio_context}" if bio_context else ""}
+
 REQUIREMENTS:
-- {cr_instruction}
-- Follow official D&D 5e stat block format exactly
-- Include: Name, Size/Type/Alignment, AC, HP, Speed, Ability Scores (STR, DEX, CON, INT, WIS, CHA)
-- Include: Saving Throws, Skills, Damage Resistances/Immunities/Vulnerabilities (if appropriate)
-- Include: Condition Immunities (if appropriate)
-- Include: Senses, Languages
-- Include: Traits (special abilities)
-- Include: Actions (attacks and special actions)
-- Include: Reactions (if appropriate)
-- Include: Legendary Actions (if CR is high enough and creature is legendary)
+1. Create a balanced D&D 5e stat block appropriate for the chosen CR
+2. Use official D&D 5e stat block format (see example below)
+3. Include appropriate abilities, traits, and actions for the CR
+4. Make the creature interesting and mechanically sound
+5. Add a 2-3 paragraph biography that fits the description
 
-OUTPUT FORMAT (example):
+STAT BLOCK FORMAT (follow exactly):
 ```
-Goblin Assassin
-Small humanoid (goblinoid), neutral evil
-Armor Class 15 (leather armor)
-Hit Points 27 (6d6 + 6)
-Speed 30 ft.
-
-STR 8 (-1)
-DEX 17 (+3)
-CON 12 (+1)
-INT 10 (+0)
-WIS 11 (+0)
-CHA 8 (-1)
-
-Skills Stealth +7, Sleight of Hand +5
-Senses darkvision 60 ft., passive Perception 10
-Languages Common, Goblin
-Challenge 2 (450 XP)
-
+Creature Name
+Size Type, Alignment
+Armor Class X (description)
+Hit Points X (XdY + Z)
+Speed X ft., [additional movement]
+STR
+XX (+X)
+DEX
+XX (+X)
+CON
+XX (+X)
+INT
+XX (+X)
+WIS
+XX (+X)
+CHA
+XX (+X)
+[Saving Throws ...]
+[Skills ...]
+[Damage Resistances ...]
+[Damage Immunities ...]
+[Damage Vulnerabilities ...]
+[Condition Immunities ...]
+Senses ..., Passive Perception XX
+Languages ...
+Challenge {challenge_rating} (XP)
+Proficiency Bonus +X
 Traits
-Nimble Escape. The goblin can take the Disengage or Hide action as a bonus action on each of its turns.
 
-Assassinate. During its first turn, the goblin has advantage on attack rolls against any creature that hasn't taken a turn. Any hit the goblin scores against a surprised creature is a critical hit.
+Trait Name. Trait description.
 
-Sneak Attack (1/Turn). The goblin deals an extra 7 (2d6) damage when it hits a target with a weapon attack and has advantage on the attack roll.
-
+[More traits...]
 Actions
-Multiattack. The goblin makes two attacks with its poisoned dagger.
 
-Poisoned Dagger. Melee or Ranged Weapon Attack: +5 to hit, reach 5 ft. or range 20/60 ft., one target. Hit: 5 (1d4 + 3) piercing damage, and the target must succeed on a DC 11 Constitution saving throw or take 7 (2d6) poison damage and become poisoned for 1 minute.
+Action Name. Action description with mechanics.
+
+[More actions...]
+
+[Reactions]
+
+Reaction Name. Reaction description.
+
+[Legendary Actions]
+
+The [creature] can take 3 legendary actions...
 ```
 
-Generate ONLY the stat block text, no additional commentary.
+STAT BLOCK GUIDELINES:
+- HP should be appropriate for the CR (roughly 15-30 per CR level)
+- Attack bonuses should be roughly CR/2 + 5 (minimum +3)
+- Damage should scale with CR (roughly 7-15 damage per CR level)
+- Save DCs should be roughly 8 + proficiency bonus + ability modifier
+- Include 1-3 interesting traits
+- Include 2-5 actions (including Multiattack if CR >= 3)
+- Consider legendary actions if CR >= 10
+- Ensure all numbers are mechanically balanced for the chosen CR
+
+After the stat block, add:
+
+Bio
+
+[2-3 paragraph biography describing the creature's nature, habitat, behavior, and role in the world]
+
+OUTPUT ONLY THE STAT BLOCK AND BIO. No additional commentary or explanations.
 """
 
-    try:
-        # Use asyncio.to_thread since generate_content is synchronous
-        response = await asyncio.to_thread(
-            get_client().models.generate_content,
-            model=model_name,
-            contents=prompt,
-            config=genai.types.GenerateContentConfig(
-                temperature=GENERATION_TEMPERATURE
-            )
+    # Call Gemini
+    if challenge_rating is not None:
+        logger.info(f"Generating CR {challenge_rating} creature: {description[:100]}...")
+    else:
+        logger.info(f"Generating creature (auto CR): {description[:100]}...")
+
+    # Initialize client (uses GEMINI_API_KEY or GeminiImageAPI env var)
+    client = genai.Client(api_key=os.getenv("GeminiImageAPI") or os.getenv("GEMINI_API_KEY"))
+
+    response = await client.models.generate_content_async(
+        model=model_name,
+        contents=prompt,
+        config={'temperature': GENERATION_TEMPERATURE}
+    )
+
+    generated_text = response.text.strip()
+
+    # Extract creature name from first line if not provided
+    if name is None:
+        first_line = generated_text.split('\n')[0].strip()
+        name = first_line
+        logger.info(f"Generated creature: {name}")
+
+    # Determine output path
+    if output_path is None:
+        output_dir = PROJECT_ROOT / "data" / "actors"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Sanitize filename
+        safe_name = name.lower().replace(" ", "_").replace("'", "")
+        output_path = output_dir / f"{safe_name}.txt"
+
+    # Write to file
+    output_path.write_text(generated_text, encoding="utf-8")
+
+    logger.info(f"Generated actor file: {output_path}")
+    return output_path
+
+
+async def generate_multiple_actors(
+    descriptions: list[tuple[str, Optional[float]]],
+    output_dir: Optional[Path] = None
+) -> list[Path]:
+    """
+    Generate multiple actor files in parallel.
+
+    Args:
+        descriptions: List of (description, challenge_rating) tuples. CR can be None for auto-determination.
+        output_dir: Optional output directory (defaults to data/actors/)
+
+    Returns:
+        List of paths to generated files
+
+    Example:
+        >>> paths = await generate_multiple_actors([
+        ...     ("A fire-breathing dragon", 15),
+        ...     ("A cunning thief", None),  # Auto CR
+        ...     ("An ancient lich", 21)
+        ... ])
+    """
+    tasks = [
+        generate_actor_from_description(desc, cr, output_path=output_dir)
+        for desc, cr in descriptions
+    ]
+
+    return await asyncio.gather(*tasks)
+
+
+# Synchronous wrapper for convenience
+def generate_actor_sync(
+    description: str,
+    challenge_rating: Optional[float] = None,
+    name: Optional[str] = None,
+    bio_context: Optional[str] = None,
+    output_path: Optional[Path] = None,
+    model_name: str = DEFAULT_MODEL
+) -> Path:
+    """
+    Synchronous wrapper for generate_actor_from_description.
+
+    See generate_actor_from_description for full documentation.
+    """
+    return asyncio.run(generate_actor_from_description(
+        description, challenge_rating, name, bio_context, output_path, model_name
+    ))
+
+
+# Example usage
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+
+    async def main():
+        # Example 1: Explicit CR - crystalline spider
+        path1 = await generate_actor_from_description(
+            description="A crystalline spider that feeds on magical energy",
+            challenge_rating=3,
+            bio_context="Lives in the Underdark near wizard towers"
         )
+        print(f"Generated: {path1}")
 
-        raw_text = response.text.strip()
+        # Example 2: Auto CR - let Gemini decide based on description
+        path2 = await generate_actor_from_description(
+            description="A half-orc warrior who was raised by elves and fights with grace",
+            name="Grok Silverblade",
+            bio_context="Leader of the Moonwood Rangers"
+        )
+        print(f"Generated (auto CR): {path2}")
 
-        # Remove markdown code blocks if present
-        if raw_text.startswith("```"):
-            lines = raw_text.split("\n")
-            # Remove first line (``` or ```markdown)
-            lines = lines[1:]
-            # Remove last line (```)
-            if lines and lines[-1].strip() == "```":
-                lines = lines[:-1]
-            raw_text = "\n".join(lines).strip()
+        # Example 3: Auto CR - ancient lich (should be high CR)
+        path3 = await generate_actor_from_description(
+            description="An ancient lich with reality-warping powers who destroyed entire kingdoms",
+            bio_context="Awakened after millennia of slumber beneath a cursed mountain"
+        )
+        print(f"Generated (auto CR): {path3}")
 
-        logger.info(f"Generated stat block: {len(raw_text)} characters")
-        logger.debug(f"Stat block preview: {raw_text[:200]}...")
+        # Example 4: Explicit high CR - elemental titan
+        path4 = await generate_actor_from_description(
+            description="An elemental titan made of living storm clouds",
+            challenge_rating=18,
+            bio_context="Created by an ancient god as punishment for hubris"
+        )
+        print(f"Generated: {path4}")
 
-        return raw_text
-
-    except Exception as e:
-        logger.error(f"Failed to generate actor description: {e}")
-        raise RuntimeError(f"Failed to generate actor description: {e}") from e
+    asyncio.run(main())

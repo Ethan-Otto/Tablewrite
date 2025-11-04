@@ -22,19 +22,6 @@ from foundry.actors.spell_cache import SpellCache
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 load_dotenv(PROJECT_ROOT / ".env")
 
-# Configure Gemini (lazy initialization)
-_client = None
-
-def get_client():
-    """Get or create the Gemini client."""
-    global _client
-    if _client is None:
-        api_key = os.getenv("GeminiImageAPI")
-        if not api_key:
-            raise ValueError("GeminiImageAPI environment variable not set")
-        _client = genai.Client(api_key=api_key)
-    return _client
-
 logger = logging.getLogger(__name__)
 
 # Model configuration
@@ -229,14 +216,14 @@ OUTPUT ONLY VALID JSON. No explanations.
 """
 
     # Call Gemini
-    response = await asyncio.to_thread(
-        get_client().models.generate_content,
+    client = genai.Client(api_key=os.getenv("GeminiImageAPI") or os.getenv("GEMINI_API_KEY"))
+    response = await client.models.generate_content_async(
         model=model_name,
         contents=prompt,
-        config=genai.types.GenerateContentConfig(
-            temperature=PARSE_TEMPERATURE,
-            response_mime_type="application/json"
-        )
+        config={
+            'temperature': PARSE_TEMPERATURE,
+            'response_mime_type': 'application/json'
+        }
     )
 
     # Parse response
@@ -322,14 +309,14 @@ Most traits are "passive" unless the description mentions an action type.
 OUTPUT ONLY VALID JSON. No explanations.
 """
 
-        response = await asyncio.to_thread(
-        get_client().models.generate_content,
+        client = genai.Client(api_key=os.getenv("GeminiImageAPI") or os.getenv("GEMINI_API_KEY"))
+        response = await client.models.generate_content_async(
             model=model_name,
             contents=prompt,
-            config=genai.types.GenerateContentConfig(
-                temperature=PARSE_TEMPERATURE,
-                response_mime_type="application/json"
-            )
+            config={
+                'temperature': PARSE_TEMPERATURE,
+                'response_mime_type': 'application/json'
+            }
         )
 
         parsed_json = json.loads(response.text)
@@ -392,14 +379,14 @@ PARSING RULES:
 OUTPUT ONLY VALID JSON. No explanations.
 """
 
-    response = await asyncio.to_thread(
-        get_client().models.generate_content,
+    client = genai.Client(api_key=os.getenv("GeminiImageAPI") or os.getenv("GEMINI_API_KEY"))
+    response = await client.models.generate_content_async(
         model=model_name,
         contents=prompt,
-        config=genai.types.GenerateContentConfig(
-            temperature=PARSE_TEMPERATURE,
-            response_mime_type="application/json"
-        )
+        config={
+            'temperature': PARSE_TEMPERATURE,
+            'response_mime_type': 'application/json'
+        }
     )
 
     parsed_json = json.loads(response.text)
