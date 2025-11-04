@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 from app.models.chat import ChatRequest, ChatResponse
 from app.services.command_parser import CommandParser, CommandType
 from app.services.gemini_service import GeminiService
+from app.tools import registry
 
 router = APIRouter(prefix="/api", tags=["chat"])
 
@@ -53,12 +54,37 @@ async def chat(request: ChatRequest) -> ChatResponse:
                 for msg in request.conversation_history
             ]
 
-            response_text = gemini_service.generate_chat_response(
+            # Get all available tool schemas
+            tool_schemas = registry.get_schemas()
+
+            # Call Gemini with function calling enabled
+            response = await gemini_service.generate_with_tools(
                 message=request.message,
-                context=request.context,
-                conversation_history=history_dicts
+                conversation_history=history_dicts,
+                tools=tool_schemas
             )
-            return ChatResponse(message=response_text, type="text")
+
+            # Check if Gemini wants to call a tool
+            if response.get("type") == "tool_call":
+                tool_name = response["tool_call"]["name"]
+                tool_params = response["tool_call"]["parameters"]
+
+                # Execute the tool
+                tool_response = await registry.execute_tool(tool_name, **tool_params)
+
+                # Return tool response
+                return ChatResponse(
+                    message=tool_response.message,
+                    type=tool_response.type,
+                    data=tool_response.data
+                )
+
+            # No tool call - return text response
+            return ChatResponse(
+                message=response["text"],
+                type="text",
+                data=None
+            )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
