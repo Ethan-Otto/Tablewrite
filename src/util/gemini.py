@@ -4,6 +4,7 @@ Gemini API utilities for D&D Module Converter.
 Centralized module for all Google Generative AI (Gemini) interactions.
 """
 
+import asyncio
 import os
 from typing import Optional, Any
 from google import genai
@@ -166,3 +167,41 @@ def configure_gemini(api_key: Optional[str] = None) -> GeminiAPI:
         Configured GeminiAPI instance
     """
     return GeminiAPI(api_key=api_key)
+
+
+async def generate_content_async(
+    client: genai.Client,
+    model: str,
+    contents: Any,
+    config: Optional[dict] = None
+) -> Any:
+    """
+    Async wrapper for generate_content using asyncio.to_thread.
+
+    The google.genai library only provides synchronous generate_content().
+    This wrapper allows async code to call it without blocking the event loop.
+
+    Args:
+        client: genai.Client instance
+        model: Model name (e.g., "gemini-2.5-pro")
+        contents: Content to send to the model
+        config: Optional generation config dict
+
+    Returns:
+        Response object with .text attribute
+
+    Example:
+        client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+        response = await generate_content_async(
+            client=client,
+            model="gemini-2.5-pro",
+            contents="Hello",
+            config={'temperature': 0.7}
+        )
+    """
+    return await asyncio.to_thread(
+        client.models.generate_content,
+        model=model,
+        contents=contents,
+        config=config
+    )

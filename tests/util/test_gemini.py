@@ -116,3 +116,25 @@ class TestGeminiAPIIntegration:
         finally:
             if os.path.exists(temp_file_path):
                 os.remove(temp_file_path)
+
+    @pytest.mark.asyncio
+    async def test_generate_content_async_wrapper(self, check_api_key):
+        """Test async wrapper for generate_content."""
+        from util.gemini import generate_content_async
+        from google import genai
+
+        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GeminiImageAPI")
+        if not api_key:
+            pytest.skip("No API key available")
+
+        client = genai.Client(api_key=api_key)
+
+        response = await generate_content_async(
+            client=client,
+            model="gemini-2.0-flash",
+            contents="Say 'test' in one word",
+            config={'temperature': 0.0}
+        )
+
+        assert response.text
+        assert isinstance(response.text, str)
