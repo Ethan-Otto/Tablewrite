@@ -51,7 +51,9 @@ export function useChat(): UseChatReturn {
         role: ChatRole.ASSISTANT,
         content: response.message,
         timestamp: new Date().toISOString(),
-        scene: response.scene || null
+        type: response.type || 'text',
+        data: response.data || null,
+        scene: response.scene || null,  // Keep for backwards compatibility
       };
       setMessages(prev => [...prev, assistantMessage]);
 
