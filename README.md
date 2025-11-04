@@ -4,7 +4,7 @@ Utilities for turning official Dungeons & Dragons PDFs into structured assets th
 
 ## Layout
 - `src/pdf_processing/` – PDF processing scripts:
-  - `split_pdf.py` – slices `data/pdfs/Lost_Mine_of_Phandelver.pdf` into chapter PDFs under `pdf_sections/`
+  - `split_pdf.py` – slices `data/pdfs/Lost_Mine_of_Phandelver.pdf` into chapter PDFs under `data/pdf_sections/`
   - `pdf_to_xml.py` – uploads each chapter page to Gemini (`GEMINI_MODEL_NAME`) and writes XML plus logs to `output/runs/<timestamp>/`
   - `get_toc.py` – extracts table of contents from PDF
   - `xml_to_html.py` – converts XML to browsable HTML (local previews and FoundryVTT uploads)
@@ -31,7 +31,7 @@ Utilities for turning official Dungeons & Dragons PDFs into structured assets th
 - `scripts/generate_scene_art.py` – scene artwork generation orchestration script
 - `src/logging_config.py` – centralized logging configuration
 - `xml_examples/` – reference markup while refining the converters
-- `pdf_sections/` – cache of manually curated chapter PDFs used as input for the XML step
+- `data/pdf_sections/` – cache of manually curated chapter PDFs used as input for the XML step
 
 ## Setup
 1. Install uv if not already installed: `curl -LsSf https://astral.sh/uv/install.sh | sh` (or `pip install uv`)

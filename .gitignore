@@ -11,7 +11,7 @@ venv/
 
 # Output
 output/
-pdf_sections/
+data/pdf_sections/
 tests/test_runs/
 tests/output/
 

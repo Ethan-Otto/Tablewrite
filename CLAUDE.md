@@ -105,11 +105,11 @@ The system follows a four-stage pipeline (orchestrated by `scripts/full_pipeline
 
 1. **PDF Splitting** (`src/pdf_processing/split_pdf.py`):
    - Input: `data/pdfs/Lost_Mine_of_Phandelver.pdf`
-   - Output: Chapter PDFs in `pdf_sections/Lost_Mine_of_Phandelver/`
+   - Output: Chapter PDFs in `data/pdf_sections/Lost_Mine_of_Phandelver/`
    - Hardcoded chapter boundaries based on manual TOC analysis
 
 2. **PDF to XML Conversion** (`src/pdf_processing/pdf_to_xml.py`):
-   - Input: Chapter PDFs from `pdf_sections/`
+   - Input: Chapter PDFs from `data/pdf_sections/`
    - Output: Timestamped run in `output/runs/<YYYYMMDD_HHMMSS>/documents/`
    - Core AI-powered extraction engine using Gemini 2.5 Pro
 

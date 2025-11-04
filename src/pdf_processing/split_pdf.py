@@ -16,7 +16,7 @@ def split_pdf_by_chapters():
     and saves them in a directory named after the PDF.
     """
     pdf_file_path = os.path.join(PROJECT_ROOT, "data", "pdfs", "Lost_Mine_of_Phandelver.pdf")
-    base_output_dir = os.path.join(PROJECT_ROOT, "pdf_sections")
+    base_output_dir = os.path.join(PROJECT_ROOT, "data", "pdf_sections")
     
     # Get the PDF name for the subdirectory
     pdf_filename = os.path.splitext(os.path.basename(pdf_file_path))[0]
