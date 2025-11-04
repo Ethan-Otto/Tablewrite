@@ -28,6 +28,52 @@ DEFAULT_MODEL = "gemini-2.5-pro"
 GENERATION_TEMPERATURE = 0.7  # Creative but consistent
 
 
+async def generate_actor_description(
+    description: str,
+    challenge_rating: Optional[float] = None,
+    model_name: str = DEFAULT_MODEL
+) -> str:
+    """
+    Generate a complete D&D 5e stat block from natural language description.
+
+    This is a simpler version that returns the raw text directly (used by orchestrate.py).
+    For a version that saves to file with more options, use generate_actor_from_description.
+
+    Args:
+        description: Natural language description of the actor
+        challenge_rating: Optional CR (0.125-30). If None, Gemini determines it.
+        model_name: Gemini model to use (default: gemini-2.5-pro)
+
+    Returns:
+        Generated stat block text in D&D 5e format
+
+    Example:
+        raw_text = await generate_actor_description(
+            "A cunning goblin assassin with poisoned daggers",
+            challenge_rating=2.0
+        )
+    """
+    # Use the full version but don't save to file
+    temp_output = Path("/tmp") / "temp_actor.txt"
+    result_path = await generate_actor_from_description(
+        description=description,
+        challenge_rating=challenge_rating,
+        output_path=temp_output,
+        model_name=model_name
+    )
+
+    # Read the generated text and return it
+    text = result_path.read_text(encoding="utf-8")
+
+    # Clean up temp file
+    try:
+        result_path.unlink()
+    except Exception:
+        pass
+
+    return text
+
+
 async def generate_actor_from_description(
     description: str,
     challenge_rating: Optional[float] = None,

@@ -27,7 +27,7 @@ class TestExtractChapterContext:
     @pytest.mark.integration
     def test_extract_context_calls_gemini(self, sample_xml_content):
         """Test that extract_chapter_context calls Gemini API with correct prompt."""
-        with patch('src.scene_extraction.extract_context.get_client') as mock_get_client:
+        with patch('src.scene_extraction.extract_context.genai.Client') as mock_client_class:
             # Mock Gemini response
             mock_response = MagicMock()
             mock_response.text = """
@@ -42,13 +42,12 @@ class TestExtractChapterContext:
             """
             mock_client = MagicMock()
             mock_client.models.generate_content.return_value = mock_response
-            mock_get_client.return_value = mock_client
+            mock_client_class.return_value = mock_client
 
             # Call function
             context = extract_chapter_context(sample_xml_content)
 
             # Verify Gemini was called
-            mock_get_client.assert_called()
             mock_client.models.generate_content.assert_called_once()
 
             # Verify result is ChapterContext
@@ -58,12 +57,12 @@ class TestExtractChapterContext:
 
     def test_extract_context_handles_json_parsing(self):
         """Test that extract_context properly parses Gemini JSON response."""
-        with patch('src.scene_extraction.extract_context.get_client') as mock_get_client:
+        with patch('src.scene_extraction.extract_context.genai.Client') as mock_client_class:
             mock_response = MagicMock()
             mock_response.text = '{"environment_type": "forest", "lighting": "dappled sunlight"}'
             mock_client = MagicMock()
             mock_client.models.generate_content.return_value = mock_response
-            mock_get_client.return_value = mock_client
+            mock_client_class.return_value = mock_client
 
             context = extract_chapter_context("<chapter></chapter>")
 
@@ -72,26 +71,26 @@ class TestExtractChapterContext:
 
     def test_extract_context_raises_on_invalid_json(self):
         """Test that extract_context raises error on malformed JSON."""
-        with patch('src.scene_extraction.extract_context.get_client') as mock_get_client:
+        with patch('src.scene_extraction.extract_context.genai.Client') as mock_client_class:
             mock_response = MagicMock()
             mock_response.text = "Not valid JSON at all"
             mock_client = MagicMock()
             mock_client.models.generate_content.return_value = mock_response
-            mock_get_client.return_value = mock_client
+            mock_client_class.return_value = mock_client
 
             with pytest.raises(ValueError, match="Failed to parse.*JSON"):
                 extract_chapter_context("<chapter></chapter>")
 
     def test_extract_context_handles_markdown_json_same_line(self):
         """Test parsing when json identifier is on same line as backticks: ```json"""
-        with patch('src.scene_extraction.extract_context.get_client') as mock_get_client:
+        with patch('src.scene_extraction.extract_context.genai.Client') as mock_client_class:
             mock_response = MagicMock()
             mock_response.text = '''```json
 {"environment_type": "forest", "lighting": "dappled sunlight"}
 ```'''
             mock_client = MagicMock()
             mock_client.models.generate_content.return_value = mock_response
-            mock_get_client.return_value = mock_client
+            mock_client_class.return_value = mock_client
 
             context = extract_chapter_context("<chapter></chapter>")
 
@@ -100,7 +99,7 @@ class TestExtractChapterContext:
 
     def test_extract_context_handles_markdown_json_separate_line(self):
         """Test parsing when json identifier is on separate line after backticks."""
-        with patch('src.scene_extraction.extract_context.get_client') as mock_get_client:
+        with patch('src.scene_extraction.extract_context.genai.Client') as mock_client_class:
             mock_response = MagicMock()
             mock_response.text = '''```
 json
@@ -108,7 +107,7 @@ json
 ```'''
             mock_client = MagicMock()
             mock_client.models.generate_content.return_value = mock_response
-            mock_get_client.return_value = mock_client
+            mock_client_class.return_value = mock_client
 
             context = extract_chapter_context("<chapter></chapter>")
 
@@ -116,17 +115,17 @@ json
             assert context.atmosphere == "oppressive"
 
     def test_extract_context_handles_markdown_no_json_identifier(self):
-        """Test parsing when there's no json identifier, just backticks."""
-        with patch('src.scene_extraction.extract_context.get_client') as mock_get_client:
+        """Test parsing when markdown blocks have no json identifier."""
+        with patch('src.scene_extraction.extract_context.genai.Client') as mock_client_class:
             mock_response = MagicMock()
             mock_response.text = '''```
-{"environment_type": "urban", "terrain": "cobblestone streets"}
+{"environment_type": "coastal", "weather": "foggy"}
 ```'''
             mock_client = MagicMock()
             mock_client.models.generate_content.return_value = mock_response
-            mock_get_client.return_value = mock_client
+            mock_client_class.return_value = mock_client
 
             context = extract_chapter_context("<chapter></chapter>")
 
-            assert context.environment_type == "urban"
-            assert context.terrain == "cobblestone streets"
+            assert context.environment_type == "coastal"
+            assert context.weather == "foggy"
