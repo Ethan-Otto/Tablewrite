@@ -71,9 +71,11 @@
     --chart-5: 340 75% 55%;
   }
 
-  html, body {
+  html, body, #root {
     height: 100vh;
     overflow: hidden;
+    margin: 0;
+    padding: 0;
   }
 
   body {

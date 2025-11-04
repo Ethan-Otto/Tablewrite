@@ -1,7 +1,7 @@
 export function Header() {
   return (
     <div
-      className="relative px-10 py-3 border-b-0"
+      className="relative px-10 pt-3 pb-5 border-b-0"
       style={{
         background: 'linear-gradient(180deg, rgba(92, 61, 46, 0.15) 0%, transparent 100%), linear-gradient(180deg, #b89d7d 0%, #9d8565 100%)',
         border: '4px double #7d5a3d',
