@@ -1,7 +1,10 @@
 import type { ChatMessage } from '../lib/types';
 import { ChatRole } from '../lib/types';
 import { SceneCard } from './SceneCard';
+import { ImageCarousel } from './ImageCarousel';
+import { ErrorCard } from './ErrorCard';
 import ReactMarkdown from 'react-markdown';
+import type { ImageData, SceneData } from '../lib/types';
 
 interface MessageProps {
   message: ChatMessage;
@@ -84,6 +87,15 @@ export function Message({ message }: MessageProps) {
           </div>
         </div>
       </div>
+
+      {/* Tool-specific rendering */}
+      {message.type === 'image' && message.data && (
+        <ImageCarousel data={message.data as ImageData} />
+      )}
+
+      {message.type === 'error' && (
+        <ErrorCard message={message.content} />
+      )}
 
       {/* Render Scene Card if scene data is present */}
       {message.scene && (
