@@ -5,9 +5,11 @@ import pytest
 from pathlib import Path
 import tempfile
 import shutil
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from actors.orchestrate import _create_output_directory, _save_intermediate_file
+from actors.orchestrate import _create_output_directory, _save_intermediate_file, create_actor_from_description
 from actors.models import StatBlock
+from foundry.actors.models import ParsedActorData
 
 
 class TestCreateOutputDirectory:
@@ -114,3 +116,74 @@ class TestSaveIntermediateFile:
 
         with pytest.raises(IOError, match="Failed to save list"):
             _save_intermediate_file([1, 2, 3], filepath, "list")
+
+
+class TestCreateActorPipeline:
+    """Test main actor creation pipeline."""
+
+    @pytest.mark.asyncio
+    async def test_pipeline_calls_all_steps(self, tmp_path):
+        """Test that pipeline calls all 5 steps in order."""
+
+        # Mock all the async functions
+        with patch('actors.orchestrate.generate_actor_description', new_callable=AsyncMock) as mock_gen, \
+             patch('actors.orchestrate.parse_raw_text_to_statblock', new_callable=AsyncMock) as mock_parse_sb, \
+             patch('actors.orchestrate.parse_stat_block_parallel', new_callable=AsyncMock) as mock_parse_actor, \
+             patch('actors.orchestrate.convert_to_foundry') as mock_convert, \
+             patch('actors.orchestrate.FoundryClient') as mock_client_class, \
+             patch('actors.orchestrate._create_output_directory') as mock_create_dir:
+
+            # Setup mocks
+            mock_gen.return_value = "Goblin\nSmall humanoid..."
+
+            mock_stat_block = StatBlock(
+                name="Goblin",
+                raw_text="Goblin\nSmall humanoid...",
+                armor_class=15,
+                hit_points=7,
+                challenge_rating=0.25
+            )
+            mock_parse_sb.return_value = mock_stat_block
+
+            mock_parsed = ParsedActorData(
+                source_statblock_name="Goblin",
+                name="Goblin",
+                armor_class=15,
+                hit_points=7,
+                challenge_rating=0.25,
+                abilities={"str": 8, "dex": 14, "con": 10, "int": 10, "wis": 8, "cha": 8}
+            )
+            mock_parse_actor.return_value = mock_parsed
+
+            mock_convert.return_value = ({"name": "Goblin"}, [])
+
+            mock_client = MagicMock()
+            mock_client.actors.create_actor.return_value = "Actor.abc123"
+            mock_client_class.return_value = mock_client
+
+            mock_create_dir.return_value = tmp_path / "test_output"
+            (tmp_path / "test_output").mkdir()
+
+            # Mock SpellCache
+            mock_spell_cache = MagicMock()
+
+            # Call the function
+            result = await create_actor_from_description(
+                description="A sneaky goblin",
+                challenge_rating=0.25,
+                output_dir_base=str(tmp_path),
+                spell_cache=mock_spell_cache,
+                foundry_client=mock_client
+            )
+
+            # Verify all steps were called
+            assert mock_gen.called
+            assert mock_parse_sb.called
+            assert mock_parse_actor.called
+            assert mock_convert.called
+            assert mock_client.actors.create_actor.called
+
+            # Verify result
+            assert result.description == "A sneaky goblin"
+            assert result.foundry_uuid == "Actor.abc123"
+            assert result.stat_block.name == "Goblin"

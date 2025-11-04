@@ -2,10 +2,19 @@
 
 import json
 import logging
+import os
 from pathlib import Path
 from datetime import datetime
-from typing import Union
+from typing import Union, Optional
 from pydantic import BaseModel
+
+from actors.generate_actor_file import generate_actor_description
+from actors.statblock_parser import parse_raw_text_to_statblock
+from actors.models import ActorCreationResult
+from foundry.actors.parser import parse_stat_block_parallel
+from foundry.actors.converter import convert_to_foundry
+from foundry.actors.spell_cache import SpellCache
+from foundry.client import FoundryClient
 
 logger = logging.getLogger(__name__)
 
@@ -82,3 +91,136 @@ def _save_intermediate_file(
     except Exception as e:
         logger.error(f"Failed to save {description} to {filepath}: {e}")
         raise IOError(f"Failed to save {description}: {e}") from e
+
+
+async def create_actor_from_description(
+    description: str,
+    challenge_rating: Optional[float] = None,
+    model_name: str = "gemini-2.0-flash",
+    output_dir_base: str = "output/runs",
+    spell_cache: Optional[SpellCache] = None,
+    foundry_client: Optional[FoundryClient] = None
+) -> ActorCreationResult:
+    """
+    Create a complete D&D 5e actor in FoundryVTT from a natural language description.
+
+    This function orchestrates the full pipeline:
+    1. Generate raw stat block text using Gemini
+    2. Parse raw text to StatBlock model
+    3. Parse StatBlock to detailed ParsedActorData
+    4. Convert to FoundryVTT JSON format
+    5. Upload to FoundryVTT server
+
+    All intermediate outputs are saved to disk for debugging.
+
+    Args:
+        description: Natural language description of the actor
+                    Example: "A fierce red dragon wyrmling with fire breath"
+        challenge_rating: Optional CR (0.125, 0.25, 0.5, 1-30). If None, Gemini determines it.
+        model_name: Gemini model to use (default: "gemini-2.0-flash")
+        output_dir_base: Base directory for output (default: "output/runs")
+        spell_cache: Optional pre-loaded SpellCache (will create if None)
+        foundry_client: Optional FoundryClient (will create if None)
+
+    Returns:
+        ActorCreationResult with all intermediate outputs and final FoundryVTT UUID
+
+    Raises:
+        ValueError: If any parsing step fails
+        RuntimeError: If Gemini API calls fail
+        IOError: If file save fails
+
+    Example:
+        result = await create_actor_from_description(
+            "A cunning goblin assassin with poisoned daggers",
+            challenge_rating=2.0
+        )
+        print(f"Actor created: {result.foundry_uuid}")
+        print(f"Saved to: {result.output_dir}")
+    """
+    timestamp_str = datetime.now().isoformat()
+
+    # Step 0: Create output directory
+    logger.info(f"Starting actor creation: {description[:50]}...")
+    output_dir = _create_output_directory(output_dir_base)
+
+    try:
+        # Step 1: Generate raw stat block text
+        logger.info("Step 1/5: Generating stat block text with Gemini...")
+        raw_text = await generate_actor_description(
+            description=description,
+            challenge_rating=challenge_rating,
+            model_name=model_name
+        )
+        raw_text_file = _save_intermediate_file(
+            raw_text,
+            output_dir / "01_raw_stat_block.txt",
+            "raw stat block text"
+        )
+
+        # Step 2: Parse to StatBlock model
+        logger.info("Step 2/5: Parsing stat block to StatBlock model...")
+        stat_block = await parse_raw_text_to_statblock(raw_text, model_name=model_name)
+        stat_block_file = _save_intermediate_file(
+            stat_block,
+            output_dir / "02_stat_block.json",
+            "StatBlock model"
+        )
+
+        # Step 3: Parse to detailed ParsedActorData
+        logger.info("Step 3/5: Parsing to detailed ParsedActorData...")
+        parsed_actor = await parse_stat_block_parallel(stat_block)
+        parsed_data_file = _save_intermediate_file(
+            parsed_actor,
+            output_dir / "03_parsed_actor_data.json",
+            "ParsedActorData model"
+        )
+
+        # Step 4: Convert to FoundryVTT format
+        logger.info("Step 4/5: Converting to FoundryVTT format...")
+        if spell_cache is None:
+            spell_cache = SpellCache()
+            spell_cache.load()
+
+        actor_json, spell_uuids = convert_to_foundry(parsed_actor, spell_cache=spell_cache)
+        foundry_json_file = _save_intermediate_file(
+            actor_json,
+            output_dir / "04_foundry_actor.json",
+            "FoundryVTT actor JSON"
+        )
+
+        # Step 5: Upload to FoundryVTT
+        logger.info("Step 5/5: Uploading to FoundryVTT...")
+        if foundry_client is None:
+            foundry_client = FoundryClient(
+                target=os.getenv("FOUNDRY_TARGET", "local")
+            )
+
+        actor_uuid = foundry_client.actors.create_actor(
+            actor_data=actor_json,
+            spell_uuids=spell_uuids
+        )
+
+        logger.info(f"✓ Actor created successfully: {actor_uuid}")
+        logger.info(f"  Output directory: {output_dir}")
+
+        # Return complete result
+        return ActorCreationResult(
+            description=description,
+            challenge_rating=challenge_rating,
+            raw_stat_block_text=raw_text,
+            stat_block=stat_block,
+            parsed_actor_data=parsed_actor,
+            foundry_uuid=actor_uuid,
+            output_dir=output_dir,
+            raw_text_file=raw_text_file,
+            stat_block_file=stat_block_file,
+            parsed_data_file=parsed_data_file,
+            foundry_json_file=foundry_json_file,
+            timestamp=timestamp_str,
+            model_used=model_name
+        )
+
+    except Exception as e:
+        logger.error(f"Actor creation failed: {e}")
+        raise
