@@ -7,6 +7,7 @@ interface InputAreaProps {
 
 export function InputArea({ onSendMessage, disabled = false }: InputAreaProps) {
   const [message, setMessage] = useState('');
+  const [isPressed, setIsPressed] = useState(false);
 
   const handleSend = () => {
     if (message.trim() && !disabled) {
@@ -24,7 +25,7 @@ export function InputArea({ onSendMessage, disabled = false }: InputAreaProps) {
 
   return (
     <div
-      className="px-10 pt-[25px] pb-0"
+      className="px-10 pt-[25px] pb-3"
       style={{
         background: 'linear-gradient(180deg, #b89d7d 0%, #9d8565 100%)',
         border: '4px double #7d5a3d',
@@ -73,6 +74,9 @@ export function InputArea({ onSendMessage, disabled = false }: InputAreaProps) {
           {/* Wax Seal Button */}
           <button
             onClick={handleSend}
+            onMouseDown={() => setIsPressed(true)}
+            onMouseUp={() => setIsPressed(false)}
+            onMouseLeave={() => setIsPressed(false)}
             disabled={disabled || !message.trim()}
             className="relative cursor-pointer transition-all duration-200 flex-shrink-0 flex items-center justify-center overflow-visible"
             style={{
@@ -98,6 +102,21 @@ export function InputArea({ onSendMessage, disabled = false }: InputAreaProps) {
                 zIndex: 1
               }}
             />
+
+            {/* Inner shadow when pressed */}
+            {isPressed && (
+              <div
+                style={{
+                  position: 'absolute',
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '50%',
+                  background: 'radial-gradient(circle at center, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.3) 40%, transparent 70%)',
+                  zIndex: 2,
+                  pointerEvents: 'none'
+                }}
+              />
+            )}
 
             {/* Central emblem */}
             <span
