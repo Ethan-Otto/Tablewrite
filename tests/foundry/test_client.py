@@ -266,10 +266,12 @@ class TestFoundryIntegration:
 
     @pytest.mark.integration
     @pytest.mark.slow
+    @pytest.mark.flaky(reruns=2, reruns_delay=1)
     def test_upload_and_download_file(self, real_client, tmp_path):
         """Test uploading a file to FoundryVTT and downloading it back.
 
-        Note: File will remain on server as there's no delete endpoint in the API.
+        Note: May timeout due to relay server latency - retries up to 2 times.
+        File will remain on server as there's no delete endpoint in the API.
         Files are uploaded to worlds/{world}/test_uploads/ for manual cleanup.
         """
         import os
