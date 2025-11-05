@@ -243,6 +243,10 @@ OUTPUT ONLY VALID JSON. No explanations.
     if is_multiattack:
         return Multiattack(**parsed_json)
     elif is_attack:
+        # Rename "range" to "range_short" for backwards compatibility
+        if "range" in parsed_json:
+            parsed_json["range_short"] = parsed_json.pop("range")
+
         # Convert damage formulas
         if "damage" in parsed_json:
             parsed_json["damage"] = [

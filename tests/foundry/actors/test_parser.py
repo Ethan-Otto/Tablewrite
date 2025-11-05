@@ -120,7 +120,8 @@ async def test_parse_single_action_ranged():
     assert result.name == "Shortbow"
     assert result.attack_type == "ranged"
     assert result.attack_bonus == 4
-    assert result.range == 80
+    # Ranged weapons have separate short and long range fields
+    assert result.range_short == 80
     assert result.range_long == 320
     assert len(result.damage) == 1
     assert result.damage[0].type == "piercing"
