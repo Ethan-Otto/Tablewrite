@@ -9,7 +9,8 @@ from foundry.actors.spell_cache import SpellCache
 
 @pytest.mark.integration
 @pytest.mark.requires_api
-def test_spell_via_give_workflow(check_foundry_credentials):
+@pytest.mark.asyncio
+async def test_spell_via_give_workflow(check_foundry_credentials):
     """Test that spells added via /give have full compendium data."""
     # Create actor with weapons and spells
     actor = ParsedActorData(
@@ -40,7 +41,7 @@ def test_spell_via_give_workflow(check_foundry_credentials):
     spell_cache.load()
 
     # Convert with new API
-    actor_json, spell_uuids = convert_to_foundry(actor, spell_cache=spell_cache)
+    actor_json, spell_uuids = await convert_to_foundry(actor, spell_cache=spell_cache)
 
     # Verify conversion
     assert len(spell_uuids) == 2, "Should collect 2 spell UUIDs"
@@ -80,7 +81,8 @@ def test_spell_via_give_workflow(check_foundry_credentials):
 
 @pytest.mark.integration
 @pytest.mark.requires_api
-def test_backward_compatibility_with_include_spells_flag(check_foundry_credentials):
+@pytest.mark.asyncio
+async def test_backward_compatibility_with_include_spells_flag(check_foundry_credentials):
     """Test that include_spells_in_payload=True still works (for backward compatibility)."""
     actor = ParsedActorData(
         source_statblock_name="Test",
@@ -102,7 +104,7 @@ def test_backward_compatibility_with_include_spells_flag(check_foundry_credentia
     spell_cache.load()
 
     # Convert with include_spells_in_payload=True
-    actor_json, spell_uuids = convert_to_foundry(
+    actor_json, spell_uuids = await convert_to_foundry(
         actor,
         spell_cache=spell_cache,
         include_spells_in_payload=True
@@ -118,7 +120,8 @@ def test_backward_compatibility_with_include_spells_flag(check_foundry_credentia
 
 @pytest.mark.integration
 @pytest.mark.requires_api
-def test_multiple_actors_with_spells(check_foundry_credentials):
+@pytest.mark.asyncio
+async def test_multiple_actors_with_spells(check_foundry_credentials):
     """Test creating multiple actors with spells doesn't cause race conditions."""
     spell_cache = SpellCache()
     spell_cache.load()
@@ -151,7 +154,7 @@ def test_multiple_actors_with_spells(check_foundry_credentials):
             )
         )
 
-        actor_json, spell_uuids = convert_to_foundry(actor, spell_cache=spell_cache)
+        actor_json, spell_uuids = await convert_to_foundry(actor, spell_cache=spell_cache)
         actor_uuid = client.actors.create_actor(actor_json, spell_uuids=spell_uuids)
 
         downloaded = client.actors.get_actor(actor_uuid)
