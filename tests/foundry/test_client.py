@@ -267,10 +267,14 @@ class TestFoundryIntegration:
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.flaky(reruns=2, reruns_delay=1)
+    @pytest.mark.order(1)  # Run first - if infrastructure is down, fail fast
     def test_upload_and_download_file(self, real_client, tmp_path):
         """Test uploading a file to FoundryVTT and downloading it back.
 
-        Note: May timeout due to relay server latency - retries up to 2 times.
+        Note: Retries up to 2 times to handle intermittent network issues.
+        If this test fails after retries, the relay server at localhost:3010 needs attention.
+        Check: docker-compose ps or start with: cd relay-server && docker-compose up -d
+
         File will remain on server as there's no delete endpoint in the API.
         Files are uploaded to worlds/{world}/test_uploads/ for manual cleanup.
         """
