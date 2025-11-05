@@ -335,3 +335,186 @@ class TestXMLDocumentToJournal:
         assert "<em>italic</em>" in html
         assert "**" not in html  # Markdown should be converted
         assert "*italic*" not in html  # Single asterisks should be converted
+
+
+class TestTableContent:
+    """Test Table and TableRow content types."""
+
+    def test_table_parsing_from_xml(self):
+        """Test parsing table content from XML."""
+        xml_string = """<Chapter_01>
+    <page number="1">
+        <table>
+            <row>
+                <cell>Header 1</cell>
+                <cell>Header 2</cell>
+            </row>
+            <row>
+                <cell>Data 1</cell>
+                <cell>Data 2</cell>
+            </row>
+        </table>
+    </page>
+</Chapter_01>"""
+
+        doc = XMLDocument.from_xml(xml_string)
+        assert len(doc.pages[0].content) == 1
+        content = doc.pages[0].content[0]
+        assert content.type == "table"
+
+    def test_table_to_html_conversion(self):
+        """Test table converts to HTML table."""
+        xml_string = """<Chapter_01>
+    <page number="1">
+        <table>
+            <row>
+                <cell>Name</cell>
+                <cell>CR</cell>
+            </row>
+            <row>
+                <cell>Goblin</cell>
+                <cell>1/4</cell>
+            </row>
+        </table>
+    </page>
+</Chapter_01>"""
+
+        doc = XMLDocument.from_xml(xml_string)
+        journal_pages = doc.to_journal_pages()
+        html = journal_pages[0]["content"]
+
+        assert "<table>" in html
+        assert "<tr>" in html
+        assert "<td>Name</td>" in html
+        assert "<td>Goblin</td>" in html
+        assert "</table>" in html
+
+
+class TestListContent:
+    """Test ListContent for ordered and unordered lists."""
+
+    def test_unordered_list_parsing(self):
+        """Test parsing unordered list from XML."""
+        xml_string = """<Chapter_01>
+    <page number="1">
+        <list type="unordered">
+            <item>First item</item>
+            <item>Second item</item>
+            <item>Third item</item>
+        </list>
+    </page>
+</Chapter_01>"""
+
+        doc = XMLDocument.from_xml(xml_string)
+        assert len(doc.pages[0].content) == 1
+        content = doc.pages[0].content[0]
+        assert content.type == "list"
+
+    def test_ordered_list_parsing(self):
+        """Test parsing ordered list from XML."""
+        xml_string = """<Chapter_01>
+    <page number="1">
+        <list type="ordered">
+            <item>Step one</item>
+            <item>Step two</item>
+        </list>
+    </page>
+</Chapter_01>"""
+
+        doc = XMLDocument.from_xml(xml_string)
+        content = doc.pages[0].content[0]
+        assert content.type == "list"
+
+    def test_unordered_list_to_html(self):
+        """Test unordered list converts to HTML <ul>."""
+        xml_string = """<Chapter_01>
+    <page number="1">
+        <list type="unordered">
+            <item>Item A</item>
+            <item>Item B</item>
+        </list>
+    </page>
+</Chapter_01>"""
+
+        doc = XMLDocument.from_xml(xml_string)
+        journal_pages = doc.to_journal_pages()
+        html = journal_pages[0]["content"]
+
+        assert "<ul>" in html
+        assert "<li>Item A</li>" in html
+        assert "<li>Item B</li>" in html
+        assert "</ul>" in html
+
+    def test_ordered_list_to_html(self):
+        """Test ordered list converts to HTML <ol>."""
+        xml_string = """<Chapter_01>
+    <page number="1">
+        <list type="ordered">
+            <item>First</item>
+            <item>Second</item>
+        </list>
+    </page>
+</Chapter_01>"""
+
+        doc = XMLDocument.from_xml(xml_string)
+        journal_pages = doc.to_journal_pages()
+        html = journal_pages[0]["content"]
+
+        assert "<ol>" in html
+        assert "<li>First</li>" in html
+        assert "<li>Second</li>" in html
+        assert "</ol>" in html
+
+
+class TestDefinitionListContent:
+    """Test DefinitionList and DefinitionItem for glossaries."""
+
+    def test_definition_list_parsing(self):
+        """Test parsing definition list from XML."""
+        xml_string = """<Chapter_01>
+    <page number="1">
+        <definition_list>
+            <definition>
+                <term>Hit Points</term>
+                <description>A measure of a creature's health.</description>
+            </definition>
+            <definition>
+                <term>Armor Class</term>
+                <description>How difficult a creature is to hit.</description>
+            </definition>
+        </definition_list>
+    </page>
+</Chapter_01>"""
+
+        doc = XMLDocument.from_xml(xml_string)
+        assert len(doc.pages[0].content) == 1
+        content = doc.pages[0].content[0]
+        assert content.type == "definition_list"
+
+    def test_definition_list_to_html(self):
+        """Test definition list converts to HTML <dl>."""
+        xml_string = """<Chapter_01>
+    <page number="1">
+        <definition_list>
+            <definition>
+                <term>Goblin</term>
+                <description>Small humanoid creature.</description>
+            </definition>
+            <definition>
+                <term>Dragon</term>
+                <description>Powerful reptilian creature.</description>
+            </definition>
+        </definition_list>
+    </page>
+</Chapter_01>"""
+
+        doc = XMLDocument.from_xml(xml_string)
+        journal_pages = doc.to_journal_pages()
+        html = journal_pages[0]["content"]
+
+        assert "<dl>" in html
+        assert "<dt>Goblin</dt>" in html
+        assert "<dd>Small humanoid creature.</dd>" in html
+        assert "<dt>Dragon</dt>" in html
+        assert "<dd>Powerful reptilian creature.</dd>" in html
+        assert "</dl>" in html

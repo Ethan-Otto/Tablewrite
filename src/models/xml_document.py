@@ -7,8 +7,52 @@ journal page format.
 
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import List, Literal
+from typing import List, Literal, Union
 from pydantic import BaseModel, ConfigDict
+
+
+class TableRow(BaseModel):
+    """Represents a single row in a table."""
+    model_config = ConfigDict(frozen=True)
+
+    cells: List[str]
+
+
+class Table(BaseModel):
+    """Represents a table with rows and cells."""
+    model_config = ConfigDict(frozen=True)
+
+    rows: List[TableRow]
+
+
+class ListItem(BaseModel):
+    """Represents a single item in a list."""
+    model_config = ConfigDict(frozen=True)
+
+    text: str
+
+
+class ListContent(BaseModel):
+    """Represents an ordered or unordered list."""
+    model_config = ConfigDict(frozen=True)
+
+    list_type: Literal["ordered", "unordered"]
+    items: List[ListItem]
+
+
+class DefinitionItem(BaseModel):
+    """Represents a single term/description pair in a definition list."""
+    model_config = ConfigDict(frozen=True)
+
+    term: str
+    description: str
+
+
+class DefinitionList(BaseModel):
+    """Represents a definition list (glossary)."""
+    model_config = ConfigDict(frozen=True)
+
+    definitions: List[DefinitionItem]
 
 
 class Content(BaseModel):
@@ -19,8 +63,8 @@ class Content(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     id: str
-    type: Literal["paragraph", "section", "subsection", "subsubsection", "chapter_title"]
-    data: str
+    type: Literal["paragraph", "section", "subsection", "subsubsection", "chapter_title", "table", "list", "definition_list"]
+    data: Union[str, Table, ListContent, DefinitionList]
 
 
 class Page(BaseModel):
@@ -65,7 +109,7 @@ class XMLDocument(BaseModel):
             for idx, child in enumerate(page_elem):
                 content_id = f"page_{page_num}_content_{idx}"
                 content_type = child.tag
-                content_data = child.text or ""
+                content_data = cls._parse_content_data(child)
                 content.append(Content(
                     id=content_id,
                     type=content_type,
@@ -75,6 +119,44 @@ class XMLDocument(BaseModel):
             pages.append(Page(number=page_num, content=content))
 
         return cls(title=title, pages=pages)
+
+    @staticmethod
+    def _parse_content_data(element: ET.Element) -> Union[str, Table, ListContent, DefinitionList]:
+        """Parse content data from XML element.
+
+        Args:
+            element: XML element to parse
+
+        Returns:
+            Parsed content data (string for simple types, model for complex types)
+        """
+        if element.tag == "table":
+            rows = []
+            for row_elem in element.findall('row'):
+                cells = [cell.text or "" for cell in row_elem.findall('cell')]
+                rows.append(TableRow(cells=cells))
+            return Table(rows=rows)
+
+        elif element.tag == "list":
+            list_type = element.get('type', 'unordered')
+            items = []
+            for item_elem in element.findall('item'):
+                items.append(ListItem(text=item_elem.text or ""))
+            return ListContent(list_type=list_type, items=items)
+
+        elif element.tag == "definition_list":
+            definitions = []
+            for def_elem in element.findall('definition'):
+                term_elem = def_elem.find('term')
+                desc_elem = def_elem.find('description')
+                term = term_elem.text or "" if term_elem is not None else ""
+                description = desc_elem.text or "" if desc_elem is not None else ""
+                definitions.append(DefinitionItem(term=term, description=description))
+            return DefinitionList(definitions=definitions)
+
+        else:
+            # Simple text content for paragraph, section, etc.
+            return element.text or ""
 
     def to_journal_pages(self) -> List[dict]:
         """Convert the document to FoundryVTT journal page format.
@@ -115,6 +197,12 @@ class XMLDocument(BaseModel):
                 html_parts.append(f"<h4>{content.data}</h4>")
             elif content.type == "paragraph":
                 html_parts.append(self._paragraph_to_html(content.data))
+            elif content.type == "table":
+                html_parts.append(self._table_to_html(content.data))
+            elif content.type == "list":
+                html_parts.append(self._list_to_html(content.data))
+            elif content.type == "definition_list":
+                html_parts.append(self._definition_list_to_html(content.data))
 
         return "\n".join(html_parts)
 
@@ -157,6 +245,56 @@ class XMLDocument(BaseModel):
         import re
         # Use negative lookbehind/lookahead to avoid matching ** from bold
         return re.sub(r'(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)', r'<em>\1</em>', text)
+
+    def _table_to_html(self, table: Table) -> str:
+        """Convert table to HTML table.
+
+        Args:
+            table: Table model to convert
+
+        Returns:
+            HTML table string
+        """
+        html_parts = ["<table>"]
+        for row in table.rows:
+            html_parts.append("<tr>")
+            for cell in row.cells:
+                html_parts.append(f"<td>{cell}</td>")
+            html_parts.append("</tr>")
+        html_parts.append("</table>")
+        return "\n".join(html_parts)
+
+    def _list_to_html(self, list_content: ListContent) -> str:
+        """Convert list to HTML list.
+
+        Args:
+            list_content: ListContent model to convert
+
+        Returns:
+            HTML list string (ul or ol)
+        """
+        tag = "ol" if list_content.list_type == "ordered" else "ul"
+        html_parts = [f"<{tag}>"]
+        for item in list_content.items:
+            html_parts.append(f"<li>{item.text}</li>")
+        html_parts.append(f"</{tag}>")
+        return "\n".join(html_parts)
+
+    def _definition_list_to_html(self, def_list: DefinitionList) -> str:
+        """Convert definition list to HTML definition list.
+
+        Args:
+            def_list: DefinitionList model to convert
+
+        Returns:
+            HTML definition list string
+        """
+        html_parts = ["<dl>"]
+        for definition in def_list.definitions:
+            html_parts.append(f"<dt>{definition.term}</dt>")
+            html_parts.append(f"<dd>{definition.description}</dd>")
+        html_parts.append("</dl>")
+        return "\n".join(html_parts)
 
 
 def parse_xml_file(file_path: Path) -> XMLDocument:
