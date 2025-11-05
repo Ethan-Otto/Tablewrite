@@ -136,9 +136,10 @@ class TestPitFiendIntegration:
             ]
         )
 
-    def test_pit_fiend_has_all_items(self, pit_fiend_data, spell_cache):
+    @pytest.mark.asyncio
+    async def test_pit_fiend_has_all_items(self, pit_fiend_data, spell_cache):
         """Pit Fiend conversion should have weapons/feats in payload, spells in UUIDs."""
-        result, spell_uuids = convert_to_foundry(pit_fiend_data, spell_cache=spell_cache)
+        result, spell_uuids = await convert_to_foundry(pit_fiend_data, spell_cache=spell_cache)
 
         items = result["items"]
 
@@ -185,12 +186,13 @@ class TestPitFiendIntegration:
         # Payload should have 9 items (4 weapons + 5 feats, NO spells)
         assert len(items) == 9
 
-    def test_pit_fiend_round_trip(self, pit_fiend_data, spell_cache):
+    @pytest.mark.asyncio
+    async def test_pit_fiend_round_trip(self, pit_fiend_data, spell_cache):
         """Full upload/download round-trip with spells added via /give."""
         client = FoundryClient(target="local")
 
         # Convert and upload (with spell UUIDs for /give)
-        foundry_json, spell_uuids = convert_to_foundry(pit_fiend_data, spell_cache=spell_cache)
+        foundry_json, spell_uuids = await convert_to_foundry(pit_fiend_data, spell_cache=spell_cache)
         actor_uuid = client.actors.create_actor(foundry_json, spell_uuids=spell_uuids)
 
         # Download and verify
