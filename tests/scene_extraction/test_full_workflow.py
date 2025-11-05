@@ -37,34 +37,33 @@ class TestSceneProcessingWorkflow:
         output_dir = tmp_path / "output"
         output_dir.mkdir()
 
-        # Patch get_client() helpers in each module (new API pattern)
-        with patch('src.scene_extraction.extract_context.get_client') as mock_context_get_client, \
-             patch('src.scene_extraction.identify_scenes.get_client') as mock_scenes_get_client, \
-             patch('src.scene_extraction.generate_artwork.genai.Client') as mock_client_class:
+        # Patch genai.Client constructor (new API pattern)
+        # NOTE: All scene_extraction modules share the same genai import,
+        # so we only need to patch once
+        with patch('google.genai.Client') as mock_client_class:
 
-            # Set up context extraction mock (new API)
+            # Create shared mock client that handles all three operations
+            mock_client = MagicMock()
+
+            # Set up context extraction response
             mock_context_response = MagicMock()
             mock_context_response.text = '{"environment_type": "forest", "lighting": "dappled sunlight"}'
-            mock_context_client = MagicMock()
-            mock_context_client.models.generate_content.return_value = mock_context_response
-            mock_context_get_client.return_value = mock_context_client
 
-            # Set up scene identification mock (new API)
+            # Set up scene identification response
             mock_scenes_response = MagicMock()
             mock_scenes_response.text = '[{"section_path": "Test Chapter → Area 1", "name": "Forest Clearing", "description": "A dark forest clearing", "location_type": "outdoor", "xml_section_id": "area_1"}]'
-            mock_scenes_client = MagicMock()
-            mock_scenes_client.models.generate_content.return_value = mock_scenes_response
-            mock_scenes_get_client.return_value = mock_scenes_client
 
-            # Set up image generation mock (new API with genai.Client)
+            # Mock generate_content to return appropriate response based on call count
+            mock_client.models.generate_content.side_effect = [mock_context_response, mock_scenes_response]
+
+            # Set up image generation response
             mock_pil_image = MagicMock()
             mock_generated_image = MagicMock()
             mock_generated_image.image._pil_image = mock_pil_image
-            mock_response = MagicMock()
-            mock_response.generated_images = [mock_generated_image]
+            mock_gen_response = MagicMock()
+            mock_gen_response.generated_images = [mock_generated_image]
+            mock_client.models.generate_images.return_value = mock_gen_response
 
-            mock_client = MagicMock()
-            mock_client.models.generate_images.return_value = mock_response
             mock_client_class.return_value = mock_client
 
             # Run workflow
