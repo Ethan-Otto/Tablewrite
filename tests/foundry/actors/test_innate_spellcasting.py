@@ -137,7 +137,8 @@ class TestInnateSpellcastingConversion:
 
     @pytest.mark.integration
     @pytest.mark.requires_foundry
-    def test_looks_up_spell_uuids_from_cache(self):
+    @pytest.mark.asyncio
+    async def test_looks_up_spell_uuids_from_cache(self):
         """Should use SpellCache to get proper spell UUIDs."""
         from foundry.actors.spell_cache import SpellCache
         from dotenv import load_dotenv
@@ -169,7 +170,7 @@ class TestInnateSpellcastingConversion:
         )
 
         # Convert with spell cache
-        result, spell_uuids = convert_to_foundry(actor, spell_cache=spell_cache)
+        result, spell_uuids = await convert_to_foundry(actor, spell_cache=spell_cache)
 
         # NEW behavior: spells NOT in payload, returned as UUIDs
         spells = [item for item in result["items"] if item["type"] == "spell"]
@@ -181,7 +182,7 @@ class TestInnateSpellcastingConversion:
         assert fireball_uuid.startswith("Compendium.")
 
         # Also test backward compatibility with include_spells_in_payload=True
-        result_compat, _ = convert_to_foundry(actor, spell_cache=spell_cache, include_spells_in_payload=True)
+        result_compat, _ = await convert_to_foundry(actor, spell_cache=spell_cache, include_spells_in_payload=True)
         spells_compat = [item for item in result_compat["items"] if item["type"] == "spell"]
         fireball = next((s for s in spells_compat if s["name"] == "Fireball"), None)
 
