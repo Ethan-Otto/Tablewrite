@@ -136,6 +136,74 @@ def _create_ongoing_damage_activity(save: AttackSave, activity_id: str) -> dict:
     return base
 
 
+def _is_save_based_action(trait) -> bool:
+    """Detect if a trait is a save-based action (e.g., breath weapon, gaze attack)."""
+    import re
+
+    # Must be an action or bonus action (not passive)
+    if trait.activation not in ["action", "bonus"]:
+        return False
+
+    # Check description for saving throw pattern
+    desc_lower = trait.description.lower()
+    if re.search(r'dc \d+.*saving throw', desc_lower):
+        return True
+
+    return False
+
+
+def _parse_save_action(trait) -> dict:
+    """Parse save-based action description to extract save data."""
+    import re
+
+    desc = trait.description
+    result = {
+        "template_type": "cone",
+        "template_size": "",
+        "damage_parts": [],
+        "on_save": "half",
+        "save_ability": "dex",
+        "save_dc": ""
+    }
+
+    # Extract template type and size (e.g., "60-foot cone", "30-foot line")
+    template_match = re.search(r'(\d+)-foot (cone|line|cube|sphere|cylinder)', desc, re.IGNORECASE)
+    if template_match:
+        result["template_size"] = template_match.group(1)
+        result["template_type"] = template_match.group(2).lower()
+
+    # Extract damage (e.g., "63 (18d6) fire damage")
+    damage_match = re.search(r'(\d+)\s*\((\d+)d(\d+)\)\s+(\w+)\s+damage', desc, re.IGNORECASE)
+    if damage_match:
+        num_dice = int(damage_match.group(2))
+        die_size = int(damage_match.group(3))
+        damage_type = damage_match.group(4).lower()
+
+        result["damage_parts"] = [{
+            "custom": {"enabled": False, "formula": ""},
+            "number": num_dice,
+            "denomination": die_size,
+            "bonus": "",
+            "types": [damage_type],
+            "scaling": {"number": 1}
+        }]
+
+    # Extract save DC (e.g., "DC 21 Dexterity saving throw")
+    save_match = re.search(r'DC (\d+)\s+(\w+)\s+saving throw', desc, re.IGNORECASE)
+    if save_match:
+        result["save_dc"] = save_match.group(1)
+        ability = save_match.group(2).lower()[:3]  # "dex", "con", etc.
+        result["save_ability"] = ability
+
+    # Extract on-save behavior (e.g., "half as much damage on a successful one")
+    if re.search(r'half.*damage.*success', desc, re.IGNORECASE):
+        result["on_save"] = "half"
+    elif re.search(r'no.*damage.*success', desc, re.IGNORECASE):
+        result["on_save"] = "none"
+
+    return result
+
+
 async def convert_to_foundry(
     parsed_actor: ParsedActorData,
     spell_cache: Optional['SpellCache'] = None,
@@ -396,18 +464,68 @@ async def convert_to_foundry(
         if trait.activation != "passive":
             activity_id = _generate_activity_id()
             activity = _base_activity_structure()
-            activity.update({
-                "type": "utility",
-                "_id": activity_id,
-                "sort": 0,
-                "name": "",
-                "activation": {
-                    "type": trait.activation,
-                    "value": None,
-                    "override": False,
-                    "condition": ""
-                }
-            })
+
+            # Check if this is a save-based action (breath weapon, gaze attack, etc.)
+            is_save_action = _is_save_based_action(trait)
+
+            if is_save_action:
+                # Create save activity for save-based actions
+                save_data = _parse_save_action(trait)
+                activity.update({
+                    "type": "save",
+                    "_id": activity_id,
+                    "sort": 0,
+                    "name": "",
+                    "activation": {
+                        "type": trait.activation,
+                        "value": None,
+                        "override": False,
+                        "condition": ""
+                    },
+                    "target": {
+                        "template": {
+                            "contiguous": False,
+                            "units": "ft",
+                            "type": save_data.get("template_type", "cone"),
+                            "size": str(save_data.get("template_size", "")),
+                            "count": "",
+                            "width": "5"
+                        },
+                        "affects": {
+                            "choice": False,
+                            "count": "",
+                            "type": "creature",
+                            "special": ""
+                        },
+                        "override": False,
+                        "prompt": True
+                    },
+                    "damage": {
+                        "parts": save_data.get("damage_parts", []),
+                        "onSave": save_data.get("on_save", "half")
+                    },
+                    "save": {
+                        "ability": [save_data.get("save_ability", "dex")],
+                        "dc": {
+                            "calculation": "",
+                            "formula": str(save_data.get("save_dc", ""))
+                        }
+                    }
+                })
+            else:
+                # Regular utility activity
+                activity.update({
+                    "type": "utility",
+                    "_id": activity_id,
+                    "sort": 0,
+                    "name": "",
+                    "activation": {
+                        "type": trait.activation,
+                        "value": None,
+                        "override": False,
+                        "condition": ""
+                    }
+                })
             activities[activity_id] = activity
 
         # Select appropriate icon (from AI map if available, else fuzzy match)
