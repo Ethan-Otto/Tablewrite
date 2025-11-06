@@ -99,6 +99,160 @@ python src/pdf_processing/pdf_to_xml.py
 
 ## Architecture & Data Flow
 
+### Core Data Models: XMLDocument and Journal
+
+The project uses two core Pydantic models that represent different stages of the document processing pipeline:
+
+**XMLDocument** (`src/models/xml_document.py`):
+- Immutable representation of raw XML output from Gemini
+- Page-based structure: `XMLDocument → Page[] → Content[]`
+- Content types: paragraph, section, subsection, table, list, stat_block, image_ref, etc.
+- Direct parsing from XML strings/files
+- Can serialize back to XML with round-trip fidelity
+
+**Journal** (`src/models/journal.py`):
+- Mutable working representation with semantic hierarchy
+- Chapter-based structure: `Journal → Chapter[] → Section[] → Subsection[] → Subsubsection[]`
+- Owns the image registry for managing image references and metadata
+- Transforms flat page structure into semantic hierarchy
+- Reassigns content IDs from `page_X_content_Y` to `chapter_A_section_B_content_C`
+- Exports to HTML, Markdown, or FoundryVTT-ready HTML
+
+**Data Flow Pipeline:**
+```
+PDF → XML (Gemini)
+    ↓
+XMLDocument.from_xml(xml_string)
+    ↓
+Journal.from_xml_document(xml_doc)
+    ↓
+journal.to_foundry_html(image_mapping)
+    ↓
+FoundryVTT Journal Entry
+```
+
+**Usage Examples:**
+
+```python
+from models.xml_document import XMLDocument, parse_xml_file
+from models.journal import Journal, ImageMetadata
+from pathlib import Path
+
+# Parse XML file to XMLDocument
+xml_doc = parse_xml_file(Path("output/runs/20241023_143022/documents/Chapter_1.xml"))
+
+# Convert to Journal with semantic hierarchy
+journal = Journal.from_xml_document(xml_doc)
+
+# Add custom scene artwork to image registry
+journal.add_image(
+    key="scene_chapter1_goblin_ambush",
+    metadata=ImageMetadata(
+        key="scene_chapter1_goblin_ambush",
+        source_page=5,
+        type="illustration",
+        file_path="output/runs/20241023_143022/scene_artwork/images/scene_01.png"
+    )
+)
+
+# Reposition image to appear before specific content
+journal.reposition_image(
+    key="scene_chapter1_goblin_ambush",
+    new_content_id="chapter_0_section_2_content_0"
+)
+
+# Export to FoundryVTT HTML
+image_mapping = {
+    "page_5_battle_map": "https://foundry.example.com/maps/goblin_ambush.png",
+    "scene_chapter1_goblin_ambush": "https://foundry.example.com/scenes/scene_01.png"
+}
+html = journal.to_foundry_html(image_mapping)
+```
+
+**XMLDocument API:**
+
+```python
+# Parse from XML string
+xml_doc = XMLDocument.from_xml(xml_string)
+
+# Access structure
+for page in xml_doc.pages:
+    print(f"Page {page.number}")
+    for content in page.content:
+        print(f"  {content.type}: {content.data}")
+
+# Convert to FoundryVTT journal pages format
+journal_pages = xml_doc.to_journal_pages()
+# Returns: [{"name": "Page 1", "content": "<h1>...</h1>"}]
+
+# Serialize back to XML
+xml_string = xml_doc.to_xml()
+```
+
+**Journal API:**
+
+```python
+# Create from XMLDocument
+journal = Journal.from_xml_document(xml_doc)
+
+# Access semantic hierarchy
+for chapter in journal.chapters:
+    print(f"Chapter: {chapter.title}")
+    for section in chapter.sections:
+        print(f"  Section: {section.title}")
+        for subsection in section.subsections:
+            print(f"    Subsection: {subsection.title}")
+
+# Manage images
+journal.add_image(key="custom_art", metadata=ImageMetadata(...))
+journal.reposition_image(key="page_5_map", new_content_id="chapter_0_section_1_content_0")
+journal.remove_image(key="unwanted_image")
+
+# Export to different formats
+html = journal.to_foundry_html(image_mapping)  # FoundryVTT-ready HTML
+markdown = journal.to_markdown(image_mapping)  # Markdown (planned)
+```
+
+**Content Types:**
+- `chapter_title`: Top-level chapter heading (h1)
+- `section`: Major section heading (h2)
+- `subsection`: Subsection heading (h3)
+- `subsubsection`: Sub-subsection heading (h4)
+- `paragraph`: Body text with markdown formatting
+- `boxed_text`: Call-out boxes with decorative styling
+- `table`: Tabular data with rows/cells
+- `list`: Ordered or unordered lists
+- `definition_list`: Term/description pairs (glossary)
+- `stat_block`: Raw XML preserved for later actor parsing
+- `image_ref`: Image placeholder with key for later resolution
+- `footer`: Page footer text
+- `page_number`: Page number metadata
+
+**ImageMetadata Fields:**
+- `key`: Unique identifier (e.g., "page_5_top_battle_map")
+- `source_page`: Original page number from PDF
+- `type`: "map", "illustration", "diagram", "unknown"
+- `description`: Optional text description
+- `file_path`: Optional local file path
+- `insert_before_content_id`: Content ID to insert image before (for repositioning)
+
+**Integration Points:**
+
+1. **pdf_to_xml.py**: Generates XML files that become XMLDocument instances
+2. **upload_to_foundry.py**: Uses XMLDocument or Journal to generate HTML for upload
+3. **Scene Artwork Generation**: Adds scene images to Journal.image_registry
+4. **Map Asset Extraction**: Registers map images in Journal.image_registry
+5. **Actor/NPC Extraction**: Processes `stat_block` content from XMLDocument
+6. **Web UI**: Can display Journal hierarchy for navigation
+
+**Key Design Decisions:**
+
+1. **Immutability**: XMLDocument is frozen (immutable) to prevent accidental modification of raw data
+2. **Mutability**: Journal is mutable to support workflow operations (adding images, repositioning content)
+3. **Separation of Concerns**: XMLDocument = raw data, Journal = working representation
+4. **Content ID Reassignment**: Journal assigns semantic IDs for better addressing in workflows
+5. **Image Registry**: Centralized management of all image references (from Gemini + custom additions)
+
 ### Processing Pipeline
 
 The system follows a four-stage pipeline (orchestrated by `scripts/full_pipeline.py`):
