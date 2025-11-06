@@ -125,3 +125,55 @@ def test_create_actor_error_handling(mock_create):
     except APIError as e:
         assert isinstance(e.__cause__, ValueError)
         assert str(e.__cause__) == "Gemini API error"
+
+
+@patch('api.extract_maps_from_pdf')
+def test_extract_maps_happy_path(mock_extract):
+    """Test extract_maps wraps map extraction correctly."""
+    from pdf_processing.image_asset_processing.models import MapMetadata
+
+    # Mock extraction results
+    mock_maps = [
+        MapMetadata(
+            name="Cave Entrance",
+            page_num=1,
+            type="battle_map",
+            source="extracted",
+            chapter="Chapter 1"
+        ),
+        MapMetadata(
+            name="Goblin Hideout",
+            page_num=2,
+            type="battle_map",
+            source="segmented",
+            chapter="Chapter 1"
+        )
+    ]
+    mock_extract.return_value = mock_maps
+
+    # Import after patching
+    from api import extract_maps
+
+    # Call API function
+    result = extract_maps("test.pdf", chapter="Chapter 1")
+
+    # Verify extraction was called
+    mock_extract.assert_called_once()
+
+    # Verify result
+    assert isinstance(result, MapExtractionResult)
+    assert result.total_maps == 2
+    assert len(result.maps) == 2
+    assert result.maps[0]["name"] == "Cave Entrance"
+
+
+@patch('api.extract_maps_from_pdf')
+def test_extract_maps_error_handling(mock_extract):
+    """Test extract_maps wraps exceptions."""
+    mock_extract.side_effect = FileNotFoundError("PDF not found")
+
+    # Import after patching
+    from api import extract_maps
+
+    with pytest.raises(APIError, match="Failed to extract maps"):
+        extract_maps("missing.pdf")

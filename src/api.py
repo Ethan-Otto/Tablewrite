@@ -27,10 +27,13 @@ Example usage:
 """
 
 import logging
+import asyncio
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+from datetime import datetime
 from actors.orchestrate import create_actor_from_description_sync as orchestrate_create_actor_from_description_sync
+from pdf_processing.image_asset_processing.extract_map_assets import extract_maps_from_pdf
 
 logger = logging.getLogger(__name__)
 
@@ -155,3 +158,65 @@ def create_actor(
     except Exception as e:
         logger.error(f"Actor creation failed: {e}")
         raise APIError(f"Failed to create actor: {e}") from e
+
+
+def extract_maps(
+    pdf_path: str,
+    chapter: Optional[str] = None
+) -> MapExtractionResult:
+    """
+    Extract battle maps and navigation maps from a PDF.
+
+    Uses hybrid approach: PyMuPDF extraction (fast) + Gemini segmentation
+    (handles baked-in maps). All pages processed in parallel.
+
+    Args:
+        pdf_path: Path to source PDF file (absolute or relative)
+        chapter: Optional chapter name for metadata
+
+    Returns:
+        MapExtractionResult with extracted maps and metadata
+
+    Raises:
+        APIError: If extraction fails (file not found, PDF corrupt,
+                 Gemini errors, etc.)
+
+    Example:
+        >>> result = extract_maps("data/pdfs/module.pdf", chapter="Chapter 1")
+        >>> print(f"Extracted {result.total_maps} maps")
+        Extracted 3 maps
+        >>> for map_meta in result.maps:
+        ...     print(f"  - {map_meta['name']} ({map_meta['type']})")
+    """
+    try:
+        logger.info(f"Extracting maps from: {pdf_path}")
+
+        # Create output directory (extract_maps_from_pdf expects output_dir parameter)
+        # Use timestamp-based directory like other pipelines
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_dir = Path("output/runs") / timestamp / "map_assets"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Run async extraction in sync context
+        maps = asyncio.run(extract_maps_from_pdf(
+            pdf_path=pdf_path,
+            output_dir=str(output_dir),
+            chapter_name=chapter
+        ))
+
+        # Convert MapMetadata objects to dicts
+        maps_dicts = [m.model_dump() for m in maps]
+
+        result = MapExtractionResult(
+            maps=maps_dicts,
+            output_dir=output_dir,
+            total_maps=len(maps),
+            timestamp=datetime.now().isoformat()
+        )
+
+        logger.info(f"Extracted {result.total_maps} maps to {result.output_dir}")
+        return result
+
+    except Exception as e:
+        logger.error(f"Map extraction failed: {e}")
+        raise APIError(f"Failed to extract maps: {e}") from e
