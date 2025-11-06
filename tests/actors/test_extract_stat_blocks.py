@@ -2,7 +2,7 @@
 
 import pytest
 from pathlib import Path
-from actors.extract_stat_blocks import extract_stat_blocks_from_xml
+from actors.parse_stat_blocks import extract_stat_blocks_from_xml_file
 
 
 @pytest.mark.unit
@@ -13,7 +13,7 @@ class TestExtractStatBlocksFromXML:
         """Test extraction finds all stat block elements."""
         fixture_path = Path(__file__).parent / "fixtures" / "sample_chapter_with_stat_blocks.xml"
 
-        stat_blocks = extract_stat_blocks_from_xml(str(fixture_path))
+        stat_blocks = extract_stat_blocks_from_xml_file(str(fixture_path))
 
         assert len(stat_blocks) == 2
         assert stat_blocks[0]["name"] == "Goblin"
@@ -29,7 +29,7 @@ class TestExtractStatBlocksFromXML:
             f.write("<Chapter><page>No stat blocks here</page></Chapter>")
             temp_path = f.name
 
-        stat_blocks = extract_stat_blocks_from_xml(temp_path)
+        stat_blocks = extract_stat_blocks_from_xml_file(temp_path)
 
         assert len(stat_blocks) == 0
 
@@ -41,7 +41,7 @@ class TestExtractStatBlocksFromXML:
             temp_path = f.name
 
         with pytest.raises(Exception):  # xml.etree.ElementTree.ParseError
-            extract_stat_blocks_from_xml(temp_path)
+            extract_stat_blocks_from_xml_file(temp_path)
 
 
 @pytest.mark.integration

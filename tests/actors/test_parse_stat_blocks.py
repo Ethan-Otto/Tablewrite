@@ -2,8 +2,13 @@
 
 import pytest
 from pathlib import Path
-from actors.parse_stat_blocks import parse_stat_block_with_gemini
+from actors.parse_stat_blocks import (
+    parse_stat_block_with_gemini,
+    extract_stat_blocks_from_document,
+    extract_stat_blocks_from_xml_file
+)
 from actors.models import StatBlock
+from models import XMLDocument
 
 
 @pytest.mark.integration
@@ -50,3 +55,62 @@ class TestStatBlockParsingUnit:
 
         sig = inspect.signature(parse_stat_block_with_gemini)
         assert 'raw_text' in sig.parameters
+
+
+@pytest.mark.unit
+class TestStatBlockExtractionFromXMLDocument:
+    """Unit tests for extracting stat blocks from XMLDocument objects."""
+
+    def test_extract_stat_blocks_from_document(self):
+        """Test extracting stat blocks from XMLDocument."""
+        # Load fixture
+        fixture_path = Path(__file__).parent / "fixtures" / "sample_chapter_with_stat_blocks.xml"
+        with open(fixture_path, 'r') as f:
+            xml_string = f.read()
+
+        # Parse to XMLDocument
+        doc = XMLDocument.from_xml(xml_string)
+
+        # Extract stat blocks
+        stat_blocks = extract_stat_blocks_from_document(doc)
+
+        # Verify extraction
+        assert len(stat_blocks) == 2
+        assert stat_blocks[0]["name"] == "Goblin"
+        assert "GOBLIN" in stat_blocks[0]["raw_text"]
+        assert "Small humanoid" in stat_blocks[0]["raw_text"]
+
+        assert stat_blocks[1]["name"] == "Goblin Boss"
+        assert "GOBLIN BOSS" in stat_blocks[1]["raw_text"]
+        assert "chain shirt" in stat_blocks[1]["raw_text"]
+
+    def test_extract_stat_blocks_from_document_empty(self):
+        """Test extracting stat blocks from document with no stat blocks."""
+        xml_string = """<Chapter>
+            <page number="1">
+                <section>Introduction</section>
+                <p>No stat blocks here.</p>
+            </page>
+        </Chapter>"""
+
+        doc = XMLDocument.from_xml(xml_string)
+        stat_blocks = extract_stat_blocks_from_document(doc)
+
+        assert len(stat_blocks) == 0
+
+    def test_extract_stat_blocks_from_xml_file(self):
+        """Test convenience wrapper for extracting from XML file."""
+        fixture_path = Path(__file__).parent / "fixtures" / "sample_chapter_with_stat_blocks.xml"
+
+        # Extract stat blocks directly from file
+        stat_blocks = extract_stat_blocks_from_xml_file(str(fixture_path))
+
+        # Verify extraction
+        assert len(stat_blocks) == 2
+        assert stat_blocks[0]["name"] == "Goblin"
+        assert stat_blocks[1]["name"] == "Goblin Boss"
+
+    def test_extract_stat_blocks_from_xml_file_not_found(self):
+        """Test that FileNotFoundError is raised for missing files."""
+        with pytest.raises(FileNotFoundError):
+            extract_stat_blocks_from_xml_file("/nonexistent/path.xml")

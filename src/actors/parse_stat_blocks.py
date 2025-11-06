@@ -2,7 +2,8 @@
 
 import logging
 import json
-from typing import Optional
+from typing import Optional, List, Dict
+from pathlib import Path
 from util.gemini import GeminiAPI
 from .models import StatBlock
 
@@ -87,3 +88,91 @@ Stat block:
     except Exception as e:
         logger.error(f"Failed to parse stat block: {e}")
         raise RuntimeError(f"Stat block parsing failed: {e}") from e
+
+
+def extract_stat_blocks_from_document(doc: 'XMLDocument') -> List[Dict[str, str]]:
+    """
+    Extract raw stat block text from XMLDocument.
+
+    Finds all stat_block content elements across all pages.
+
+    Args:
+        doc: XMLDocument instance to extract from
+
+    Returns:
+        List of dicts with 'name' and 'raw_text' keys
+
+    Example:
+        >>> from models import XMLDocument
+        >>> doc = XMLDocument.from_xml(xml_string)
+        >>> stat_blocks = extract_stat_blocks_from_document(doc)
+        >>> for block in stat_blocks:
+        ...     print(f"{block['name']}: {len(block['raw_text'])} chars")
+    """
+    from models.xml_document import StatBlockRaw
+
+    stat_blocks = []
+
+    # Iterate through all pages and content
+    for page in doc.pages:
+        for content in page.content:
+            # Check if this is a stat_block content type
+            if content.type == "stat_block":
+                # Extract StatBlockRaw data
+                stat_block_raw = content.data
+                if isinstance(stat_block_raw, StatBlockRaw):
+                    # Parse the XML element to extract text content
+                    import xml.etree.ElementTree as ET
+                    elem = ET.fromstring(stat_block_raw.xml_element)
+                    raw_text = elem.text.strip() if elem.text else ""
+
+                    if not raw_text:
+                        logger.warning(f"Stat block '{stat_block_raw.name}' has no text content, skipping")
+                        continue
+
+                    stat_blocks.append({
+                        "name": stat_block_raw.name,
+                        "raw_text": raw_text
+                    })
+
+    logger.info(f"Extracted {len(stat_blocks)} stat block(s) from XMLDocument")
+    return stat_blocks
+
+
+def extract_stat_blocks_from_xml_file(xml_file: str) -> List[Dict[str, str]]:
+    """
+    Extract raw stat block text from XML file using XMLDocument.
+
+    Convenience wrapper that loads XML file, parses to XMLDocument,
+    and extracts stat blocks.
+
+    Args:
+        xml_file: Path to XML file
+
+    Returns:
+        List of dicts with 'name' and 'raw_text' keys
+
+    Raises:
+        FileNotFoundError: If XML file doesn't exist
+        xml.etree.ElementTree.ParseError: If XML is malformed
+
+    Example:
+        >>> stat_blocks = extract_stat_blocks_from_xml_file("chapter_1.xml")
+        >>> for block in stat_blocks:
+        ...     print(block['name'])
+    """
+    from models import XMLDocument
+
+    xml_path = Path(xml_file)
+    if not xml_path.exists():
+        raise FileNotFoundError(f"XML file not found: {xml_file}")
+
+    logger.debug(f"Extracting stat blocks from: {xml_file}")
+
+    # Load and parse XML to XMLDocument
+    with open(xml_path, 'r') as f:
+        xml_string = f.read()
+    doc = XMLDocument.from_xml(xml_string)
+
+    # Extract stat blocks from document
+    return extract_stat_blocks_from_document(doc)
