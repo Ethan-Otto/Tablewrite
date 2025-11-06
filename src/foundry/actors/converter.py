@@ -575,11 +575,19 @@ async def convert_to_foundry(
             }
         })
 
-        # Get icon from AI map if available
-        multiattack_icon = icon_map.get(
-            parsed_actor.multiattack.name,
-            "icons/magic/movement/trail-streak-zigzag-yellow.webp"
-        )
+        # Get icon from AI map if available, but use better default for multiattack
+        if parsed_actor.multiattack.name.lower() == "multiattack":
+            # Better default icon for generic multiattack
+            multiattack_icon = icon_map.get(
+                parsed_actor.multiattack.name,
+                "icons/skills/melee/blade-tips-triple-steel.webp"
+            )
+        else:
+            # Other special multiattacks use AI suggestion or generic default
+            multiattack_icon = icon_map.get(
+                parsed_actor.multiattack.name,
+                "icons/magic/movement/trail-streak-zigzag-yellow.webp"
+            )
 
         item = {
             "_id": _generate_activity_id(),
