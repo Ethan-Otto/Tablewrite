@@ -17,7 +17,30 @@ class ActorCreatorTool(BaseTool):
 
     def get_schema(self) -> ToolSchema:
         """Return tool schema for Gemini function calling."""
-        pass  # TODO: implement
+        return ToolSchema(
+            name="create_actor",
+            description=(
+                "Create a D&D actor/creature in FoundryVTT from a natural "
+                "language description. Use when user asks to create, make, "
+                "or generate an actor, monster, NPC, or creature."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "description": {
+                        "type": "string",
+                        "description": "Detailed description of the creature"
+                    },
+                    "challenge_rating": {
+                        "type": "number",
+                        "description": "Optional CR (0.125 to 30). Omit to infer from description.",
+                        "minimum": 0.125,
+                        "maximum": 30
+                    }
+                },
+                "required": ["description"]
+            }
+        )
 
     async def execute(self, description: str, challenge_rating: float = None) -> ToolResponse:
         """Execute actor creation."""
