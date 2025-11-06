@@ -55,6 +55,29 @@ class DefinitionList(BaseModel):
     definitions: List[DefinitionItem]
 
 
+class StatBlockRaw(BaseModel):
+    """Represents raw stat block XML for later parsing.
+
+    Preserves the complete stat block XML element as a string,
+    along with the name attribute for identification.
+    """
+    model_config = ConfigDict(frozen=True)
+
+    name: str
+    xml_element: str
+
+
+class ImageRef(BaseModel):
+    """Represents an image placeholder from Gemini.
+
+    Contains a key that identifies the image for later extraction
+    and insertion into the rendered output.
+    """
+    model_config = ConfigDict(frozen=True)
+
+    key: str
+
+
 class Content(BaseModel):
     """Represents a single content element within a page.
 
@@ -63,8 +86,8 @@ class Content(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     id: str
-    type: Literal["paragraph", "section", "subsection", "subsubsection", "chapter_title", "table", "list", "definition_list"]
-    data: Union[str, Table, ListContent, DefinitionList]
+    type: Literal["paragraph", "section", "subsection", "subsubsection", "chapter_title", "table", "list", "definition_list", "stat_block", "image_ref"]
+    data: Union[str, Table, ListContent, DefinitionList, StatBlockRaw, ImageRef]
 
 
 class Page(BaseModel):
@@ -121,7 +144,7 @@ class XMLDocument(BaseModel):
         return cls(title=title, pages=pages)
 
     @staticmethod
-    def _parse_content_data(element: ET.Element) -> Union[str, Table, ListContent, DefinitionList]:
+    def _parse_content_data(element: ET.Element) -> Union[str, Table, ListContent, DefinitionList, StatBlockRaw, ImageRef]:
         """Parse content data from XML element.
 
         Args:
@@ -153,6 +176,16 @@ class XMLDocument(BaseModel):
                 description = desc_elem.text or "" if desc_elem is not None else ""
                 definitions.append(DefinitionItem(term=term, description=description))
             return DefinitionList(definitions=definitions)
+
+        elif element.tag == "stat_block":
+            name = element.get('name', 'Unknown')
+            # Preserve complete XML element as string
+            xml_str = ET.tostring(element, encoding='unicode')
+            return StatBlockRaw(name=name, xml_element=xml_str)
+
+        elif element.tag == "image_ref":
+            key = element.get('key', '')
+            return ImageRef(key=key)
 
         else:
             # Simple text content for paragraph, section, etc.

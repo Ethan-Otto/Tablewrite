@@ -518,3 +518,121 @@ class TestDefinitionListContent:
         assert "<dt>Dragon</dt>" in html
         assert "<dd>Powerful reptilian creature.</dd>" in html
         assert "</dl>" in html
+
+
+class TestStatBlockContent:
+    """Test StatBlockRaw for preserving complete stat block XML."""
+
+    def test_stat_block_parsing(self):
+        """Test parsing stat block from XML preserves raw XML."""
+        xml_string = """<Chapter_01>
+    <page number="1">
+        <stat_block name="Goblin">
+GOBLIN
+Small humanoid, neutral evil
+Armor Class 15
+Hit Points 7 (2d6)
+        </stat_block>
+    </page>
+</Chapter_01>"""
+
+        doc = XMLDocument.from_xml(xml_string)
+        assert len(doc.pages[0].content) == 1
+        content = doc.pages[0].content[0]
+        assert content.type == "stat_block"
+
+    def test_stat_block_preserves_name(self):
+        """Test stat block preserves name attribute."""
+        xml_string = """<Chapter_01>
+    <page number="1">
+        <stat_block name="Goblin">
+GOBLIN
+Small humanoid, neutral evil
+        </stat_block>
+    </page>
+</Chapter_01>"""
+
+        doc = XMLDocument.from_xml(xml_string)
+        from models.xml_document import StatBlockRaw
+
+        stat_block = doc.pages[0].content[0].data
+        assert isinstance(stat_block, StatBlockRaw)
+        assert stat_block.name == "Goblin"
+
+    def test_stat_block_preserves_xml(self):
+        """Test stat block preserves complete XML element."""
+        xml_string = """<Chapter_01>
+    <page number="1">
+        <stat_block name="Goblin">
+GOBLIN
+Small humanoid, neutral evil
+Armor Class 15
+Hit Points 7 (2d6)
+        </stat_block>
+    </page>
+</Chapter_01>"""
+
+        doc = XMLDocument.from_xml(xml_string)
+        from models.xml_document import StatBlockRaw
+
+        stat_block = doc.pages[0].content[0].data
+        assert isinstance(stat_block, StatBlockRaw)
+        assert "GOBLIN" in stat_block.xml_element
+        assert "Armor Class 15" in stat_block.xml_element
+        assert "Hit Points 7" in stat_block.xml_element
+
+
+class TestImageRefContent:
+    """Test ImageRef for image placeholders."""
+
+    def test_image_ref_parsing(self):
+        """Test parsing image_ref from XML."""
+        xml_string = """<Chapter_01>
+    <page number="5">
+        <paragraph>Before image</paragraph>
+        <image_ref key="page_5_top_battle_map" />
+        <paragraph>After image</paragraph>
+    </page>
+</Chapter_01>"""
+
+        doc = XMLDocument.from_xml(xml_string)
+        assert len(doc.pages[0].content) == 3
+        assert doc.pages[0].content[0].type == "paragraph"
+        assert doc.pages[0].content[1].type == "image_ref"
+        assert doc.pages[0].content[2].type == "paragraph"
+
+    def test_image_ref_preserves_key(self):
+        """Test image_ref preserves key attribute."""
+        xml_string = """<Chapter_01>
+    <page number="5">
+        <image_ref key="page_5_top_battle_map" />
+    </page>
+</Chapter_01>"""
+
+        doc = XMLDocument.from_xml(xml_string)
+        from models.xml_document import ImageRef
+
+        img_ref = doc.pages[0].content[0].data
+        assert isinstance(img_ref, ImageRef)
+        assert img_ref.key == "page_5_top_battle_map"
+
+    def test_image_ref_with_different_keys(self):
+        """Test multiple image_refs with different keys."""
+        xml_string = """<Chapter_01>
+    <page number="5">
+        <image_ref key="page_5_map_1" />
+        <paragraph>Some text</paragraph>
+        <image_ref key="page_5_map_2" />
+    </page>
+</Chapter_01>"""
+
+        doc = XMLDocument.from_xml(xml_string)
+        from models.xml_document import ImageRef
+
+        img_ref1 = doc.pages[0].content[0].data
+        img_ref2 = doc.pages[0].content[2].data
+
+        assert isinstance(img_ref1, ImageRef)
+        assert isinstance(img_ref2, ImageRef)
+        assert img_ref1.key == "page_5_map_1"
+        assert img_ref2.key == "page_5_map_2"
