@@ -322,9 +322,14 @@ async def convert_to_foundry(
     for attack in parsed_actor.attacks:
         activities = {}
 
-        # 1. Always create attack activity
-        attack_id = _generate_activity_id()
-        activities[attack_id] = _create_attack_activity(attack, attack_id)
+        # Determine if this is a save-only attack (e.g., breath weapon)
+        # Save-only attacks have attack_save but no attack roll (attack_bonus is None or 0)
+        is_save_only = attack.attack_save is not None and (attack.attack_bonus is None or attack.attack_bonus == 0)
+
+        # 1. Create attack activity (only for attacks with attack rolls)
+        if not is_save_only:
+            attack_id = _generate_activity_id()
+            activities[attack_id] = _create_attack_activity(attack, attack_id)
 
         # 2. Add save activity if present
         if attack.attack_save:

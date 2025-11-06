@@ -3,9 +3,10 @@ import sys
 from pathlib import Path
 from .base import BaseTool, ToolSchema, ToolResponse
 
-# Add project src to path for api module
+# Add project paths for api module imports
 project_root = Path(__file__).parent.parent.parent.parent.parent
-sys.path.insert(0, str(project_root / "src"))
+sys.path.insert(0, str(project_root))  # For "from src.xxx" imports
+sys.path.insert(0, str(project_root / "src"))  # For "from xxx" imports
 from api import create_actor, APIError  # noqa: E402
 
 
