@@ -177,3 +177,74 @@ def test_extract_maps_error_handling(mock_extract):
 
     with pytest.raises(APIError, match="Failed to extract maps"):
         extract_maps("missing.pdf")
+
+
+@patch('api.run_pdf_to_xml')
+@patch('api.upload_xml_to_foundry')
+def test_process_pdf_to_journal_happy_path(mock_upload, mock_pdf_to_xml):
+    """Test process_pdf_to_journal wraps pipeline correctly."""
+    from api import process_pdf_to_journal
+
+    # Mock PDF to XML with a mock Path that has glob method
+    mock_run_dir = Mock(spec=Path)
+    mock_run_dir.glob.return_value = [
+        Path("output/runs/20251105_120000/documents/chapter1.xml"),
+        Path("output/runs/20251105_120000/documents/chapter2.xml"),
+        Path("output/runs/20251105_120000/documents/chapter3.xml")
+    ]
+    mock_pdf_to_xml.return_value = mock_run_dir
+
+    # Mock upload
+    mock_upload.return_value = "JournalEntry.xyz789"
+
+    # Call API function
+    result = process_pdf_to_journal(
+        "test.pdf",
+        "Test Journal",
+        skip_upload=False
+    )
+
+    # Verify calls
+    mock_pdf_to_xml.assert_called_once()
+    mock_upload.assert_called_once_with(mock_run_dir, "Test Journal")
+
+    # Verify result
+    assert isinstance(result, JournalCreationResult)
+    assert result.journal_uuid == "JournalEntry.xyz789"
+    assert result.journal_name == "Test Journal"
+    assert result.chapter_count == 3
+
+
+@patch('api.run_pdf_to_xml')
+def test_process_pdf_to_journal_skip_upload(mock_pdf_to_xml):
+    """Test process_pdf_to_journal with skip_upload=True."""
+    from api import process_pdf_to_journal
+
+    # Mock run_dir with glob method
+    mock_run_dir = Mock(spec=Path)
+    mock_run_dir.glob.return_value = [
+        Path("output/runs/20251105_120000/documents/chapter1.xml")
+    ]
+    mock_pdf_to_xml.return_value = mock_run_dir
+
+    result = process_pdf_to_journal(
+        "test.pdf",
+        "Test Journal",
+        skip_upload=True
+    )
+
+    # Should have empty UUID when upload is skipped
+    assert result.journal_uuid == ""
+    assert result.output_dir == mock_run_dir
+    assert result.chapter_count == 1
+
+
+@patch('api.run_pdf_to_xml')
+def test_process_pdf_to_journal_error_handling(mock_pdf_to_xml):
+    """Test process_pdf_to_journal error handling."""
+    from api import process_pdf_to_journal
+
+    mock_pdf_to_xml.side_effect = RuntimeError("PDF processing failed")
+
+    with pytest.raises(APIError, match="Failed to process PDF"):
+        process_pdf_to_journal("broken.pdf", "Test")

@@ -220,3 +220,114 @@ def extract_maps(
     except Exception as e:
         logger.error(f"Map extraction failed: {e}")
         raise APIError(f"Failed to extract maps: {e}") from e
+
+
+def process_pdf_to_journal(
+    pdf_path: str,
+    journal_name: str,
+    skip_upload: bool = False
+) -> JournalCreationResult:
+    """
+    Process a D&D PDF into FoundryVTT journal entries.
+
+    Runs the full pipeline:
+    1. Split PDF into chapter PDFs (if not already split)
+    2. Generate XML from chapters using Gemini
+    3. Upload to FoundryVTT (unless skip_upload=True)
+
+    Args:
+        pdf_path: Path to source PDF file
+        journal_name: Name for the FoundryVTT journal
+        skip_upload: If True, generate XML but don't upload to Foundry
+
+    Returns:
+        JournalCreationResult with journal UUID and output paths
+
+    Raises:
+        APIError: If processing fails (PDF errors, Gemini errors,
+                 FoundryVTT connection issues, etc.)
+
+    Example:
+        >>> result = process_pdf_to_journal(
+        ...     "data/pdfs/module.pdf",
+        ...     "Lost Mine of Phandelver"
+        ... )
+        >>> print(f"Created journal: {result.journal_uuid}")
+        Created journal: JournalEntry.xyz789
+    """
+    try:
+        logger.info(f"Processing PDF to journal: {pdf_path}")
+
+        # Step 1: Run PDF to XML conversion
+        # This returns the run directory (e.g., output/runs/20251105_120000)
+        logger.info("Step 1/2: Converting PDF to XML...")
+        run_dir = run_pdf_to_xml(pdf_path)
+
+        # Count chapters by counting XML files
+        xml_files = list(run_dir.glob("documents/*.xml"))
+        chapter_count = len(xml_files)
+
+        journal_uuid = ""
+        if not skip_upload:
+            # Step 2: Upload to FoundryVTT
+            logger.info("Step 2/2: Uploading to FoundryVTT...")
+            journal_uuid = upload_xml_to_foundry(run_dir, journal_name)
+        else:
+            logger.info("Skipping upload (skip_upload=True)")
+
+        result = JournalCreationResult(
+            journal_uuid=journal_uuid,
+            journal_name=journal_name,
+            output_dir=run_dir,
+            chapter_count=chapter_count,
+            timestamp=datetime.now().isoformat()
+        )
+
+        logger.info(f"Journal processing complete: {result.journal_name}")
+        return result
+
+    except Exception as e:
+        logger.error(f"PDF to journal processing failed: {e}")
+        raise APIError(f"Failed to process PDF to journal: {e}") from e
+
+
+def run_pdf_to_xml(pdf_path: str) -> Path:
+    """
+    Internal helper: Run PDF to XML conversion pipeline.
+
+    This is a simplified placeholder implementation. In production,
+    this would need to be refactored from full_pipeline.py to handle
+    PDF splitting, XML generation, etc.
+
+    Args:
+        pdf_path: Path to source PDF file
+
+    Returns:
+        Path to run directory containing generated XML files
+    """
+    # TODO: Refactor full_pipeline.py to expose this as a clean function
+    # For now, this is a placeholder that would need actual implementation
+    raise NotImplementedError(
+        "run_pdf_to_xml needs to be refactored from scripts/full_pipeline.py"
+    )
+
+
+def upload_xml_to_foundry(run_dir: Path, journal_name: str) -> str:
+    """
+    Internal helper: Upload XML files to FoundryVTT.
+
+    This is a simplified placeholder implementation. In production,
+    this would need to be refactored from upload_to_foundry.py.
+
+    Args:
+        run_dir: Directory containing XML files to upload
+        journal_name: Name for the journal in FoundryVTT
+
+    Returns:
+        Journal UUID (e.g., "JournalEntry.xyz789")
+    """
+    # TODO: Refactor upload_to_foundry.py to expose this as a clean function
+    # For now, this is a placeholder that would need actual implementation
+    raise NotImplementedError(
+        "upload_xml_to_foundry needs to be refactored from src/foundry/upload_to_foundry.py"
+    )
