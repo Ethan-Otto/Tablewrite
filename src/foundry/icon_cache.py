@@ -241,8 +241,13 @@ class IconCache:
         if not icon_paths:
             return None
 
-        # Extract just filenames for the prompt (easier for Gemini to process)
-        filenames = [path.split('/')[-1].rsplit('.', 1)[0] for path in icon_paths]
+        # Extract category path + filename (includes folder context like "lightning", "fire", etc.)
+        display_paths = []
+        for path in icon_paths:
+            # Remove "icons/" prefix and file extension, keep category folders
+            # e.g., "icons/magic/lightning/bolt-blue.webp" → "magic/lightning/bolt-blue"
+            clean_path = path.replace('icons/', '', 1).rsplit('.', 1)[0]
+            display_paths.append(clean_path)
 
         prompt = f"""You are an icon selection assistant for a D&D 5e virtual tabletop.
 
@@ -250,14 +255,15 @@ Given an item/ability name, select the MOST APPROPRIATE icon from the list below
 
 ITEM NAME: {item_name}
 
-AVAILABLE ICONS (numbered):
-{chr(10).join(f"{i+1}. {name}" for i, name in enumerate(filenames))}
+AVAILABLE ICONS (numbered, showing category/subcategory/filename):
+{chr(10).join(f"{i+1}. {name}" for i, name in enumerate(display_paths))}
 
 INSTRUCTIONS:
 1. Consider the item's theme, purpose, and visual style
-2. Match based on semantic meaning, not just literal words
-3. Respond with ONLY the number of your choice (1-{len(filenames)})
-4. Choose the single best match
+2. Pay attention to folder names (e.g., "lightning", "fire", "acid") as they indicate icon theme
+3. Match based on semantic meaning, not just literal words
+4. Respond with ONLY the number of your choice (1-{len(display_paths)})
+5. Choose the single best match
 
 Your response (number only):"""
 
