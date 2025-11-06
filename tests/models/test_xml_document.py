@@ -638,6 +638,85 @@ class TestImageRefContent:
         assert img_ref2.key == "page_5_map_2"
 
 
+class TestXMLDocumentSerialization:
+    """Test XMLDocument serialization with to_xml() method."""
+
+    def test_xmldocument_round_trip(self):
+        """Test round-trip conversion: XML → XMLDocument → XML → XMLDocument.
+
+        This validates that to_xml() produces valid XML that can be parsed back
+        into an equivalent XMLDocument structure.
+        """
+        # Original XML with all content types
+        original_xml = """<Chapter_01_Introduction>
+    <page number="1">
+        <chapter_title>Introduction</chapter_title>
+        <section>The Story</section>
+        <paragraph>This is a **bold** test with *italic* text.</paragraph>
+        <table>
+            <row>
+                <cell>Name</cell>
+                <cell>CR</cell>
+            </row>
+            <row>
+                <cell>Goblin</cell>
+                <cell>1/4</cell>
+            </row>
+        </table>
+        <list type="unordered">
+            <item>First item</item>
+            <item>Second item</item>
+        </list>
+        <list type="ordered">
+            <item>Step one</item>
+            <item>Step two</item>
+        </list>
+        <definition_list>
+            <definition>
+                <term>Hit Points</term>
+                <description>A measure of health.</description>
+            </definition>
+        </definition_list>
+        <stat_block name="Goblin">
+GOBLIN
+Small humanoid, neutral evil
+Armor Class 15
+        </stat_block>
+        <image_ref key="page_1_battle_map" />
+    </page>
+    <page number="2">
+        <section>Second Page</section>
+        <paragraph>More content here.</paragraph>
+    </page>
+</Chapter_01_Introduction>"""
+
+        # First parse: XML → XMLDocument
+        doc1 = XMLDocument.from_xml(original_xml)
+
+        # Serialize: XMLDocument → XML
+        serialized_xml = doc1.to_xml()
+
+        # Second parse: XML → XMLDocument
+        doc2 = XMLDocument.from_xml(serialized_xml)
+
+        # Verify both documents are equivalent
+        assert doc1.title == doc2.title
+        assert len(doc1.pages) == len(doc2.pages)
+
+        for page1, page2 in zip(doc1.pages, doc2.pages):
+            assert page1.number == page2.number
+            assert len(page1.content) == len(page2.content)
+
+            for content1, content2 in zip(page1.content, page2.content):
+                assert content1.type == content2.type
+                # For complex types, compare the model representation
+                if isinstance(content1.data, str):
+                    assert content1.data == content2.data
+                else:
+                    # Use model_dump for deep comparison
+                    assert content1.data.model_dump() == content2.data.model_dump()
+
+
 class TestRealXMLIntegration:
     """Test XMLDocument can parse real generated XML files."""
 

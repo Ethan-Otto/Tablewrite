@@ -203,7 +203,11 @@ class XMLDocument(BaseModel):
         elif element.tag == "stat_block":
             name = element.get('name', 'Unknown')
             # Preserve complete XML element as string
+            # Clear tail to avoid whitespace issues during round-trip
+            original_tail = element.tail
+            element.tail = None
             xml_str = ET.tostring(element, encoding='unicode')
+            element.tail = original_tail  # Restore for original tree
             return StatBlockRaw(name=name, xml_element=xml_str)
 
         elif element.tag == "image_ref":
@@ -364,6 +368,87 @@ class XMLDocument(BaseModel):
             html_parts.append(f"<dd>{definition.description}</dd>")
         html_parts.append("</dl>")
         return "\n".join(html_parts)
+
+    def to_xml(self) -> str:
+        """Serialize XMLDocument back to XML string.
+
+        Returns:
+            XML string representation of the document with 2-space indentation
+        """
+        # Create root element with title as tag
+        root = ET.Element(self.title)
+
+        # Add all pages
+        for page in self.pages:
+            page_elem = ET.SubElement(root, 'page')
+            page_elem.set('number', str(page.number))
+
+            # Add all content elements
+            for content in page.content:
+                self._add_content_to_element(page_elem, content)
+
+        # Pretty-print with 2-space indentation
+        ET.indent(root, space='  ')
+
+        # Convert to string
+        return ET.tostring(root, encoding='unicode')
+
+    def _add_content_to_element(self, parent: ET.Element, content: Content) -> None:
+        """Add content element to parent XML element.
+
+        Args:
+            parent: Parent XML element to add content to
+            content: Content model to serialize
+        """
+        if content.type == "table":
+            # Table with rows and cells
+            table_elem = ET.SubElement(parent, 'table')
+            table = content.data
+            for row in table.rows:
+                row_elem = ET.SubElement(table_elem, 'row')
+                for cell in row.cells:
+                    cell_elem = ET.SubElement(row_elem, 'cell')
+                    cell_elem.text = cell
+
+        elif content.type == "list":
+            # List with items
+            list_elem = ET.SubElement(parent, 'list')
+            list_content = content.data
+            list_elem.set('type', list_content.list_type)
+            for item in list_content.items:
+                item_elem = ET.SubElement(list_elem, 'item')
+                item_elem.text = item.text
+
+        elif content.type == "definition_list":
+            # Definition list with term/description pairs
+            def_list_elem = ET.SubElement(parent, 'definition_list')
+            def_list = content.data
+            for definition in def_list.definitions:
+                def_elem = ET.SubElement(def_list_elem, 'definition')
+                term_elem = ET.SubElement(def_elem, 'term')
+                term_elem.text = definition.term
+                desc_elem = ET.SubElement(def_elem, 'description')
+                desc_elem.text = definition.description
+
+        elif content.type == "stat_block":
+            # Stat block - parse and reconstruct from preserved XML
+            stat_block = content.data
+            # Parse the preserved XML element
+            stat_block_elem = ET.fromstring(stat_block.xml_element)
+            # Clear tail text to avoid whitespace mismatches after indentation
+            stat_block_elem.tail = None
+            parent.append(stat_block_elem)
+
+        elif content.type == "image_ref":
+            # Image reference with key attribute
+            img_ref = content.data
+            img_elem = ET.SubElement(parent, 'image_ref')
+            img_elem.set('key', img_ref.key)
+
+        else:
+            # Simple text content (paragraph, section, etc.)
+            elem = ET.SubElement(parent, content.type)
+            elem.text = content.data
 
 
 def parse_xml_file(file_path: Path) -> XMLDocument:
