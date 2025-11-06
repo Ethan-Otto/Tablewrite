@@ -314,3 +314,121 @@ class TestImageManipulation:
 
         # Should not raise error
         assert len(journal.image_registry) == 0
+
+
+class TestJournalExport:
+    """Test Journal export methods (to_foundry_html, to_html, to_markdown)."""
+
+    def test_journal_to_foundry_html(self):
+        """Test that to_foundry_html() exports journal with proper semantic HTML hierarchy."""
+        # Create a journal with nested structure
+        xml_string = """
+<Chapter_1>
+  <page number="1">
+    <chapter_title>The Adventure Begins</chapter_title>
+    <paragraph>This is the introduction.</paragraph>
+    <section>Introduction</section>
+    <paragraph>First paragraph of intro.</paragraph>
+    <subsection>Background</subsection>
+    <paragraph>Background details here.</paragraph>
+    <boxed_text>Important note in a box!</boxed_text>
+    <subsubsection>History</subsubsection>
+    <paragraph>Historical context.</paragraph>
+  </page>
+  <page number="2">
+    <image_ref key="page_2_battle_map" />
+    <paragraph>Text after image.</paragraph>
+  </page>
+</Chapter_1>
+"""
+        xml_doc = XMLDocument.from_xml(xml_string)
+        journal = Journal.from_xml_document(xml_doc)
+
+        # Add an image with file path and reposition it
+        img_metadata = ImageMetadata(
+            key="scene_artwork_tavern",
+            source_page=1,
+            type="illustration",
+            file_path="/path/to/tavern.png",
+            insert_before_content_id="chapter_0_section_0_content_0"
+        )
+        journal.add_image("scene_artwork_tavern", img_metadata)
+
+        # Create image mapping (simulating actual image files)
+        image_mapping = {
+            "page_2_battle_map": "https://example.com/battle_map.png",
+            "scene_artwork_tavern": "https://example.com/tavern.png"
+        }
+
+        # Export to HTML
+        html = journal.to_foundry_html(image_mapping)
+
+        # Verify semantic structure
+        assert "<h1>The Adventure Begins</h1>" in html
+        assert "<h2>Introduction</h2>" in html
+        assert "<h3>Background</h3>" in html
+        assert "<h4>History</h4>" in html
+
+        # Verify content rendering
+        assert "<p>This is the introduction.</p>" in html
+        assert "<p>First paragraph of intro.</p>" in html
+        assert "<p>Background details here.</p>" in html
+        assert "<p>Historical context.</p>" in html
+
+        # Verify boxed_text rendering (uses <aside> tag)
+        assert "<aside" in html
+        assert "Important note in a box!" in html
+
+        # Verify image insertion (inserted before specific content)
+        assert '<img src="https://example.com/tavern.png"' in html
+        # Should appear before "First paragraph of intro"
+        tavern_pos = html.index("tavern.png")
+        intro_pos = html.index("First paragraph of intro")
+        assert tavern_pos < intro_pos
+
+        # Verify image_ref rendering (at original location)
+        assert '<img src="https://example.com/battle_map.png"' in html
+        # Should appear before "Text after image"
+        map_pos = html.index("battle_map.png")
+        text_pos = html.index("Text after image")
+        assert map_pos < text_pos
+
+    def test_to_html_calls_to_foundry_html(self):
+        """Test that to_html() is a stub that calls to_foundry_html()."""
+        xml_string = """
+<Chapter_1>
+  <page number="1">
+    <chapter_title>Test Chapter</chapter_title>
+    <paragraph>Some content.</paragraph>
+  </page>
+</Chapter_1>
+"""
+        xml_doc = XMLDocument.from_xml(xml_string)
+        journal = Journal.from_xml_document(xml_doc)
+
+        # Call both methods with same image_mapping
+        image_mapping = {}
+        html1 = journal.to_foundry_html(image_mapping)
+        html2 = journal.to_html(image_mapping)
+
+        # Should produce same output
+        assert html1 == html2
+
+    def test_to_markdown_returns_placeholder(self):
+        """Test that to_markdown() is a stub that returns placeholder."""
+        xml_string = """
+<Chapter_1>
+  <page number="1">
+    <chapter_title>Test Chapter</chapter_title>
+    <paragraph>Some content.</paragraph>
+  </page>
+</Chapter_1>
+"""
+        xml_doc = XMLDocument.from_xml(xml_string)
+        journal = Journal.from_xml_document(xml_doc)
+
+        # Call to_markdown
+        markdown = journal.to_markdown()
+
+        # Should return a placeholder message
+        assert "Markdown export not yet implemented" in markdown or "TODO" in markdown

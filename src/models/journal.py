@@ -309,3 +309,244 @@ class Journal(BaseModel):
         """
         if key in self.image_registry:
             del self.image_registry[key]
+
+    def to_foundry_html(self, image_mapping: Optional[Dict[str, str]] = None) -> str:
+        """Export journal to FoundryVTT-ready HTML format.
+
+        Renders the semantic hierarchy (Chapters -> Sections -> Subsections -> Subsubsections)
+        into HTML with proper heading levels (h1 -> h2 -> h3 -> h4) and inserts images
+        from the image_mapping.
+
+        Args:
+            image_mapping: Dictionary mapping image keys to URLs/paths for rendering.
+                          Keys should match those in image_registry.
+
+        Returns:
+            HTML string with semantic structure and embedded images
+        """
+        if image_mapping is None:
+            image_mapping = {}
+
+        html_parts = []
+
+        # Render each chapter
+        for chapter in self.chapters:
+            html_parts.append(f"<h1>{chapter.title}</h1>\n")
+
+            # Render chapter-level content
+            for content in chapter.content:
+                html_parts.append(self._render_content(content, image_mapping))
+
+            # Render sections
+            for section in chapter.sections:
+                html_parts.append(self._render_section(section, image_mapping, level=2))
+
+        return "".join(html_parts)
+
+    def _render_section(self, section: Section, image_mapping: Dict[str, str], level: int) -> str:
+        """Render a section with proper heading level.
+
+        Args:
+            section: Section to render
+            image_mapping: Dictionary mapping image keys to URLs/paths
+            level: Heading level (2 for section, increments for nested levels)
+
+        Returns:
+            HTML string for the section
+        """
+        html_parts = []
+
+        # Render section title
+        html_parts.append(f"<h{level}>{section.title}</h{level}>\n")
+
+        # Render section-level content
+        for content in section.content:
+            html_parts.append(self._render_content(content, image_mapping))
+
+        # Render subsections
+        for subsection in section.subsections:
+            html_parts.append(self._render_subsection(subsection, image_mapping, level + 1))
+
+        return "".join(html_parts)
+
+    def _render_subsection(self, subsection: Subsection, image_mapping: Dict[str, str], level: int) -> str:
+        """Render a subsection with proper heading level.
+
+        Args:
+            subsection: Subsection to render
+            image_mapping: Dictionary mapping image keys to URLs/paths
+            level: Heading level (3 for subsection, increments for nested levels)
+
+        Returns:
+            HTML string for the subsection
+        """
+        html_parts = []
+
+        # Render subsection title
+        html_parts.append(f"<h{level}>{subsection.title}</h{level}>\n")
+
+        # Render subsection-level content
+        for content in subsection.content:
+            html_parts.append(self._render_content(content, image_mapping))
+
+        # Render subsubsections
+        for subsubsection in subsection.subsubsections:
+            html_parts.append(self._render_subsubsection(subsubsection, image_mapping, level + 1))
+
+        return "".join(html_parts)
+
+    def _render_subsubsection(self, subsubsection: Subsubsection, image_mapping: Dict[str, str], level: int) -> str:
+        """Render a subsubsection with proper heading level.
+
+        Args:
+            subsubsection: Subsubsection to render
+            image_mapping: Dictionary mapping image keys to URLs/paths
+            level: Heading level (4 for subsubsection)
+
+        Returns:
+            HTML string for the subsubsection
+        """
+        html_parts = []
+
+        # Render subsubsection title
+        html_parts.append(f"<h{level}>{subsubsection.title}</h{level}>\n")
+
+        # Render content
+        for content in subsubsection.content:
+            html_parts.append(self._render_content(content, image_mapping))
+
+        return "".join(html_parts)
+
+    def _render_content(self, content: Content, image_mapping: Dict[str, str]) -> str:
+        """Render a single content element with image insertion support.
+
+        Checks if any images should be inserted before this content element
+        (via insert_before_content_id in image_registry) and renders them first.
+        Then renders the content element itself.
+
+        Args:
+            content: Content element to render
+            image_mapping: Dictionary mapping image keys to URLs/paths
+
+        Returns:
+            HTML string for the content element (including any images to insert before it)
+        """
+        import re
+        html_parts = []
+
+        # Check if any images should be inserted before this content
+        for key, metadata in self.image_registry.items():
+            if metadata.insert_before_content_id == content.id:
+                # Insert image before this content
+                if key in image_mapping:
+                    html_parts.append(f'<img src="{image_mapping[key]}" alt="{metadata.type}" />\n')
+
+        # Render the content element itself
+        if content.type == "paragraph":
+            # Convert markdown formatting to HTML
+            text = self._convert_markdown_to_html(content.data)
+            html_parts.append(f"<p>{text}</p>\n")
+
+        elif content.type == "boxed_text":
+            # Render boxed text using <aside> with decorative styling
+            text = self._convert_markdown_to_html(content.data)
+            html_parts.append(
+                '<aside style="position: relative; background: #fef9e7; padding: 20px 50px; '
+                'margin: 20px 0; box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);">\n'
+                '  <span style="position: absolute; left: 15px; top: 10px; bottom: 10px; width: 4px; '
+                'background: linear-gradient(to bottom, #5c3317 0%, #8b4513 20%, #5c3317 50%, #8b4513 80%, #5c3317 100%); '
+                'border-radius: 2px;"></span>\n'
+                '  <span style="position: absolute; right: 15px; top: 10px; bottom: 10px; width: 4px; '
+                'background: linear-gradient(to bottom, #5c3317 0%, #8b4513 20%, #5c3317 50%, #8b4513 80%, #5c3317 100%); '
+                'border-radius: 2px;"></span>\n'
+                f'  <p>{text}</p>\n'
+                '</aside>\n'
+            )
+
+        elif content.type == "image_ref":
+            # Render image_ref at its original location
+            key = content.data.key
+            if key in image_mapping:
+                img_type = self.image_registry.get(key, ImageMetadata(key=key, source_page=0, type="image")).type
+                html_parts.append(f'<img src="{image_mapping[key]}" alt="{img_type}" />\n')
+
+        elif content.type == "table":
+            # Render table structure
+            html_parts.append('<table border="1">\n')
+            for row in content.data.rows:
+                html_parts.append('  <tr>\n')
+                for cell in row.cells:
+                    cell_text = self._convert_markdown_to_html(cell)
+                    html_parts.append(f'    <td>{cell_text}</td>\n')
+                html_parts.append('  </tr>\n')
+            html_parts.append('</table>\n')
+
+        elif content.type == "list":
+            # Render list (ordered or unordered)
+            list_tag = "ol" if content.data.list_type == "ordered" else "ul"
+            html_parts.append(f'<{list_tag}>\n')
+            for item in content.data.items:
+                item_text = self._convert_markdown_to_html(item.text)
+                html_parts.append(f'  <li>{item_text}</li>\n')
+            html_parts.append(f'</{list_tag}>\n')
+
+        elif content.type == "definition_list":
+            # Render definition list
+            html_parts.append('<dl>\n')
+            for definition in content.data.definitions:
+                term_text = self._convert_markdown_to_html(definition.term)
+                desc_text = self._convert_markdown_to_html(definition.description)
+                html_parts.append(f'  <dt>{term_text}</dt>\n')
+                html_parts.append(f'  <dd>{desc_text}</dd>\n')
+            html_parts.append('</dl>\n')
+
+        # Skip other content types (footer, page_number, stat_block, etc.)
+        # These are handled elsewhere or not rendered in journal HTML
+
+        return "".join(html_parts)
+
+    def _convert_markdown_to_html(self, text: str) -> str:
+        """Convert Markdown formatting to HTML tags.
+
+        Args:
+            text: Text with Markdown formatting (**bold**, *italic*)
+
+        Returns:
+            Text with HTML tags (<strong>, <em>)
+        """
+        import re
+
+        if not text:
+            return text
+
+        # Convert bold first (to avoid conflicts with italic)
+        text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
+        # Then convert italic
+        text = re.sub(r'\*(.+?)\*', r'<em>\1</em>', text)
+
+        return text
+
+    def to_html(self, image_mapping: Optional[Dict[str, str]] = None) -> str:
+        """Export journal to HTML format.
+
+        Currently a stub that calls to_foundry_html(). May be extended in the future
+        to support different HTML export formats (e.g., standalone HTML pages).
+
+        Args:
+            image_mapping: Dictionary mapping image keys to URLs/paths for rendering
+
+        Returns:
+            HTML string
+        """
+        return self.to_foundry_html(image_mapping)
+
+    def to_markdown(self, image_mapping: Optional[Dict[str, str]] = None) -> str:
+        """Export journal to Markdown format.
+
+        Args:
+            image_mapping: Dictionary mapping image keys to URLs/paths for rendering
+
+        Returns:
+            Markdown string (currently a placeholder)
+        """
+        return "TODO: Markdown export not yet implemented"
