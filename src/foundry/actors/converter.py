@@ -355,9 +355,22 @@ async def convert_to_foundry(
         # Collect all items that need icons
         items_for_icons: List[Tuple[str, Optional[List[str]]]] = []
 
-        # Add attacks (search both weapons and creatures folders)
+        # Helper: check if attack is a natural weapon
+        def is_natural_weapon(name: str) -> bool:
+            """Detect natural weapons by name (bite, claw, etc.)."""
+            natural_keywords = {
+                "bite", "claw", "gore", "tail", "slam", "sting", "tentacle",
+                "horn", "tusk", "talon", "wing", "fist", "pseudopod", "tendril"
+            }
+            name_lower = name.lower()
+            return any(keyword in name_lower for keyword in natural_keywords)
+
+        # Add attacks (natural weapons use creatures folder only, weapons use both)
         for attack in parsed_actor.attacks:
-            items_for_icons.append((attack.name, ["weapons", "creatures"]))
+            if is_natural_weapon(attack.name):
+                items_for_icons.append((attack.name, ["creatures"]))
+            else:
+                items_for_icons.append((attack.name, ["weapons", "creatures"]))
 
         # Add traits (search both magic and skills folders)
         for trait in parsed_actor.traits:
