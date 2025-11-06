@@ -1,11 +1,13 @@
 """Tests for public API facade."""
 import pytest
 from pathlib import Path
+from unittest.mock import Mock, patch
 from api import (
     APIError,
     ActorCreationResult,
     MapExtractionResult,
-    JournalCreationResult
+    JournalCreationResult,
+    create_actor
 )
 
 
@@ -68,3 +70,58 @@ def test_journal_creation_result_instantiation():
 
     assert result.journal_uuid == "JournalEntry.xyz789"
     assert result.chapter_count == 5
+
+
+@patch('api.orchestrate_create_actor_from_description_sync')
+def test_create_actor_happy_path(mock_create):
+    """Test create_actor wraps orchestrate correctly."""
+    # Mock the orchestrate function
+    from actors.models import ActorCreationResult as OrchestrateResult
+
+    mock_result = OrchestrateResult(
+        description="A fierce goblin",
+        challenge_rating=1.0,
+        raw_stat_block_text="RAW TEXT",
+        stat_block=Mock(),
+        parsed_actor_data=Mock(name="Goblin Warrior"),
+        foundry_uuid="Actor.abc123",
+        output_dir=Path("output/runs/test"),
+        raw_text_file=Path("output/runs/test/01.txt"),
+        stat_block_file=Path("output/runs/test/02.json"),
+        parsed_data_file=Path("output/runs/test/03.json"),
+        foundry_json_file=Path("output/runs/test/04.json"),
+        timestamp="2025-11-05T12:00:00",
+        model_used="gemini-2.0-flash"
+    )
+    mock_create.return_value = mock_result
+
+    # Call our API function
+    result = create_actor("A fierce goblin", challenge_rating=1.0)
+
+    # Verify it called orchestrate with correct args
+    mock_create.assert_called_once_with(
+        description="A fierce goblin",
+        challenge_rating=1.0
+    )
+
+    # Verify result is our simplified dataclass
+    assert isinstance(result, ActorCreationResult)
+    assert result.foundry_uuid == "Actor.abc123"
+    assert result.challenge_rating == 1.0
+    assert result.output_dir == Path("output/runs/test")
+
+
+@patch('api.orchestrate_create_actor_from_description_sync')
+def test_create_actor_error_handling(mock_create):
+    """Test create_actor wraps exceptions as APIError."""
+    mock_create.side_effect = ValueError("Gemini API error")
+
+    with pytest.raises(APIError, match="Failed to create actor"):
+        create_actor("broken description")
+
+    # Verify original exception is preserved
+    try:
+        create_actor("broken description")
+    except APIError as e:
+        assert isinstance(e.__cause__, ValueError)
+        assert str(e.__cause__) == "Gemini API error"
