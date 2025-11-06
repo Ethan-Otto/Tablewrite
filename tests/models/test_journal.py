@@ -126,3 +126,79 @@ class TestHierarchyModels:
         )
         assert subsubsection.title == "Test Subsubsection"
         assert subsubsection.content == []
+
+
+class TestImageRefExtraction:
+    """Test ImageRef extraction to image registry."""
+
+    def test_journal_extracts_image_refs_to_registry(self):
+        """Test that Journal._extract_image_refs() populates image_registry from XMLDocument."""
+        # Create an XMLDocument with ImageRef elements
+        xml_string = """
+<Chapter_1>
+  <page number="5">
+    <paragraph>This is a paragraph.</paragraph>
+    <image_ref key="page_5_top_battle_map" />
+    <paragraph>Another paragraph.</paragraph>
+  </page>
+  <page number="7">
+    <paragraph>Some text.</paragraph>
+    <image_ref key="page_7_illustration" />
+  </page>
+  <page number="10">
+    <image_ref key="encounter_map_goblin_cave" />
+  </page>
+</Chapter_1>
+"""
+        xml_doc = XMLDocument.from_xml(xml_string)
+
+        # Convert to Journal
+        journal = Journal.from_xml_document(xml_doc)
+
+        # Verify image_registry has been populated
+        assert len(journal.image_registry) == 3
+
+        # Verify first image ref
+        assert "page_5_top_battle_map" in journal.image_registry
+        img1 = journal.image_registry["page_5_top_battle_map"]
+        assert img1.key == "page_5_top_battle_map"
+        assert img1.source_page == 5  # Parsed from key
+        assert img1.type == "map"  # Inferred from "battle_map"
+
+        # Verify second image ref
+        assert "page_7_illustration" in journal.image_registry
+        img2 = journal.image_registry["page_7_illustration"]
+        assert img2.key == "page_7_illustration"
+        assert img2.source_page == 7  # Parsed from key
+        assert img2.type == "illustration"  # Inferred from key
+
+        # Verify third image ref (no page number in key)
+        assert "encounter_map_goblin_cave" in journal.image_registry
+        img3 = journal.image_registry["encounter_map_goblin_cave"]
+        assert img3.key == "encounter_map_goblin_cave"
+        assert img3.source_page == 10  # Falls back to actual page number
+        assert img3.type == "map"  # Inferred from "map" in key
+
+    def test_image_refs_remain_in_content_stream(self):
+        """Test that ImageRef elements stay in content (not removed during extraction)."""
+        xml_string = """
+<Chapter_1>
+  <page number="5">
+    <chapter_title>Test Chapter</chapter_title>
+    <paragraph>Before image.</paragraph>
+    <image_ref key="page_5_map" />
+    <paragraph>After image.</paragraph>
+  </page>
+</Chapter_1>
+"""
+        xml_doc = XMLDocument.from_xml(xml_string)
+        journal = Journal.from_xml_document(xml_doc)
+
+        # Verify ImageRef is in the registry
+        assert "page_5_map" in journal.image_registry
+
+        # Verify ImageRef is still in the content
+        chapter = journal.chapters[0]
+        assert len(chapter.content) == 3
+        assert chapter.content[1].type == "image_ref"
+        assert chapter.content[1].data.key == "page_5_map"

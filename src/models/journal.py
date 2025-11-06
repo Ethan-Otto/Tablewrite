@@ -94,14 +94,61 @@ class Journal(BaseModel):
     def _extract_image_refs(xml_doc: XMLDocument) -> Dict[str, ImageMetadata]:
         """Extract image references from XMLDocument and build registry.
 
+        Extracts all ImageRef elements from the XMLDocument's pages and creates
+        ImageMetadata entries for each one. The ImageRef elements remain in the
+        content stream for later rendering.
+
+        Page number parsing:
+        - If key format is "page_X_..." (e.g., "page_5_top_battle_map"), extract X
+        - Otherwise, use the actual page number where the ImageRef appears
+
+        Type inference:
+        - If key contains "battle_map" or "map": type = "map"
+        - If key contains "illustration": type = "illustration"
+        - If key contains "diagram": type = "diagram"
+        - Otherwise: type = "unknown"
+
         Args:
             xml_doc: The source XMLDocument
 
         Returns:
             Dictionary mapping image keys to ImageMetadata
         """
-        # Stub implementation - will be implemented in Task 7
-        return {}
+        import re
+        registry = {}
+
+        for page in xml_doc.pages:
+            for content in page.content:
+                if content.type == "image_ref":
+                    image_ref = content.data
+                    key = image_ref.key
+
+                    # Parse page number from key if format is page_X_...
+                    page_num_match = re.match(r'page_(\d+)_', key)
+                    if page_num_match:
+                        source_page = int(page_num_match.group(1))
+                    else:
+                        # Fall back to actual page number
+                        source_page = page.number
+
+                    # Infer type from key
+                    if "battle_map" in key or "_map" in key or key.endswith("_map"):
+                        img_type = "map"
+                    elif "illustration" in key:
+                        img_type = "illustration"
+                    elif "diagram" in key:
+                        img_type = "diagram"
+                    else:
+                        img_type = "unknown"
+
+                    # Create ImageMetadata entry
+                    registry[key] = ImageMetadata(
+                        key=key,
+                        source_page=source_page,
+                        type=img_type
+                    )
+
+        return registry
 
     @staticmethod
     def _build_hierarchy(xml_doc: XMLDocument) -> List[Chapter]:
