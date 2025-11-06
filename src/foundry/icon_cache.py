@@ -347,8 +347,8 @@ Your response (number only):"""
             filename = icon_path.split('/')[-1].rsplit('.', 1)[0]
             icon_words = set(filename.lower().split('-'))
 
-            # Check if any search words are in icon words (perfect match)
-            if search_words & icon_words:  # Set intersection
+            # Check if ALL search words are in icon words (perfect match)
+            if search_words <= icon_words:  # search_words is subset of icon_words
                 logger.info(f"Perfect word match for '{search_term}' → '{icon_path}'")
                 return icon_path
 
