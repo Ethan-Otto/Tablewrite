@@ -16,7 +16,17 @@ from models.xml_document import (
     parse_xml_string,
 )
 
+from models.journal import (
+    Chapter,
+    ImageMetadata,
+    Journal,
+    Section,
+    Subsection,
+    Subsubsection,
+)
+
 __all__ = [
+    # XMLDocument models
     "Content",
     "DefinitionItem",
     "DefinitionList",
@@ -30,4 +40,11 @@ __all__ = [
     "XMLDocument",
     "parse_xml_file",
     "parse_xml_string",
+    # Journal models
+    "Chapter",
+    "ImageMetadata",
+    "Journal",
+    "Section",
+    "Subsection",
+    "Subsubsection",
 ]
