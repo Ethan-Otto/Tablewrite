@@ -21,6 +21,7 @@ class ImageMetadata(BaseModel):
     type: str  # "map", "illustration", "diagram", etc.
     description: Optional[str] = None
     file_path: Optional[str] = None
+    insert_before_content_id: Optional[str] = None  # For repositioning images
 
 
 class Subsubsection(BaseModel):
@@ -280,3 +281,31 @@ class Journal(BaseModel):
             chapters.append(current_chapter)
 
         return chapters
+
+    def add_image(self, key: str, metadata: ImageMetadata):
+        """Add new image (scene artwork, custom, etc.) to registry.
+
+        Args:
+            key: Unique identifier for the image
+            metadata: ImageMetadata object with image details
+        """
+        self.image_registry[key] = metadata
+
+    def reposition_image(self, key: str, new_content_id: str):
+        """Move image to different location by setting insert_before_content_id.
+
+        Args:
+            key: Image key in the registry
+            new_content_id: Content ID to insert the image before
+        """
+        if key in self.image_registry:
+            self.image_registry[key].insert_before_content_id = new_content_id
+
+    def remove_image(self, key: str):
+        """Remove image from registry.
+
+        Args:
+            key: Image key to remove
+        """
+        if key in self.image_registry:
+            del self.image_registry[key]

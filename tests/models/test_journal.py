@@ -202,3 +202,115 @@ class TestImageRefExtraction:
         assert len(chapter.content) == 3
         assert chapter.content[1].type == "image_ref"
         assert chapter.content[1].data.key == "page_5_map"
+
+
+class TestImageManipulation:
+    """Test Journal image manipulation methods."""
+
+    def test_journal_add_image(self):
+        """Test that add_image() adds a new image to the registry."""
+        # Create a simple journal
+        xml_string = """
+<Chapter_1>
+  <page number="1">
+    <chapter_title>Test Chapter</chapter_title>
+    <paragraph>Some content.</paragraph>
+  </page>
+</Chapter_1>
+"""
+        xml_doc = XMLDocument.from_xml(xml_string)
+        journal = Journal.from_xml_document(xml_doc)
+
+        # Verify registry is empty initially
+        assert len(journal.image_registry) == 0
+
+        # Add a new image (e.g., scene artwork)
+        scene_img = ImageMetadata(
+            key="scene_artwork_tavern",
+            source_page=1,
+            type="illustration",
+            description="A cozy tavern interior",
+            file_path="/path/to/tavern.png"
+        )
+        journal.add_image("scene_artwork_tavern", scene_img)
+
+        # Verify image was added
+        assert len(journal.image_registry) == 1
+        assert "scene_artwork_tavern" in journal.image_registry
+        assert journal.image_registry["scene_artwork_tavern"].key == "scene_artwork_tavern"
+        assert journal.image_registry["scene_artwork_tavern"].type == "illustration"
+        assert journal.image_registry["scene_artwork_tavern"].description == "A cozy tavern interior"
+
+    def test_journal_reposition_image(self):
+        """Test that reposition_image() changes image placement."""
+        # Create a journal with an existing image
+        xml_string = """
+<Chapter_1>
+  <page number="5">
+    <chapter_title>Test Chapter</chapter_title>
+    <paragraph>Before image.</paragraph>
+    <image_ref key="page_5_map" />
+    <paragraph>After image.</paragraph>
+  </page>
+</Chapter_1>
+"""
+        xml_doc = XMLDocument.from_xml(xml_string)
+        journal = Journal.from_xml_document(xml_doc)
+
+        # Verify image exists
+        assert "page_5_map" in journal.image_registry
+        original_metadata = journal.image_registry["page_5_map"]
+
+        # Initially, insert_before_content_id should be None
+        assert original_metadata.insert_before_content_id is None
+
+        # Reposition the image to appear before a specific content ID
+        journal.reposition_image("page_5_map", "chapter_0_section_-1_content_5")
+
+        # Verify the metadata was updated
+        updated_metadata = journal.image_registry["page_5_map"]
+        assert updated_metadata.insert_before_content_id == "chapter_0_section_-1_content_5"
+
+    def test_journal_remove_image(self):
+        """Test that remove_image() deletes image from registry."""
+        # Create a journal with an existing image
+        xml_string = """
+<Chapter_1>
+  <page number="5">
+    <chapter_title>Test Chapter</chapter_title>
+    <image_ref key="page_5_map" />
+  </page>
+</Chapter_1>
+"""
+        xml_doc = XMLDocument.from_xml(xml_string)
+        journal = Journal.from_xml_document(xml_doc)
+
+        # Verify image exists
+        assert "page_5_map" in journal.image_registry
+        assert len(journal.image_registry) == 1
+
+        # Remove the image
+        journal.remove_image("page_5_map")
+
+        # Verify image was removed
+        assert "page_5_map" not in journal.image_registry
+        assert len(journal.image_registry) == 0
+
+    def test_remove_nonexistent_image_does_nothing(self):
+        """Test that removing a non-existent image doesn't raise an error."""
+        xml_string = """
+<Chapter_1>
+  <page number="1">
+    <chapter_title>Test Chapter</chapter_title>
+    <paragraph>Content.</paragraph>
+  </page>
+</Chapter_1>
+"""
+        xml_doc = XMLDocument.from_xml(xml_string)
+        journal = Journal.from_xml_document(xml_doc)
+
+        # Try to remove non-existent image
+        journal.remove_image("non_existent_key")
+
+        # Should not raise error
+        assert len(journal.image_registry) == 0
