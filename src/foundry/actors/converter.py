@@ -425,9 +425,9 @@ async def convert_to_foundry(
         weapon_icon = None
         attack_name_lower = attack.name.lower()
         if "bite" in attack_name_lower:
-            weapon_icon = "icons/creatures/abilities/bear-roar-bite-brown-green.webp"
+            weapon_icon = "icons/svg/teeth.svg"
         elif "claw" in attack_name_lower:
-            weapon_icon = "icons/weapons/fist/claw-cloth-brown.webp"
+            weapon_icon = "icons/svg/pawprint.svg"
         # 2. Use AI-selected icon if available
         elif attack.name in icon_map:
             weapon_icon = icon_map[attack.name]
