@@ -353,21 +353,19 @@ async def convert_to_foundry(
         logger.info(f"Using AI icon selection for {parsed_actor.name}...")
 
         # Collect all items that need icons
-        items_for_icons: List[Tuple[str, Optional[str]]] = []
+        items_for_icons: List[Tuple[str, Optional[List[str]]]] = []
 
-        # Add attacks (weapons)
+        # Add attacks (search both weapons and creatures folders)
         for attack in parsed_actor.attacks:
-            items_for_icons.append((attack.name, "weapons"))
+            items_for_icons.append((attack.name, ["weapons", "creatures"]))
 
-        # Add traits
+        # Add traits (search both magic and skills folders)
         for trait in parsed_actor.traits:
-            keywords = trait.name.lower().split()
-            # Use first keyword as search term
-            items_for_icons.append((trait.name, "magic"))
+            items_for_icons.append((trait.name, ["magic", "skills"]))
 
-        # Add multiattack if present
+        # Add multiattack if present (search both magic and skills folders)
         if parsed_actor.multiattack:
-            items_for_icons.append((parsed_actor.multiattack.name, "magic"))
+            items_for_icons.append((parsed_actor.multiattack.name, ["magic", "skills"]))
 
         # Batch fetch icons in parallel (perfect word match + Gemini)
         icon_results = await icon_cache.get_icons_batch(

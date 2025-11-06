@@ -5,7 +5,7 @@ import logging
 import os
 import requests
 from difflib import SequenceMatcher
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 from google import genai
 
 from util.gemini import generate_content_async
@@ -290,7 +290,7 @@ Your response (number only):"""
     async def get_icon_with_ai_fallback(
         self,
         search_term: str,
-        category: Optional[str] = None,
+        category: Optional[Union[str, List[str]]] = None,
         model_name: str = "gemini-2.0-flash"
     ) -> Optional[str]:
         """
@@ -302,7 +302,8 @@ Your response (number only):"""
 
         Args:
             search_term: Item/attack/trait name to match
-            category: Optional category to narrow search (e.g., "weapons", "magic")
+            category: Optional category or list of categories to narrow search
+                     (e.g., "weapons", ["weapons", "creatures"])
             model_name: Gemini model to use for AI selection
 
         Returns:
@@ -312,6 +313,9 @@ Your response (number only):"""
             >>> icon = await cache.get_icon_with_ai_fallback("Flame Sword", category="weapons")
             >>> # Perfect match: "sword" in "flame-sword-fire.webp"
             >>> # Or Gemini selects best from weapon icons
+
+            >>> icon = await cache.get_icon_with_ai_fallback("Claw", category=["weapons", "creatures"])
+            >>> # Searches both weapons and creatures folders
         """
         if not self._loaded:
             logger.warning("IconCache.get_icon_with_ai_fallback() called before load()")
@@ -320,9 +324,18 @@ Your response (number only):"""
         # Normalize search term and extract words
         search_words = set(search_term.lower().replace("-", " ").split())
 
-        # Determine search pool
-        if category and category in self._icons_by_category:
-            search_pool = self._icons_by_category[category]
+        # Determine search pool (merge multiple categories if list provided)
+        search_pool = []
+        if category:
+            categories = [category] if isinstance(category, str) else category
+            seen_icons = set()  # Deduplicate icons that appear in multiple categories
+
+            for cat in categories:
+                if cat in self._icons_by_category:
+                    for icon in self._icons_by_category[cat]:
+                        if icon not in seen_icons:
+                            search_pool.append(icon)
+                            seen_icons.add(icon)
         else:
             search_pool = self._all_icons
 
@@ -364,21 +377,28 @@ Your response (number only):"""
 
     async def get_icons_batch(
         self,
-        items: List[Tuple[str, Optional[str]]],
+        items: List[Tuple[str, Optional[Union[str, List[str]]]]],
         model_name: str = "gemini-2.0-flash"
     ) -> List[Optional[str]]:
         """
         Get icons for multiple items in parallel using perfect word match + AI fallback.
 
         Args:
-            items: List of (search_term, category) tuples
+            items: List of (search_term, category) tuples where category can be:
+                  - Single string: "weapons"
+                  - List of strings: ["weapons", "creatures"]
+                  - None: search all icons
             model_name: Gemini model to use for AI selection
 
         Returns:
             List of icon paths (same order as input), None for failed matches
 
         Example:
-            >>> items = [("Shortsword", "weapons"), ("Nimble Escape", "magic")]
+            >>> items = [
+            ...     ("Shortsword", "weapons"),
+            ...     ("Claw", ["weapons", "creatures"]),
+            ...     ("Nimble Escape", ["magic", "skills"])
+            ... ]
             >>> icons = await cache.get_icons_batch(items)
         """
         tasks = [
