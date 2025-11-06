@@ -30,8 +30,10 @@ from pdf_processing.pdf_to_xml import (
     is_text_legible,
     configure_gemini,
     get_legible_text_from_page,
-    get_xml_for_page
+    get_xml_for_page,
+    validate_xml_with_model
 )
+from models.xml_document import XMLDocument
 
 
 class TestXMLSanitization:
@@ -274,3 +276,113 @@ class TestErrorHandling:
         result = sanitize_xml_element_name(unicode_name)
         assert result.startswith("Chapter_")
         assert "Introducción" in result or "Introducci" in result  # Allow encoding variations
+
+
+class TestXMLDocumentValidation:
+    """Test XMLDocument model validation."""
+
+    def test_validate_valid_xml(self):
+        """Test that valid XML passes XMLDocument validation."""
+        valid_xml = """<Chapter_01>
+  <page number="1">
+    <chapter_title>Introduction</chapter_title>
+    <p>This is a paragraph with **bold** and *italic* text.</p>
+    <section>A Section</section>
+    <p>More content here.</p>
+  </page>
+</Chapter_01>"""
+
+        # Should not raise any exception
+        is_valid, error_msg = validate_xml_with_model(valid_xml)
+        assert is_valid == True
+        assert error_msg is None
+
+    def test_validate_invalid_xml_malformed(self):
+        """Test that malformed XML fails validation."""
+        invalid_xml = """<Chapter_01>
+  <page number="1">
+    <p>Unclosed paragraph
+  </page>
+</Chapter_01>"""
+
+        is_valid, error_msg = validate_xml_with_model(invalid_xml)
+        assert is_valid == False
+        assert error_msg is not None
+        assert "parse" in error_msg.lower() or "xml" in error_msg.lower()
+
+    def test_validate_xml_with_table(self):
+        """Test validation with table structure."""
+        xml_with_table = """<Chapter_Test>
+  <page number="1">
+    <section>Data Table</section>
+    <table>
+      <row>
+        <cell>Header 1</cell>
+        <cell>Header 2</cell>
+      </row>
+      <row>
+        <cell>Data 1</cell>
+        <cell>Data 2</cell>
+      </row>
+    </table>
+  </page>
+</Chapter_Test>"""
+
+        is_valid, error_msg = validate_xml_with_model(xml_with_table)
+        assert is_valid == True
+        assert error_msg is None
+
+    def test_validate_xml_with_list(self):
+        """Test validation with list structure."""
+        xml_with_list = """<Chapter_Test>
+  <page number="1">
+    <section>Items</section>
+    <list type="unordered">
+      <item>First item</item>
+      <item>Second item</item>
+      <item>Third item</item>
+    </list>
+  </page>
+</Chapter_Test>"""
+
+        is_valid, error_msg = validate_xml_with_model(xml_with_list)
+        assert is_valid == True
+        assert error_msg is None
+
+    def test_validate_xml_with_stat_block(self):
+        """Test validation with stat block."""
+        xml_with_stat_block = """<Chapter_Test>
+  <page number="1">
+    <section>Monsters</section>
+    <stat_block name="Goblin">
+GOBLIN
+Small humanoid (goblinoid), neutral evil
+
+Armor Class 15 (leather armor, shield)
+Hit Points 7 (2d6)
+Speed 30 ft.
+
+STR     DEX     CON     INT     WIS     CHA
+8 (-1)  14 (+2) 10 (+0) 10 (+0) 8 (-1)  8 (-1)
+
+Challenge 1/4 (50 XP)
+    </stat_block>
+  </page>
+</Chapter_Test>"""
+
+        is_valid, error_msg = validate_xml_with_model(xml_with_stat_block)
+        assert is_valid == True
+        assert error_msg is None
+
+    def test_validate_xml_missing_page_number(self):
+        """Test validation when page number is missing."""
+        xml_missing_page_num = """<Chapter_Test>
+  <page>
+    <p>Content without page number</p>
+  </page>
+</Chapter_Test>"""
+
+        # This should still be valid - page number defaults to "1"
+        is_valid, error_msg = validate_xml_with_model(xml_missing_page_num)
+        assert is_valid == True
+        assert error_msg is None
