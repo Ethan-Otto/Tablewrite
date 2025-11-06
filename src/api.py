@@ -7,23 +7,49 @@ This module provides the official interface for external applications
 All functions use environment variables for configuration (.env file).
 Operations are synchronous and may take several minutes for large PDFs.
 
-Example usage:
+Quick Start:
+-----------
+
     from api import create_actor, extract_maps, process_pdf_to_journal
 
     # Create actor from description
     result = create_actor("A fierce goblin warrior", challenge_rating=1.0)
-    print(f"Created actor: {result.foundry_uuid}")
+    print(f"Created: {result.name} ({result.foundry_uuid})")
 
     # Extract maps from PDF
-    maps = extract_maps("data/pdfs/module.pdf")
-    print(f"Extracted {maps.total_maps} maps")
+    maps = extract_maps("data/pdfs/module.pdf", chapter="Chapter 1")
+    for map_meta in maps.maps:
+        print(f"Found map: {map_meta['name']}")
 
-    # Process PDF to journal
+    # Process complete PDF to journal
     journal = process_pdf_to_journal(
         "data/pdfs/module.pdf",
         "Lost Mine of Phandelver"
     )
     print(f"Created journal: {journal.journal_uuid}")
+
+Error Handling:
+--------------
+
+All functions raise APIError on failure:
+
+    from api import APIError
+
+    try:
+        result = create_actor("invalid description")
+    except APIError as e:
+        logger.error(f"Failed: {e}")
+        logger.error(f"Original cause: {e.__cause__}")
+
+Configuration:
+-------------
+
+Requires .env file with:
+    - GeminiImageAPI: Google Gemini API key
+    - FOUNDRY_LOCAL_URL: FoundryVTT server URL
+    - FOUNDRY_LOCAL_API_KEY: FoundryVTT API key
+
+See CLAUDE.md for complete setup instructions.
 """
 
 import logging

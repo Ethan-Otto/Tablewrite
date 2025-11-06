@@ -6,6 +6,77 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a D&D module converter that transforms official Dungeons & Dragons PDFs into structured XML assets for post-processing into FoundryVTT content. The pipeline uses Google's Gemini 2.5 Pro model for AI-powered document analysis and extraction.
 
+## Public API
+
+The project provides a clean public API for external applications (chat UI, CLI tools).
+
+**Location:** `src/api.py`
+
+**Key Functions:**
+
+```python
+from api import create_actor, extract_maps, process_pdf_to_journal
+
+# 1. Create D&D actor from description
+result = create_actor(
+    description="A cunning kobold scout with a poisoned dagger",
+    challenge_rating=0.5
+)
+print(f"Created: {result.name} - {result.foundry_uuid}")
+# Output: Created: Kobold Scout - Actor.abc123
+
+# 2. Extract maps from PDF
+maps_result = extract_maps(
+    pdf_path="data/pdfs/module.pdf",
+    chapter="Chapter 1"
+)
+print(f"Extracted {maps_result.total_maps} maps")
+
+# 3. Process PDF to FoundryVTT journal
+journal_result = process_pdf_to_journal(
+    pdf_path="data/pdfs/module.pdf",
+    journal_name="Lost Mine of Phandelver",
+    skip_upload=False  # Set True to generate XML only
+)
+print(f"Created journal: {journal_result.journal_uuid}")
+```
+
+**Error Handling:**
+
+All functions raise `APIError` on failure:
+
+```python
+from api import APIError
+
+try:
+    result = create_actor("broken description")
+except APIError as e:
+    print(f"Failed: {e}")
+    print(f"Original error: {e.__cause__}")
+```
+
+**Return Types:**
+
+- `ActorCreationResult`: UUID, name, CR, output_dir, timestamp
+- `MapExtractionResult`: maps list, output_dir, total_maps, timestamp
+- `JournalCreationResult`: UUID, name, output_dir, chapter_count, timestamp
+
+**Configuration:**
+
+Uses environment variables from `.env` (no runtime config):
+- `GeminiImageAPI`: Gemini API key
+- `FOUNDRY_*`: FoundryVTT connection settings
+
+**Testing:**
+
+```bash
+# Unit tests (fast, use mocks)
+uv run pytest tests/api/test_api.py -v
+
+# Integration tests (real API calls, cost money)
+uv run pytest tests/api/test_api_integration.py -v -m integration
+```
+
 ## Environment Setup
 
 1. **Install uv** (if not already installed):
