@@ -226,6 +226,15 @@ registry.register(MyTool())
 - Storage: `app/output/chat_images/`
 - Endpoint: `GET /api/images/{filename}`
 
+**Actor Creation:**
+- Tool: `create_actor`
+- Parameters: `description` (required), `challenge_rating` (optional)
+- Execution time: 10-30 seconds
+- Returns: Text summary with name, CR, UUID
+- Example: "Create a fierce goblin warrior with CR 1"
+- Uses: Public API (`src/api.py`) via thread pool (non-blocking)
+- Output: Markdown-formatted text with actor details
+
 ## Development Workflow
 
 ### Making UI Changes
@@ -330,6 +339,14 @@ curl -X POST http://localhost:8000/chat \
 2. Verify `conversation_history` array in request payload
 3. Check backend logs for prompt formatting
 4. Test with simple messages first
+
+### Create Actor via Chat
+
+1. User types natural language: "Create a cunning kobold assassin"
+2. Gemini calls `create_actor` tool
+3. Backend executes in thread pool (non-blocking)
+4. Response shows actor details after 10-30 seconds
+5. User can find actor in FoundryVTT using UUID
 
 ## Known Issues & Solutions
 
