@@ -4,7 +4,7 @@ import concurrent.futures
 import fitz  # PyMuPDF
 import xml.etree.ElementTree as ET
 import re
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import tempfile
 import time
 import io
@@ -51,7 +51,7 @@ def validate_xml_tags(xml_content: str, page_number: int = None) -> Tuple[bool, 
         logger.error(f"XML parsing error during validation: {e}")
         return False, ["PARSE_ERROR"]
 
-def validate_xml_with_model(xml_content: str) -> Tuple[bool, str]:
+def validate_xml_with_model(xml_content: str) -> Tuple[bool, Optional[str]]:
     """
     Validates XML content by attempting to parse it with the XMLDocument model.
     This catches schema errors early before downstream processing.
@@ -553,6 +553,12 @@ def process_chapter(pdf_path: str, output_xml_path: str, base_log_dir: str) -> L
     logger.info(f"Validating final XML with XMLDocument model for chapter: {xml_element_name}")
     is_valid, error_msg = validate_xml_with_model(final_xml_content)
     if not is_valid:
+        # Log to dedicated validation errors file
+        error_file = os.path.join(log_dir, "validation_errors.txt")
+        with open(error_file, 'a') as f:
+            f.write(f"\n\n=== {xml_element_name} ===\n")
+            f.write(f"Validation Error: {error_msg}\n")
+            f.write(f"XML Content Preview:\n{final_xml_content[:1000]}\n")
         raise Exception(f"XMLDocument validation failed for chapter {xml_element_name}: {error_msg}")
 
     with open(output_xml_path, "w") as f:
