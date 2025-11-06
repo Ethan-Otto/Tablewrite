@@ -420,14 +420,26 @@ async def convert_to_foundry(
                 dmg_id = _generate_activity_id()
                 activities[dmg_id] = _create_ongoing_damage_activity(attack.attack_save, dmg_id)
 
-        # Select appropriate icon (from AI map if available, else fuzzy match)
-        weapon_icon = "icons/weapons/swords/scimitar-guard-purple.webp"  # Default
-        if attack.name in icon_map:
+        # Select appropriate icon
+        # 1. Check for common hardcoded natural weapons first
+        weapon_icon = None
+        attack_name_lower = attack.name.lower()
+        if "bite" in attack_name_lower:
+            weapon_icon = "icons/creatures/abilities/bear-roar-bite-brown-green.webp"
+        elif "claw" in attack_name_lower:
+            weapon_icon = "icons/weapons/fist/claw-cloth-brown.webp"
+        # 2. Use AI-selected icon if available
+        elif attack.name in icon_map:
             weapon_icon = icon_map[attack.name]
+        # 3. Fallback to fuzzy match or default
         elif icon_cache and icon_cache.loaded:
             matched_icon = icon_cache.get_icon(attack.name, category="weapons")
             if matched_icon:
                 weapon_icon = matched_icon
+
+        # Final fallback
+        if not weapon_icon:
+            weapon_icon = "icons/weapons/swords/scimitar-guard-purple.webp"
 
         # Build weapon item (v10+ structure)
         item = {
