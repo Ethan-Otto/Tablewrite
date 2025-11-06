@@ -86,7 +86,7 @@ class Content(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     id: str
-    type: Literal["paragraph", "section", "subsection", "subsubsection", "chapter_title", "table", "list", "definition_list", "stat_block", "image_ref"]
+    type: Literal["paragraph", "section", "subsection", "subsubsection", "chapter_title", "table", "list", "definition_list", "stat_block", "image_ref", "boxed_text", "footer", "page_number"]
     data: Union[str, Table, ListContent, DefinitionList, StatBlockRaw, ImageRef]
 
 
@@ -131,7 +131,8 @@ class XMLDocument(BaseModel):
 
             for idx, child in enumerate(page_elem):
                 content_id = f"page_{page_num}_content_{idx}"
-                content_type = child.tag
+                # Normalize tag names (e.g., <p> -> paragraph)
+                content_type = cls._normalize_tag(child.tag)
                 content_data = cls._parse_content_data(child)
                 content.append(Content(
                     id=content_id,
@@ -142,6 +143,21 @@ class XMLDocument(BaseModel):
             pages.append(Page(number=page_num, content=content))
 
         return cls(title=title, pages=pages)
+
+    @staticmethod
+    def _normalize_tag(tag: str) -> str:
+        """Normalize XML tag names to standard content types.
+
+        Args:
+            tag: The XML tag name
+
+        Returns:
+            Normalized content type
+        """
+        # Map <p> to "paragraph"
+        if tag == "p":
+            return "paragraph"
+        return tag
 
     @staticmethod
     def _parse_content_data(element: ET.Element) -> Union[str, Table, ListContent, DefinitionList, StatBlockRaw, ImageRef]:
@@ -169,9 +185,16 @@ class XMLDocument(BaseModel):
 
         elif element.tag == "definition_list":
             definitions = []
+            # Handle both <definition> and <definition_item> tags
             for def_elem in element.findall('definition'):
                 term_elem = def_elem.find('term')
                 desc_elem = def_elem.find('description')
+                term = term_elem.text or "" if term_elem is not None else ""
+                description = desc_elem.text or "" if desc_elem is not None else ""
+                definitions.append(DefinitionItem(term=term, description=description))
+            for def_elem in element.findall('definition_item'):
+                term_elem = def_elem.find('term')
+                desc_elem = def_elem.find('definition')
                 term = term_elem.text or "" if term_elem is not None else ""
                 description = desc_elem.text or "" if desc_elem is not None else ""
                 definitions.append(DefinitionItem(term=term, description=description))
@@ -187,8 +210,21 @@ class XMLDocument(BaseModel):
             key = element.get('key', '')
             return ImageRef(key=key)
 
+        elif element.tag in ("boxed_text", "footer"):
+            # Nested content: concatenate all child elements
+            parts = []
+            if element.text:
+                parts.append(element.text)
+            for child in element:
+                if child.text:
+                    parts.append(child.text)
+                if child.tail:
+                    parts.append(child.tail)
+            return " ".join(parts).strip()
+
         else:
             # Simple text content for paragraph, section, etc.
+            # Handle both <paragraph> and <p> tags
             return element.text or ""
 
     def to_journal_pages(self) -> List[dict]:

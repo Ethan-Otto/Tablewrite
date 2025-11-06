@@ -636,3 +636,41 @@ class TestImageRefContent:
         assert isinstance(img_ref2, ImageRef)
         assert img_ref1.key == "page_5_map_1"
         assert img_ref2.key == "page_5_map_2"
+
+
+class TestRealXMLIntegration:
+    """Test XMLDocument can parse real generated XML files."""
+
+    def test_xmldocument_parses_real_xml(self):
+        """Test XMLDocument can parse actual generated XML files.
+
+        This test validates that the XMLDocument model can handle real-world
+        XML files produced by pdf_to_xml.py. It gracefully skips if no XML
+        files are found (e.g., in fresh worktrees or CI environments).
+        """
+        # Find a real XML file from output/runs
+        xml_path = list(Path("output/runs").glob("*/documents/01_Introduction.xml"))
+        xml_file = xml_path[0] if xml_path else None
+
+        if not xml_file or not xml_file.exists():
+            pytest.skip("No real XML files found in output/runs")
+
+        # Parse the real XML file
+        xml_string = xml_file.read_text()
+        doc = XMLDocument.from_xml(xml_string)
+
+        # Validate basic structure
+        assert doc.title.startswith("Chapter_"), f"Expected title to start with 'Chapter_', got: {doc.title}"
+        assert len(doc.pages) > 0, "Document should have at least one page"
+        assert all(page.number > 0 for page in doc.pages), "All page numbers should be positive"
+        assert all(len(page.content) > 0 for page in doc.pages), "All pages should have content"
+
+        # Validate content IDs are unique across entire document
+        all_ids = [c.id for page in doc.pages for c in page.content]
+        assert len(all_ids) == len(set(all_ids)), "Content IDs must be unique across document"
+
+        # Validate page-based ID format
+        for page in doc.pages:
+            for idx, content in enumerate(page.content):
+                expected_id = f"page_{page.number}_content_{idx}"
+                assert content.id == expected_id, f"Expected ID {expected_id}, got {content.id}"
