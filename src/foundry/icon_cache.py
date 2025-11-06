@@ -361,9 +361,9 @@ Your response (number only):"""
         # No perfect match found, use Gemini
         logger.info(f"No perfect match for '{search_term}', using Gemini...")
 
-        # Get top 20 icons from category for Gemini to choose from
-        # (limit to 20 to keep prompt manageable)
-        candidate_icons = search_pool[:20] if len(search_pool) > 20 else search_pool
+        # Get top 200 icons from category for Gemini to choose from
+        # (limit to 200 to keep prompt manageable while providing good coverage)
+        candidate_icons = search_pool[:200] if len(search_pool) > 200 else search_pool
 
         gemini_choice = await self._select_icon_with_gemini(
             search_term,
