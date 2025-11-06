@@ -573,13 +573,10 @@ async def convert_to_foundry(
             }
         })
 
-        # Get icon from AI map if available, but use better default for multiattack
+        # Get icon from AI map, but override generic "Multiattack" with better hardcoded icon
         if parsed_actor.multiattack.name.lower() == "multiattack":
-            # Better default icon for generic multiattack
-            multiattack_icon = icon_map.get(
-                parsed_actor.multiattack.name,
-                "icons/skills/melee/blade-tips-triple-steel.webp"
-            )
+            # Always use combat icon for generic multiattack (don't trust AI for this common case)
+            multiattack_icon = "icons/skills/melee/blade-tips-triple-steel.webp"
         else:
             # Other special multiattacks use AI suggestion or generic default
             multiattack_icon = icon_map.get(
