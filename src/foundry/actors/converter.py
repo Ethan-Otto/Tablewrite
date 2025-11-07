@@ -136,6 +136,74 @@ def _create_ongoing_damage_activity(save: AttackSave, activity_id: str) -> dict:
     return base
 
 
+def _is_save_based_action(trait) -> bool:
+    """Detect if a trait is a save-based action (e.g., breath weapon, gaze attack)."""
+    import re
+
+    # Must be an action or bonus action (not passive)
+    if trait.activation not in ["action", "bonus"]:
+        return False
+
+    # Check description for saving throw pattern
+    desc_lower = trait.description.lower()
+    if re.search(r'dc \d+.*saving throw', desc_lower):
+        return True
+
+    return False
+
+
+def _parse_save_action(trait) -> dict:
+    """Parse save-based action description to extract save data."""
+    import re
+
+    desc = trait.description
+    result = {
+        "template_type": "cone",
+        "template_size": "",
+        "damage_parts": [],
+        "on_save": "half",
+        "save_ability": "dex",
+        "save_dc": ""
+    }
+
+    # Extract template type and size (e.g., "60-foot cone", "30-foot line")
+    template_match = re.search(r'(\d+)-foot (cone|line|cube|sphere|cylinder)', desc, re.IGNORECASE)
+    if template_match:
+        result["template_size"] = template_match.group(1)
+        result["template_type"] = template_match.group(2).lower()
+
+    # Extract damage (e.g., "63 (18d6) fire damage")
+    damage_match = re.search(r'(\d+)\s*\((\d+)d(\d+)\)\s+(\w+)\s+damage', desc, re.IGNORECASE)
+    if damage_match:
+        num_dice = int(damage_match.group(2))
+        die_size = int(damage_match.group(3))
+        damage_type = damage_match.group(4).lower()
+
+        result["damage_parts"] = [{
+            "custom": {"enabled": False, "formula": ""},
+            "number": num_dice,
+            "denomination": die_size,
+            "bonus": "",
+            "types": [damage_type],
+            "scaling": {"number": 1}
+        }]
+
+    # Extract save DC (e.g., "DC 21 Dexterity saving throw")
+    save_match = re.search(r'DC (\d+)\s+(\w+)\s+saving throw', desc, re.IGNORECASE)
+    if save_match:
+        result["save_dc"] = save_match.group(1)
+        ability = save_match.group(2).lower()[:3]  # "dex", "con", etc.
+        result["save_ability"] = ability
+
+    # Extract on-save behavior (e.g., "half as much damage on a successful one")
+    if re.search(r'half.*damage.*success', desc, re.IGNORECASE):
+        result["on_save"] = "half"
+    elif re.search(r'no.*damage.*success', desc, re.IGNORECASE):
+        result["on_save"] = "none"
+
+    return result
+
+
 async def convert_to_foundry(
     parsed_actor: ParsedActorData,
     spell_cache: Optional['SpellCache'] = None,
@@ -285,21 +353,32 @@ async def convert_to_foundry(
         logger.info(f"Using AI icon selection for {parsed_actor.name}...")
 
         # Collect all items that need icons
-        items_for_icons: List[Tuple[str, Optional[str]]] = []
+        items_for_icons: List[Tuple[str, Optional[List[str]]]] = []
 
-        # Add attacks (weapons)
+        # Helper: check if attack is a natural weapon
+        def is_natural_weapon(name: str) -> bool:
+            """Detect natural weapons by name (bite, claw, etc.)."""
+            natural_keywords = {
+                "bite", "claw", "gore", "tail", "slam", "sting", "tentacle",
+                "horn", "tusk", "talon", "wing", "fist", "pseudopod", "tendril"
+            }
+            name_lower = name.lower()
+            return any(keyword in name_lower for keyword in natural_keywords)
+
+        # Add attacks (natural weapons use creatures folder only, weapons use both)
         for attack in parsed_actor.attacks:
-            items_for_icons.append((attack.name, "weapons"))
+            if is_natural_weapon(attack.name):
+                items_for_icons.append((attack.name, ["creatures"]))
+            else:
+                items_for_icons.append((attack.name, ["weapons", "creatures"]))
 
-        # Add traits
+        # Add traits (search both magic and skills folders)
         for trait in parsed_actor.traits:
-            keywords = trait.name.lower().split()
-            # Use first keyword as search term
-            items_for_icons.append((trait.name, "magic"))
+            items_for_icons.append((trait.name, ["magic", "skills"]))
 
-        # Add multiattack if present
+        # Add multiattack if present (search both magic and skills folders)
         if parsed_actor.multiattack:
-            items_for_icons.append((parsed_actor.multiattack.name, "magic"))
+            items_for_icons.append((parsed_actor.multiattack.name, ["magic", "skills"]))
 
         # Batch fetch icons in parallel (perfect word match + Gemini)
         icon_results = await icon_cache.get_icons_batch(
@@ -322,9 +401,14 @@ async def convert_to_foundry(
     for attack in parsed_actor.attacks:
         activities = {}
 
-        # 1. Always create attack activity
-        attack_id = _generate_activity_id()
-        activities[attack_id] = _create_attack_activity(attack, attack_id)
+        # Determine if this is a save-only attack (e.g., breath weapon)
+        # Save-only attacks have attack_save but no attack roll (attack_bonus is None or 0)
+        is_save_only = attack.attack_save is not None and (attack.attack_bonus is None or attack.attack_bonus == 0)
+
+        # 1. Create attack activity (only for attacks with attack rolls)
+        if not is_save_only:
+            attack_id = _generate_activity_id()
+            activities[attack_id] = _create_attack_activity(attack, attack_id)
 
         # 2. Add save activity if present
         if attack.attack_save:
@@ -336,14 +420,26 @@ async def convert_to_foundry(
                 dmg_id = _generate_activity_id()
                 activities[dmg_id] = _create_ongoing_damage_activity(attack.attack_save, dmg_id)
 
-        # Select appropriate icon (from AI map if available, else fuzzy match)
-        weapon_icon = "icons/weapons/swords/scimitar-guard-purple.webp"  # Default
-        if attack.name in icon_map:
+        # Select appropriate icon
+        # 1. Check for common hardcoded natural weapons first
+        weapon_icon = None
+        attack_name_lower = attack.name.lower()
+        if "bite" in attack_name_lower:
+            weapon_icon = "icons/creatures/abilities/mouth-teeth-long-red.webp"
+        elif "claw" in attack_name_lower:
+            weapon_icon = "icons/creatures/claws/claw-talons-glowing-orange.webp"
+        # 2. Use AI-selected icon if available
+        elif attack.name in icon_map:
             weapon_icon = icon_map[attack.name]
+        # 3. Fallback to fuzzy match or default
         elif icon_cache and icon_cache.loaded:
             matched_icon = icon_cache.get_icon(attack.name, category="weapons")
             if matched_icon:
                 weapon_icon = matched_icon
+
+        # Final fallback
+        if not weapon_icon:
+            weapon_icon = "icons/weapons/swords/scimitar-guard-purple.webp"
 
         # Build weapon item (v10+ structure)
         item = {
@@ -391,18 +487,68 @@ async def convert_to_foundry(
         if trait.activation != "passive":
             activity_id = _generate_activity_id()
             activity = _base_activity_structure()
-            activity.update({
-                "type": "utility",
-                "_id": activity_id,
-                "sort": 0,
-                "name": "",
-                "activation": {
-                    "type": trait.activation,
-                    "value": None,
-                    "override": False,
-                    "condition": ""
-                }
-            })
+
+            # Check if this is a save-based action (breath weapon, gaze attack, etc.)
+            is_save_action = _is_save_based_action(trait)
+
+            if is_save_action:
+                # Create save activity for save-based actions
+                save_data = _parse_save_action(trait)
+                activity.update({
+                    "type": "save",
+                    "_id": activity_id,
+                    "sort": 0,
+                    "name": "",
+                    "activation": {
+                        "type": trait.activation,
+                        "value": None,
+                        "override": False,
+                        "condition": ""
+                    },
+                    "target": {
+                        "template": {
+                            "contiguous": False,
+                            "units": "ft",
+                            "type": save_data.get("template_type", "cone"),
+                            "size": str(save_data.get("template_size", "")),
+                            "count": "",
+                            "width": "5"
+                        },
+                        "affects": {
+                            "choice": False,
+                            "count": "",
+                            "type": "creature",
+                            "special": ""
+                        },
+                        "override": False,
+                        "prompt": True
+                    },
+                    "damage": {
+                        "parts": save_data.get("damage_parts", []),
+                        "onSave": save_data.get("on_save", "half")
+                    },
+                    "save": {
+                        "ability": [save_data.get("save_ability", "dex")],
+                        "dc": {
+                            "calculation": "",
+                            "formula": str(save_data.get("save_dc", ""))
+                        }
+                    }
+                })
+            else:
+                # Regular utility activity
+                activity.update({
+                    "type": "utility",
+                    "_id": activity_id,
+                    "sort": 0,
+                    "name": "",
+                    "activation": {
+                        "type": trait.activation,
+                        "value": None,
+                        "override": False,
+                        "condition": ""
+                    }
+                })
             activities[activity_id] = activity
 
         # Select appropriate icon (from AI map if available, else fuzzy match)
@@ -452,11 +598,16 @@ async def convert_to_foundry(
             }
         })
 
-        # Get icon from AI map if available
-        multiattack_icon = icon_map.get(
-            parsed_actor.multiattack.name,
-            "icons/magic/movement/trail-streak-zigzag-yellow.webp"
-        )
+        # Get icon from AI map, but override generic "Multiattack" with better hardcoded icon
+        if parsed_actor.multiattack.name.lower() == "multiattack":
+            # Always use combat icon for generic multiattack (don't trust AI for this common case)
+            multiattack_icon = "icons/skills/melee/blade-tips-triple-steel.webp"
+        else:
+            # Other special multiattacks use AI suggestion or generic default
+            multiattack_icon = icon_map.get(
+                parsed_actor.multiattack.name,
+                "icons/magic/movement/trail-streak-zigzag-yellow.webp"
+            )
 
         item = {
             "_id": _generate_activity_id(),

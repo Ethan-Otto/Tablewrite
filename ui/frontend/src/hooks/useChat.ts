@@ -36,11 +36,20 @@ export function useChat(): UseChatReturn {
     // Check if this might be an image generation request
     const isImageRequest = content.toLowerCase().match(/\b(generate|create|show|make).*(image|picture|photo|illustration)|image.*of/);
 
-    // Add loading placeholder for image requests
-    if (isImageRequest) {
+    // Check if this might be an actor creation request
+    const isActorRequest = content.toLowerCase().match(/\b(create|make|generate|summon|spawn).*(actor|creature|monster|npc|character|goblin|dragon|kobold|orc|bugbear|beast)/);
+
+    // Determine loading message
+    let loadingContent = 'Fabricating....';
+    if (isActorRequest && !isImageRequest) {
+      loadingContent = 'Fabricating actor....';
+    }
+
+    // Add loading placeholder for image or actor requests
+    if (isImageRequest || isActorRequest) {
       const loadingMessage: ChatMessage = {
         role: ChatRole.ASSISTANT,
-        content: 'Fabricating....',
+        content: loadingContent,
         timestamp: new Date().toISOString(),
         type: 'loading'
       };
@@ -76,8 +85,8 @@ export function useChat(): UseChatReturn {
 
       // Remove loading message and add real response
       setMessages(prev => {
-        // Remove the loading message if it exists
-        const filtered = isImageRequest ? prev.filter(m => m.type !== 'loading') : prev;
+        // Remove the loading message if it exists (for both image and actor requests)
+        const filtered = (isImageRequest || isActorRequest) ? prev.filter(m => m.type !== 'loading') : prev;
         return [...filtered, assistantMessage];
       });
 
