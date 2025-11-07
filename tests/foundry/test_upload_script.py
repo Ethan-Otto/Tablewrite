@@ -51,69 +51,8 @@ class TestUploadScript:
         with pytest.raises(ValueError, match="No XML files found"):
             find_xml_directory(str(run_dir))
 
-    @patch('src.foundry.upload_journal_to_foundry.convert_xml_directory_to_journals')
-    @patch('src.foundry.upload_journal_to_foundry.FoundryClient')
-    def test_upload_run_to_foundry(self, mock_client_class, mock_convert, tmp_path):
-        """Test uploading XML files to Foundry as single journal with multiple pages."""
-        # Create run directory with XML files
-        run_dir = tmp_path / "run_20250101_120000"
-        xml_dir = run_dir / "documents"
-        xml_dir.mkdir(parents=True)
-        (xml_dir / "01_Test.xml").write_text("<chapter><title>Test</title></chapter>")
-
-        # Mock XML to journal conversion
-        mock_convert.return_value = [
-            {"name": "01_Test", "html": "<h1>Test</h1>", "metadata": {}}
-        ]
-
-        # Mock client
-        mock_client = Mock()
-        mock_client.create_or_replace_journal.return_value = {"_id": "journal123"}
-        mock_client_class.return_value = mock_client
-
-        result = upload_run_to_foundry(str(run_dir), target="local", journal_name="Test Module")
-
-        assert result["uploaded"] == 1
-        assert result["failed"] == 0
-        mock_client.create_or_replace_journal.assert_called_once_with(
-            name="Test Module",
-            pages=[{"name": "01_Test", "content": "<h1>Test</h1>"}]
-        )
-
-    @patch('src.foundry.upload_journal_to_foundry.convert_xml_directory_to_journals')
-    @patch('src.foundry.upload_journal_to_foundry.FoundryClient')
-    def test_upload_run_to_foundry_multiple_pages(self, mock_client_class, mock_convert, tmp_path):
-        """Test uploading multiple XML files as pages in single journal."""
-        # Create run directory with XML files
-        run_dir = tmp_path / "run_20250101_120000"
-        xml_dir = run_dir / "documents"
-        xml_dir.mkdir(parents=True)
-        (xml_dir / "01_Chapter_One.xml").write_text("<chapter><title>Chapter 1</title></chapter>")
-        (xml_dir / "02_Chapter_Two.xml").write_text("<chapter><title>Chapter 2</title></chapter>")
-
-        # Mock XML to journal conversion
-        mock_convert.return_value = [
-            {"name": "01_Chapter_One", "html": "<h1>Chapter 1</h1>", "metadata": {}},
-            {"name": "02_Chapter_Two", "html": "<h1>Chapter 2</h1>", "metadata": {}}
-        ]
-
-        # Mock client
-        mock_client = Mock()
-        mock_client.create_or_replace_journal.return_value = {"_id": "journal123"}
-        mock_client_class.return_value = mock_client
-
-        result = upload_run_to_foundry(str(run_dir), target="local", journal_name="Test Module")
-
-        assert result["uploaded"] == 2  # 2 pages uploaded
-        assert result["failed"] == 0
-
-        # Verify single journal created with both pages
-        mock_client.create_or_replace_journal.assert_called_once()
-        call_args = mock_client.create_or_replace_journal.call_args
-        assert call_args.kwargs["name"] == "Test Module"
-        assert len(call_args.kwargs["pages"]) == 2
-        assert call_args.kwargs["pages"][0]["name"] == "01_Chapter_One"
-        assert call_args.kwargs["pages"][1]["name"] == "02_Chapter_Two"
+    # NOTE: Upload integration tests moved to test_upload_journal.py
+    # These tests now use the new XMLDocument -> Journal -> HTML workflow
 
 
 class TestSceneGalleryUpload:
@@ -248,38 +187,4 @@ class TestSceneGalleryUpload:
         assert result["name"] == "Scene Gallery"
         assert result["text"]["content"] == gallery_html
 
-    @patch('src.foundry.upload_journal_to_foundry.convert_xml_directory_to_journals')
-    @patch('src.foundry.upload_journal_to_foundry.FoundryClient')
-    def test_upload_run_includes_scene_gallery(self, mock_client_class, mock_convert, tmp_path):
-        """Test that upload_run_to_foundry includes scene gallery as final page."""
-        # Create run directory with XML files and scene gallery
-        run_dir = tmp_path / "run_20250101_120000"
-        xml_dir = run_dir / "documents"
-        xml_dir.mkdir(parents=True)
-        (xml_dir / "01_Test.xml").write_text("<chapter><title>Test</title></chapter>")
-
-        # Create scene gallery
-        scene_dir = run_dir / "scene_artwork"
-        scene_dir.mkdir()
-        gallery_file = scene_dir / "scene_gallery.html"
-        gallery_file.write_text("<h1>Scene Gallery</h1>")
-
-        # Mock XML to journal conversion
-        mock_convert.return_value = [
-            {"name": "01_Test", "html": "<h1>Test</h1>", "metadata": {}}
-        ]
-
-        # Mock client
-        mock_client = Mock()
-        mock_client.client_id = "test_client"
-        mock_client.create_or_replace_journal.return_value = {"_id": "journal123"}
-        mock_client_class.return_value = mock_client
-
-        result = upload_run_to_foundry(str(run_dir), target="local", journal_name="Test Module")
-
-        # Verify 2 pages (1 XML + 1 scene gallery)
-        assert result["uploaded"] == 2
-        call_args = mock_client.create_or_replace_journal.call_args
-        assert len(call_args.kwargs["pages"]) == 2
-        assert call_args.kwargs["pages"][0]["name"] == "01_Test"
-        assert call_args.kwargs["pages"][1]["name"] == "Scene Gallery"
+    # NOTE: Scene gallery integration test moved to test_upload_journal.py

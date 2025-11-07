@@ -6,6 +6,7 @@ Centralized module for all Google Generative AI (Gemini) interactions.
 
 import asyncio
 import os
+import concurrent.futures
 from typing import Optional, Any
 from google import genai
 from dotenv import load_dotenv
@@ -98,16 +99,20 @@ class GeminiAPI:
 
         self.client.files.delete(name=file_name)
 
-    def generate_content(self, prompt: str, file_obj: Optional[Any] = None) -> Any:
+    def generate_content(self, prompt: str, file_obj: Optional[Any] = None, timeout: float = 120.0) -> Any:
         """
         Generate content using Gemini.
 
         Args:
             prompt: Text prompt
             file_obj: Optional file object (from upload_file)
+            timeout: Timeout in seconds (default: 120 seconds / 2 minutes)
 
         Returns:
             Response object with .text attribute
+
+        Raises:
+            TimeoutError: If the API call exceeds the timeout
         """
         if not self._configured:
             raise RuntimeError("Gemini API not configured.")
@@ -117,10 +122,20 @@ class GeminiAPI:
         else:
             contents = [prompt]
 
-        return self.client.models.generate_content(
-            model=self.model_name,
-            contents=contents
-        )
+        # Wrap the synchronous API call with a timeout
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(
+                self.client.models.generate_content,
+                model=self.model_name,
+                contents=contents
+            )
+            try:
+                return future.result(timeout=timeout)
+            except concurrent.futures.TimeoutError:
+                future.cancel()
+                raise TimeoutError(
+                    f"Gemini API call exceeded timeout of {timeout} seconds"
+                )
 
 
 class GeminiFileContext:

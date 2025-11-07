@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from foundry.client import FoundryClient
-from foundry.xml_to_journal_html import convert_xml_directory_to_journals
+from models import XMLDocument, Journal, parse_xml_file
 from logging_config import setup_logging
 
 logger = setup_logging(__name__)
@@ -73,6 +73,46 @@ def find_xml_directory(run_dir: str) -> str:
         return str(run_path)
 
     raise ValueError(f"No XML files found in run directory: {run_dir}")
+
+
+def build_image_mapping(run_dir: Path) -> Dict[str, str]:
+    """
+    Build image mapping from map_assets and scene_artwork directories.
+
+    Scans for images in:
+    - run_dir/map_assets/images/
+    - run_dir/scene_artwork/images/
+
+    Args:
+        run_dir: Path to run directory
+
+    Returns:
+        Dictionary mapping image keys (filename without extension) to file paths
+    """
+    image_mapping = {}
+
+    # Check map_assets directory
+    map_assets_dir = run_dir / "map_assets" / "images"
+    if map_assets_dir.exists():
+        for image_file in map_assets_dir.iterdir():
+            if image_file.suffix.lower() in ['.png', '.jpg', '.jpeg']:
+                # Use filename without extension as key
+                key = image_file.stem
+                image_mapping[key] = str(image_file)
+                logger.debug(f"  Added map asset: {key} -> {image_file.name}")
+
+    # Check scene_artwork directory
+    scene_artwork_dir = run_dir / "scene_artwork" / "images"
+    if scene_artwork_dir.exists():
+        for image_file in scene_artwork_dir.iterdir():
+            if image_file.suffix.lower() in ['.png', '.jpg', '.jpeg']:
+                # Use filename without extension as key
+                key = image_file.stem
+                image_mapping[key] = str(image_file)
+                logger.debug(f"  Added scene artwork: {key} -> {image_file.name}")
+
+    logger.info(f"Built image mapping with {len(image_mapping)} images")
+    return image_mapping
 
 
 def upload_scene_gallery(client: FoundryClient, run_dir: Path) -> Optional[Dict[str, Any]]:
@@ -142,9 +182,11 @@ def upload_run_to_foundry(
 
     This is a pipeline function that:
     1. Finds XML files in the run directory
-    2. Converts them to journal HTML using xml_to_journal_html module
-    3. Uploads to FoundryVTT using client module
-    4. Optionally uploads scene gallery if present
+    2. Converts them to Journal using XMLDocument and Journal models
+    3. Builds image mapping from map_assets and scene_artwork
+    4. Renders Journal to HTML using to_foundry_html()
+    5. Uploads to FoundryVTT using client module
+    6. Optionally uploads scene gallery if present
 
     Args:
         run_dir: Path to run directory (contains documents/ with XML files)
@@ -164,18 +206,50 @@ def upload_run_to_foundry(
         logger.error(str(e))
         return {"uploaded": 0, "failed": 0, "errors": [str(e)]}
 
-    # Convert XML to journal data using foundry module
-    try:
-        journals = convert_xml_directory_to_journals(xml_dir)
-        logger.info(f"Converted {len(journals)} XML files to journal pages")
-    except Exception as e:
-        error_msg = f"Failed to convert XML files: {e}"
-        logger.error(error_msg)
-        return {"uploaded": 0, "failed": 0, "errors": [error_msg]}
+    # Get all XML files
+    xml_files = list(Path(xml_dir).glob("*.xml"))
+    if not xml_files:
+        logger.warning("No XML files found")
+        return {"uploaded": 0, "failed": 0}
 
-    if not journals:
+    logger.info(f"Found {len(xml_files)} XML file(s)")
+
+    # Build image mapping from map_assets and scene_artwork
+    run_path = Path(run_dir)
+    image_mapping = build_image_mapping(run_path)
+
+    # Convert XML files to Journal pages using XMLDocument and Journal models
+    pages = []
+    for xml_file in xml_files:
+        try:
+            # Parse XML file to XMLDocument
+            xml_doc = parse_xml_file(xml_file)
+            logger.debug(f"  Parsed {xml_file.name} -> {xml_doc.title}")
+
+            # Convert XMLDocument to Journal
+            journal = Journal.from_xml_document(xml_doc)
+
+            # Render Journal to HTML using to_foundry_html()
+            html = journal.to_foundry_html(image_mapping)
+
+            # Create page dict for FoundryVTT
+            pages.append({
+                "name": xml_doc.title,
+                "content": html
+            })
+
+            logger.debug(f"  Converted {xml_file.name} to HTML ({len(html)} chars)")
+
+        except Exception as e:
+            error_msg = f"Failed to process {xml_file.name}: {e}"
+            logger.error(error_msg)
+            return {"uploaded": 0, "failed": 0, "errors": [error_msg]}
+
+    if not pages:
         logger.warning("No journal pages to upload")
         return {"uploaded": 0, "failed": 0}
+
+    logger.info(f"Converted {len(pages)} XML file(s) to journal pages")
 
     # Determine journal name
     if not journal_name:
@@ -185,17 +259,7 @@ def upload_run_to_foundry(
     # Initialize client
     client = FoundryClient(target=target)
 
-    # Build pages list from journal data
-    pages = [
-        {
-            "name": journal["name"],
-            "content": journal["html"]
-        }
-        for journal in journals
-    ]
-
     # Add scene gallery page if present
-    run_path = Path(run_dir)
     gallery_page = upload_scene_gallery(client, run_path)
     if gallery_page:
         pages.append(gallery_page)

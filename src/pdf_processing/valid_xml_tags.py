@@ -27,11 +27,6 @@ APPROVED_XML_TAGS = {
 
     # Monsters/Stats
     'stat_block',  # D&D 5e stat blocks (raw text preserved)
-    'monster', 'name', 'size', 'type', 'alignment',
-    'armor_class', 'hit_points', 'speed',
-    'strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma',
-    'skills', 'senses', 'languages', 'challenge_rating',
-    'abilities', 'actions',
 
     # Definition lists
     'definition_list', 'definition_item', 'term', 'definition',
@@ -49,12 +44,6 @@ TAGS_BY_CATEGORY = {
     "Tables": ['table', 'table_row', 'table_cell'],
     "Monsters": [
         'stat_block',  # D&D 5e stat blocks (raw text)
-        'monster', 'name', 'size', 'type', 'alignment',
-        'armor_class', 'hit_points', 'speed',
-        'strength', 'dexterity', 'constitution',
-        'intelligence', 'wisdom', 'charisma',
-        'skills', 'senses', 'languages', 'challenge_rating',
-        'abilities', 'actions'
     ],
     "Definition Lists": ['definition_list', 'definition_item', 'term', 'definition'],
 }

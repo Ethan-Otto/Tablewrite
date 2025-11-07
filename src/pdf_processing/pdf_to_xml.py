@@ -4,7 +4,7 @@ import concurrent.futures
 import fitz  # PyMuPDF
 import xml.etree.ElementTree as ET
 import re
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import tempfile
 import time
 import io
@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from logging_config import setup_logging, get_run_logger
 from util.gemini import GeminiAPI, GeminiFileContext
 from pdf_processing.valid_xml_tags import APPROVED_XML_TAGS, get_approved_tags_text
+from models.xml_document import XMLDocument
 
 # Project root is three levels up from the script's directory (pdf_processing -> src -> root)
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -49,6 +50,33 @@ def validate_xml_tags(xml_content: str, page_number: int = None) -> Tuple[bool, 
     except ET.ParseError as e:
         logger.error(f"XML parsing error during validation: {e}")
         return False, ["PARSE_ERROR"]
+
+def validate_xml_with_model(xml_content: str) -> Tuple[bool, Optional[str]]:
+    """
+    Validates XML content by attempting to parse it with the XMLDocument model.
+    This catches schema errors early before downstream processing.
+
+    Args:
+        xml_content: The XML content string to validate
+
+    Returns:
+        Tuple of (is_valid, error_message)
+        - is_valid: True if XML is valid and can be parsed by XMLDocument model
+        - error_message: None if valid, otherwise contains error details
+    """
+    try:
+        # Attempt to parse with XMLDocument model
+        XMLDocument.from_xml(xml_content)
+        logger.debug("XML content successfully validated with XMLDocument model")
+        return True, None
+    except ET.ParseError as e:
+        error_msg = f"XML parsing error: {str(e)}"
+        logger.error(f"XMLDocument validation failed: {error_msg}")
+        return False, error_msg
+    except Exception as e:
+        error_msg = f"XMLDocument model validation error: {str(e)}"
+        logger.error(f"XMLDocument validation failed: {error_msg}")
+        return False, error_msg
 
 def configure_gemini():
     """Configures the Gemini API with the API key from environment variables."""
@@ -510,7 +538,7 @@ def process_chapter(pdf_path: str, output_xml_path: str, base_log_dir: str) -> L
     except AttributeError:
         pass
     final_xml_content = ET.tostring(chapter_root, encoding='unicode')
-    
+
     with open(os.path.join(log_dir, "final_unverified.xml"), "w") as f:
         f.write(final_xml_content)
 
@@ -520,6 +548,18 @@ def process_chapter(pdf_path: str, output_xml_path: str, base_log_dir: str) -> L
         if "Final word count mismatch" in str(e):
             final_xml_content = verify_and_correct_xml(final_xml_content, pdf_text, xml_element_name, log_dir)
             verify_final_word_count(pdf_path, final_xml_content, log_dir)
+
+    # Validate XML with XMLDocument model before saving
+    logger.info(f"Validating final XML with XMLDocument model for chapter: {xml_element_name}")
+    is_valid, error_msg = validate_xml_with_model(final_xml_content)
+    if not is_valid:
+        # Log to dedicated validation errors file
+        error_file = os.path.join(log_dir, "validation_errors.txt")
+        with open(error_file, 'a') as f:
+            f.write(f"\n\n=== {xml_element_name} ===\n")
+            f.write(f"Validation Error: {error_msg}\n")
+            f.write(f"XML Content Preview:\n{final_xml_content[:1000]}\n")
+        raise Exception(f"XMLDocument validation failed for chapter {xml_element_name}: {error_msg}")
 
     with open(output_xml_path, "w") as f:
         f.write(final_xml_content)
