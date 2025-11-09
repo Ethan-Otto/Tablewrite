@@ -48,3 +48,35 @@ def test_add_map_assets_positions_images_near_source_page():
     # Critical assertion: different source pages MUST get different positions
     assert img_meta_5.insert_before_content_id != img_meta_8.insert_before_content_id, \
         "Images from different pages should not have the same position"
+
+
+def test_add_scene_artwork_positions_at_sections():
+    """Test that scene artwork is positioned at section/subsection boundaries."""
+    xml_path = Path("tests/fixtures/sample_chapter.xml")
+    xml_doc = parse_xml_file(xml_path)
+    journal = Journal.from_xml_document(xml_doc)
+
+    # Simulate scene metadata from generate_scene_art.py
+    scenes = [
+        {
+            "section_path": "Chapter 1: Goblin Arrows → Goblin Ambush",
+            "name": "Forest Road Ambush",
+            "description": "A dense forest path with overturned wagon"
+        },
+        {
+            "section_path": "Chapter 1: Goblin Arrows → The Cragmaw Hideout → Area 1: Cave Entrance",
+            "name": "Cave Entrance",
+            "description": "Rocky cave entrance with twin pools"
+        }
+    ]
+
+    # Add scene artwork
+    journal.add_scene_artwork(scenes, image_dir=Path("output/runs/test/scene_artwork/images"))
+
+    # Verify scenes were added to registry
+    assert "scene_forest_road_ambush" in journal.image_registry
+    assert "scene_cave_entrance" in journal.image_registry
+
+    # Verify positioning: should be at subsection boundaries
+    img_meta = journal.image_registry["scene_forest_road_ambush"]
+    assert img_meta.insert_before_content_id is not None

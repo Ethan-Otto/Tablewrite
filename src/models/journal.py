@@ -401,6 +401,105 @@ class Journal(BaseModel):
                     return section.content[0].id
         return None
 
+    def add_scene_artwork(self, scenes: List[Dict], image_dir):
+        """Add scene artwork to image registry with intelligent positioning.
+
+        Positions scenes at section/subsection boundaries by fuzzy-matching
+        section_path to Journal hierarchy.
+
+        Args:
+            scenes: List of scene dicts with section_path, name, description
+            image_dir: Path to scene_artwork/images directory (can be str or Path)
+        """
+        import re
+        from pathlib import Path
+
+        image_dir = Path(image_dir)
+
+        for i, scene in enumerate(scenes, start=1):
+            # Generate key from scene name
+            safe_name = re.sub(r'[^\w\s-]', '', scene["name"].lower())
+            safe_name = re.sub(r'[-\s]+', '_', safe_name)
+            key = f"scene_{safe_name}"
+
+            # Find file path (format: scene_NNN_name.png)
+            file_path = None
+            for image_file in image_dir.glob(f"scene_{i:03d}_*.png"):
+                file_path = image_file
+                break
+
+            # Create ImageMetadata
+            metadata = ImageMetadata(
+                key=key,
+                source_page=0,  # Scene artwork doesn't have source page
+                type="illustration",
+                description=scene.get("description"),
+                file_path=str(file_path) if file_path else None
+            )
+
+            # Find insertion point by matching section_path
+            insert_id = self._find_section_by_path(scene["section_path"])
+            if insert_id:
+                metadata.insert_before_content_id = insert_id
+
+            self.image_registry[key] = metadata
+
+    def _find_section_by_path(self, section_path: str) -> Optional[str]:
+        """Find content ID for a section by fuzzy-matching section_path.
+
+        Section path format: "Chapter Title → Section Title → Subsection Title"
+
+        Args:
+            section_path: Hierarchical path from scene extraction
+
+        Returns:
+            Content ID of first content in matched section/subsection
+        """
+        import re
+
+        # Parse section path
+        parts = [p.strip() for p in section_path.split("→")]
+        if len(parts) < 2:
+            return None
+
+        chapter_title = parts[0]
+        section_title = parts[1] if len(parts) > 1 else None
+        subsection_title = parts[2] if len(parts) > 2 else None
+
+        # Normalize titles for fuzzy matching (lowercase, remove punctuation)
+        def normalize(text):
+            return re.sub(r'[^\w\s]', '', text.lower())
+
+        chapter_norm = normalize(chapter_title)
+
+        # Find matching chapter
+        for chapter in self.chapters:
+            if normalize(chapter.title) == chapter_norm:
+                # If only chapter specified, insert at first section
+                if not section_title:
+                    if chapter.sections and chapter.sections[0].content:
+                        return chapter.sections[0].content[0].id
+                    return None
+
+                # Find matching section
+                section_norm = normalize(section_title)
+                for section in chapter.sections:
+                    if normalize(section.title) == section_norm:
+                        # If only chapter + section, insert at first content
+                        if not subsection_title:
+                            if section.content:
+                                return section.content[0].id
+                            return None
+
+                        # Find matching subsection
+                        subsection_norm = normalize(subsection_title)
+                        for subsection in section.subsections:
+                            if normalize(subsection.title) == subsection_norm:
+                                if subsection.content:
+                                    return subsection.content[0].id
+
+        return None
+
     def to_foundry_html(self, image_mapping: Optional[Dict[str, str]] = None) -> str:
         """Export journal to FoundryVTT-ready HTML format.
 
