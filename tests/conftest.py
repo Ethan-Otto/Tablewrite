@@ -4,8 +4,45 @@ Shared pytest fixtures for D&D Module Converter tests.
 
 import os
 import shutil
+import sys
 import pytest
 from pathlib import Path
+
+
+def pytest_addoption(parser):
+    """Add --full flag to run entire test suite"""
+    parser.addoption(
+        "--full",
+        action="store_true",
+        default=False,
+        help="Run full test suite (skip smoke-only mode)"
+    )
+
+
+def pytest_configure(config):
+    """Configure test run based on flags"""
+    if config.getoption("--full"):
+        # Override default -m "smoke" behavior
+        config.option.markexpr = ""  # Run all tests
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Auto-escalate to full suite if smoke tests fail"""
+    # Check if auto-escalation is enabled
+    auto_escalate = os.getenv("AUTO_ESCALATE", "true").lower() == "true"
+
+    # Check if we're already running full suite
+    is_full_run = session.config.getoption("--full") or not session.config.option.markexpr
+
+    # Only escalate if: smoke mode + failures + auto-escalate enabled
+    if not is_full_run and exitstatus != 0 and auto_escalate:
+        print("\n" + "="*70)
+        print("⚠️  Smoke tests failed. Running full test suite...")
+        print("="*70 + "\n")
+
+        # Re-run pytest with full suite
+        sys.exit(pytest.main(["--full"] + sys.argv[1:]))
+
 
 # Project root
 PROJECT_ROOT = Path(__file__).parent.parent
