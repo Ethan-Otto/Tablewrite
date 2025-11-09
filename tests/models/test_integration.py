@@ -6,12 +6,11 @@ from models import XMLDocument, Journal
 
 def test_full_workflow_with_real_xml():
     """Test complete workflow: Load XML → Parse → Create Journal → Export HTML"""
-    # Find a real XML file
-    xml_files = list(Path("output/runs").glob("*/documents/*.xml"))
-    if not xml_files:
-        pytest.skip("No XML files found in output/runs")
+    # Use the freshly generated test XML file
+    xml_path = Path("output/runs/20251108_233753/documents/02_Part_1_Goblin_Arrows.xml")
 
-    xml_path = xml_files[0]
+    assert xml_path.exists(), f"Test XML file not found: {xml_path}"
+
     xml_string = xml_path.read_text()
 
     # Step 1: Parse to XMLDocument

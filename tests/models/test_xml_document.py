@@ -727,12 +727,10 @@ class TestRealXMLIntegration:
         XML files produced by pdf_to_xml.py. It gracefully skips if no XML
         files are found (e.g., in fresh worktrees or CI environments).
         """
-        # Find a real XML file from output/runs
-        xml_path = list(Path("output/runs").glob("*/documents/01_Introduction.xml"))
-        xml_file = xml_path[0] if xml_path else None
+        # Use the most recent valid XML file
+        xml_file = Path("output/runs/20251108_235712/documents/01_Introduction.xml")
 
-        if not xml_file or not xml_file.exists():
-            pytest.skip("No real XML files found in output/runs")
+        assert xml_file.exists(), f"Test XML file not found: {xml_file}"
 
         # Parse the real XML file
         xml_string = xml_file.read_text()

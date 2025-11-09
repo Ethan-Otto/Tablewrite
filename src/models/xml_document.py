@@ -154,10 +154,12 @@ class XMLDocument(BaseModel):
         Returns:
             Normalized content type
         """
-        # Map <p> to "paragraph"
-        if tag == "p":
-            return "paragraph"
-        return tag
+        # Map legacy/alternative tag names to standard content types
+        tag_mapping = {
+            "p": "paragraph",
+            "heading": "section",  # Legacy XML files use <heading> for sections
+        }
+        return tag_mapping.get(tag, tag)
 
     @staticmethod
     def _parse_content_data(element: ET.Element) -> Union[str, Table, ListContent, DefinitionList, StatBlockRaw, ImageRef]:

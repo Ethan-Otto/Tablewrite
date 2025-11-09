@@ -17,7 +17,7 @@ APPROVED_XML_TAGS = {
     'p', 'boxed_text',
 
     # Formatting (used internally, converted to Markdown)
-    'b', 'i', 'italic', 'bold', 'em', 'strong',
+    'b', 'i', 'italic', 'bold', 'em', 'strong', 'br',
 
     # Lists
     'list', 'item',
