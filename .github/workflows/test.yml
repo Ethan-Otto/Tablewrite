@@ -34,9 +34,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y tesseract-ocr
 
-      - name: Create .env file with API key
+      - name: Create .env file with API keys
         run: |
           echo "GeminiImageAPI=${{ secrets.GEMINI_API_KEY }}" > .env
+          echo "FOUNDRY_RELAY_URL=${{ secrets.FOUNDRY_RELAY_URL }}" >> .env
+          echo "FOUNDRY_LOCAL_URL=${{ secrets.FOUNDRY_LOCAL_URL }}" >> .env
+          echo "FOUNDRY_LOCAL_API_KEY=${{ secrets.FOUNDRY_LOCAL_API_KEY }}" >> .env
+          echo "FOUNDRY_LOCAL_CLIENT_ID=${{ secrets.FOUNDRY_LOCAL_CLIENT_ID }}" >> .env
 
       - name: Run all tests (including integration)
         run: |
