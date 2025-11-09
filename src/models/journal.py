@@ -740,3 +740,138 @@ class Journal(BaseModel):
             Markdown string (currently a placeholder)
         """
         return "TODO: Markdown export not yet implemented"
+
+    def export_standalone_html(self, output_dir) -> str:
+        """Export journal as standalone HTML with embedded images.
+
+        Creates a self-contained HTML export with images copied to a local directory.
+        Useful for viewing/sharing journals without FoundryVTT.
+
+        Directory structure created:
+            output_dir/
+                journal.html       - Main HTML file
+                images/            - Copied image files
+                    *.png
+
+        Args:
+            output_dir: Path to output directory (can be str or Path)
+
+        Returns:
+            Path to generated journal.html file
+
+        Raises:
+            ValueError: If output_dir creation fails
+        """
+        from pathlib import Path
+        import shutil
+
+        output_dir = Path(output_dir)
+        images_dir = output_dir / "images"
+
+        # Create directories
+        output_dir.mkdir(parents=True, exist_ok=True)
+        images_dir.mkdir(exist_ok=True)
+
+        # Build image mapping with relative paths and copy images
+        image_mapping = {}
+        for key, metadata in self.image_registry.items():
+            if metadata.file_path:
+                source_path = Path(metadata.file_path)
+                if source_path.exists():
+                    # Copy to images directory
+                    dest_path = images_dir / source_path.name
+                    shutil.copy2(source_path, dest_path)
+                    # Use relative path in HTML
+                    image_mapping[key] = f"images/{source_path.name}"
+
+        # Generate HTML content
+        html_content = self.to_foundry_html(image_mapping)
+
+        # Wrap in complete HTML document with styling
+        full_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{self.title}</title>
+    <style>
+        body {{
+            font-family: 'Bookman Old Style', Georgia, serif;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5dc;
+            color: #2c1810;
+            line-height: 1.6;
+        }}
+        h1 {{
+            color: #8b4513;
+            border-bottom: 3px solid #8b4513;
+            padding-bottom: 10px;
+            font-size: 2.5em;
+        }}
+        h2 {{
+            color: #a0522d;
+            margin-top: 40px;
+            font-size: 2em;
+            border-bottom: 2px solid #cd853f;
+        }}
+        h3 {{
+            color: #cd853f;
+            margin-top: 30px;
+            font-size: 1.5em;
+        }}
+        h4 {{
+            color: #d2691e;
+            margin-top: 20px;
+            font-size: 1.2em;
+        }}
+        p {{
+            margin: 15px 0;
+            text-align: justify;
+        }}
+        img {{
+            display: block;
+            max-width: 100%;
+            height: auto;
+            margin: 30px auto;
+            border: 3px solid #8b4513;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            border-radius: 4px;
+        }}
+        table {{
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+            background: white;
+        }}
+        table td {{
+            border: 1px solid #8b4513;
+            padding: 8px;
+        }}
+        aside {{
+            background: #fffaf0 !important;
+            border-left: 4px solid #8b4513 !important;
+            padding: 15px 20px !important;
+            margin: 20px 0 !important;
+            font-style: italic;
+        }}
+        ul, ol {{
+            margin: 15px 0;
+            padding-left: 40px;
+        }}
+        li {{
+            margin: 8px 0;
+        }}
+    </style>
+</head>
+<body>
+{html_content}
+</body>
+</html>"""
+
+        # Write to file
+        output_file = output_dir / "journal.html"
+        output_file.write_text(full_html, encoding='utf-8')
+
+        return str(output_file)
