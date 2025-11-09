@@ -503,7 +503,33 @@ Logs are written to both console and `<run_dir>/pdf_to_xml.log` for the main con
 
 ## Testing
 
-The project includes a comprehensive pytest test suite that mirrors the `src/` directory structure:
+The project includes a comprehensive test suite with 417 tests.
+
+**Quick Start:**
+
+```bash
+# Default: Smoke tests only (~6 tests, <2 min)
+pytest
+
+# Full test suite (~417 tests, ~35 min)
+pytest --full
+
+# Disable auto-escalation on failure
+AUTO_ESCALATE=false pytest
+```
+
+**Test Organization:**
+
+- **Smoke tests** (`@pytest.mark.smoke`): 6 critical tests covering major features
+- **Integration tests** (`@pytest.mark.integration`): Real API calls (Gemini, FoundryVTT)
+- **Unit tests** (`@pytest.mark.unit`): Fast, no external dependencies
+- **Slow tests** (`@pytest.mark.slow`): Long-running operations
+
+**Auto-escalation:** If smoke tests fail, the full suite runs automatically (disable with `AUTO_ESCALATE=false`)
+
+### Test Structure
+
+The pytest test suite mirrors the `src/` directory structure:
 
 ```
 tests/

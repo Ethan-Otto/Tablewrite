@@ -794,14 +794,51 @@ tests/
 └── output/test_runs/        # Persistent test output (NOT auto-cleaned)
 ```
 
+### Smoke Test Workflow
+
+**Default behavior:** Running `pytest` now executes only smoke tests (~6 tests, <2 min)
+
+**Smoke test markers:** Applied to critical tests covering major features:
+- PDF Processing: `test_full_pipeline_with_models`
+- Actor Creation: `test_full_pipeline_end_to_end`
+- FoundryVTT Integration: `test_create_and_delete`
+- XMLDocument Parsing: `test_xmldocument_parses_real_xml`
+- Image Asset Processing: `test_extract_maps_integration`
+- Public API: `test_create_actor_integration`
+
+**Auto-escalation:** If smoke tests fail, automatically runs full suite (set `AUTO_ESCALATE=false` to disable)
+
+**Usage:**
+```bash
+# Default: smoke tests only (<2 min)
+pytest
+
+# Full suite manually
+pytest --full
+
+# Disable auto-escalation
+AUTO_ESCALATE=false pytest
+
+# Run specific marker (overrides default)
+pytest -m integration
+```
+
 ### Running Tests
 
 ```bash
+# Smoke tests only (fast, <2 min) - DEFAULT
+pytest
+pytest -v
+
+# Full suite (comprehensive, ~35 min)
+pytest --full
+pytest --full -v
+
+# Disable auto-escalation
+AUTO_ESCALATE=false pytest
+
 # Unit tests only (fast, no API calls)
 uv run pytest -m "not integration and not slow"
-
-# All tests including Gemini API integration
-uv run pytest
 
 # Specific test file
 uv run pytest tests/pdf_processing/test_split_pdf.py -v
@@ -809,6 +846,7 @@ uv run pytest tests/pdf_processing/test_split_pdf.py -v
 
 ### Test Markers
 
+- `@pytest.mark.smoke`: Critical smoke tests (one per major feature)
 - `@pytest.mark.unit`: Fast unit tests (no external dependencies)
 - `@pytest.mark.integration`: Real Gemini API calls (consume quota, cost money)
 - `@pytest.mark.slow`: Slow tests (API calls, large file processing)
