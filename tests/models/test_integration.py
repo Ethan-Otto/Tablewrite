@@ -10,8 +10,7 @@ def test_full_workflow_with_real_xml():
     # Use test fixture XML file
     xml_path = Path("tests/fixtures/xml/02_Part_1_Goblin_Arrows.xml")
 
-    if not xml_path.exists():
-        pytest.skip(f"Test XML file not found: {xml_path}")
+    assert xml_path.exists(), f"Test XML file not found: {xml_path}"
 
     xml_string = xml_path.read_text()
 
