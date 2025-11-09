@@ -13,9 +13,10 @@ from pathlib import Path
 from models import XMLDocument, Journal, ImageRef, StatBlockRaw
 
 
+@pytest.mark.smoke
 @pytest.mark.integration
 def test_full_pipeline_with_models():
-    """Test complete Phase 2 workflow: XML → XMLDocument → Journal → HTML
+    """Smoke test: Validates entire PDF→XML→Journal→HTML workflow
 
     This is the end-to-end test validating:
     - XMLDocument parsing from real XML files

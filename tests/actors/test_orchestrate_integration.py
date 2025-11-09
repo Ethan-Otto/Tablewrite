@@ -11,10 +11,13 @@ from actors.models import ActorCreationResult
 class TestActorOrchestrationIntegration:
     """Integration tests for full actor creation pipeline."""
 
+    @pytest.mark.smoke
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_full_pipeline_end_to_end(self, tmp_path):
         """
+        Smoke test: End-to-end actor creation from description
+
         Test complete pipeline from description to FoundryVTT.
 
         NOTE: This test currently expects generate_actor_description() to be implemented.
