@@ -4,10 +4,13 @@ from pathlib import Path
 from api import create_actor, extract_maps, process_pdf_to_journal, APIError
 
 
+@pytest.mark.smoke
 @pytest.mark.integration
 @pytest.mark.slow
 def test_create_actor_integration(check_api_key, check_foundry_credentials):
-    """Test create_actor with real Gemini API."""
+    """Smoke test: End-to-end actor creation via public API
+
+    Test create_actor with real Gemini API."""
     result = create_actor(
         "A simple goblin scout with a shortbow",
         challenge_rating=0.25
@@ -24,10 +27,13 @@ def test_create_actor_integration(check_api_key, check_foundry_credentials):
     assert (result.output_dir / "04_foundry_actor.json").exists()
 
 
+@pytest.mark.smoke
 @pytest.mark.integration
 @pytest.mark.slow
 def test_extract_maps_integration(test_pdf_path, check_api_key):
-    """Test extract_maps with real PDF."""
+    """Smoke test: Map extraction from PDF via public API
+
+    Test extract_maps with real PDF."""
     result = extract_maps(str(test_pdf_path))
 
     # May not have maps, but should complete without error

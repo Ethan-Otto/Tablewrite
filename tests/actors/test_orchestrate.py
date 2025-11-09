@@ -128,6 +128,7 @@ class TestSaveIntermediateFile:
 class TestCreateActorPipeline:
     """Test main actor creation pipeline."""
 
+    @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_pipeline_calls_all_steps(self, tmp_path):
         """Test that pipeline calls all 5 steps in order."""
@@ -234,6 +235,7 @@ class TestBatchCreation:
         with pytest.raises(ValueError, match="same length"):
             await create_actors_batch(descriptions, challenge_ratings=crs)
 
+    @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_batch_creates_tasks_for_all_descriptions(self, tmp_path):
         """Test that batch creates one task per description."""
@@ -265,6 +267,7 @@ class TestBatchCreation:
             call_kwargs = mock_gather.call_args.kwargs
             assert call_kwargs.get('return_exceptions') is True
 
+    @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_batch_returns_exceptions_for_failures(self, tmp_path):
         """Test that individual failures are captured as exceptions."""
@@ -302,6 +305,7 @@ class TestBatchCreation:
                 assert isinstance(results[1], ValueError)
                 assert results[2] == mock_result3
 
+    @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_batch_uses_provided_resources(self, tmp_path):
         """Test that batch uses pre-loaded resources if provided."""
@@ -328,6 +332,7 @@ class TestBatchCreation:
                 assert kwargs['spell_cache'] is mock_cache
                 assert kwargs['foundry_client'] is mock_client
 
+    @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_batch_creates_resources_if_not_provided(self, tmp_path):
         """Test that batch creates resources if not provided."""
@@ -356,6 +361,7 @@ class TestBatchCreation:
             assert mock_cache.load.called
             assert mock_client_class.called
 
+    @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_batch_with_challenge_ratings(self, tmp_path):
         """Test batch processing with challenge ratings."""

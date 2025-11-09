@@ -720,15 +720,17 @@ Armor Class 15
 class TestRealXMLIntegration:
     """Test XMLDocument can parse real generated XML files."""
 
+    @pytest.mark.smoke
+    @pytest.mark.integration
     def test_xmldocument_parses_real_xml(self):
-        """Test XMLDocument can parse actual generated XML files.
+        """Smoke test: Parse real XML files from pdf_to_xml.py
 
         This test validates that the XMLDocument model can handle real-world
         XML files produced by pdf_to_xml.py. It gracefully skips if no XML
         files are found (e.g., in fresh worktrees or CI environments).
         """
-        # Use the most recent valid XML file
-        xml_file = Path("output/runs/20251108_235712/documents/01_Introduction.xml")
+        # Use test fixture XML file
+        xml_file = Path("tests/fixtures/xml/01_Introduction.xml")
 
         assert xml_file.exists(), f"Test XML file not found: {xml_file}"
 

@@ -4,8 +4,68 @@ Shared pytest fixtures for D&D Module Converter tests.
 
 import os
 import shutil
+import sys
 import pytest
 from pathlib import Path
+
+
+def pytest_addoption(parser):
+    """Add --full flag to run entire test suite"""
+    parser.addoption(
+        "--full",
+        action="store_true",
+        default=False,
+        help="Run full test suite (skip smoke-only mode)"
+    )
+
+
+def pytest_configure(config):
+    """Configure test run based on flags"""
+    if config.getoption("--full"):
+        # Only clear default marker if no explicit -m flag was provided
+        # Check if markexpr is the default from pytest.ini
+        if config.option.markexpr == "(not integration and not slow) or smoke":
+            config.option.markexpr = ""  # Run all tests
+
+
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    """Store test outcomes on items for later inspection."""
+    outcome = yield
+    rep = outcome.get_result()
+    setattr(item, f"rep_{rep.when}", rep)
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Auto-escalate to full suite if smoke tests fail"""
+    # Check if auto-escalation is enabled
+    auto_escalate = os.getenv("AUTO_ESCALATE", "true").lower() == "true"
+
+    # Check if we're already running full suite or using default markers
+    is_full_run = session.config.getoption("--full")
+    is_default_markers = session.config.option.markexpr == "not integration and not slow"
+
+    # Only escalate if a SMOKE test specifically failed
+    if not is_full_run and is_default_markers and exitstatus != 0 and auto_escalate:
+        # Check if any failed tests have the "smoke" marker
+        smoke_test_failed = False
+        for item in session.items:
+            if item.get_closest_marker("smoke"):
+                # Check if test failed (check setup, call, or teardown)
+                if (hasattr(item, "rep_setup") and item.rep_setup.failed) or \
+                   (hasattr(item, "rep_call") and item.rep_call.failed) or \
+                   (hasattr(item, "rep_teardown") and item.rep_teardown.failed):
+                    smoke_test_failed = True
+                    break
+
+        if smoke_test_failed:
+            print("\n" + "="*70)
+            print("⚠️  Smoke test failed. Running full test suite (including slow/integration)...")
+            print("="*70 + "\n")
+
+            # Re-run pytest with full suite
+            sys.exit(pytest.main(["--full"] + sys.argv[1:]))
+
 
 # Project root
 PROJECT_ROOT = Path(__file__).parent.parent

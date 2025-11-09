@@ -123,10 +123,13 @@ class TestFoundryIntegration:
 
         return FoundryClient(target="local")
 
+    @pytest.mark.smoke
     @pytest.mark.integration
     @pytest.mark.slow
     def test_create_and_delete(self, real_client):
-        """Test basic create and delete workflow (minimal API calls)."""
+        """Smoke test: Basic FoundryVTT journal CRUD operations
+
+        Test basic create and delete workflow (minimal API calls)."""
         journal_name = "Integration Test Create Delete"
 
         # 1. CREATE (1 API call)
