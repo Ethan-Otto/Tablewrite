@@ -45,3 +45,4 @@ dev_output/
 # Pytest outputs
 test-results.xml
 .pytest_cache/
+github.secrets
