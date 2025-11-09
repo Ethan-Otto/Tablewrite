@@ -6,7 +6,7 @@ Journal is mutable and owns the image registry for managing image references.
 """
 
 from typing import List, Dict, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 from models.xml_document import XMLDocument, Content
 
@@ -64,6 +64,7 @@ class Journal(BaseModel):
     chapters: List[Chapter] = Field(default_factory=list)
     image_registry: Dict[str, ImageMetadata] = Field(default_factory=dict)
     source: Optional[XMLDocument] = Field(default=None, exclude=True)
+    _page_to_semantic_id_map: Dict[str, str] = PrivateAttr(default_factory=dict)
 
     @classmethod
     def from_xml_document(cls, xml_doc: XMLDocument) -> 'Journal':
@@ -81,15 +82,18 @@ class Journal(BaseModel):
         # Extract image references and build registry
         image_registry = cls._extract_image_refs(xml_doc)
 
-        # Build semantic hierarchy from pages
-        chapters = cls._build_hierarchy(xml_doc)
+        # Build semantic hierarchy from pages and capture ID mapping
+        chapters, id_map = cls._build_hierarchy(xml_doc)
 
-        return cls(
+        journal = cls(
             title=xml_doc.title,
             chapters=chapters,
             image_registry=image_registry,
             source=xml_doc
         )
+        journal._page_to_semantic_id_map = id_map
+
+        return journal
 
     @staticmethod
     def _extract_image_refs(xml_doc: XMLDocument) -> Dict[str, ImageMetadata]:
@@ -152,7 +156,7 @@ class Journal(BaseModel):
         return registry
 
     @staticmethod
-    def _build_hierarchy(xml_doc: XMLDocument) -> List[Chapter]:
+    def _build_hierarchy(xml_doc: XMLDocument) -> tuple[List[Chapter], Dict[str, str]]:
         """Build semantic hierarchy from page-based XMLDocument structure.
 
         Converts flat page structure to hierarchical structure where sections
@@ -162,9 +166,11 @@ class Journal(BaseModel):
             xml_doc: The source XMLDocument
 
         Returns:
-            List of Chapter objects with nested hierarchy
+            Tuple of (chapters, id_map) where id_map maps original page-based IDs
+            to new semantic IDs (e.g., "page_5_content_3" -> "chapter_0_section_2_content_5")
         """
         chapters = []
+        id_map = {}  # Maps original ID -> semantic ID
         current_chapter = None
         current_section = None
         current_subsection = None
@@ -253,6 +259,10 @@ class Journal(BaseModel):
                     new_id = f"chapter_{chapter_idx}_section_{section_idx}_content_{content_counter}"
                     content_counter += 1
 
+                    # Track the ID mapping (original -> semantic)
+                    if content.id:
+                        id_map[content.id] = new_id
+
                     # Create new content with reassigned ID
                     new_content = Content(
                         id=new_id,
@@ -280,7 +290,7 @@ class Journal(BaseModel):
         if current_chapter is not None:
             chapters.append(current_chapter)
 
-        return chapters
+        return chapters, id_map
 
     def add_image(self, key: str, metadata: ImageMetadata):
         """Add new image (scene artwork, custom, etc.) to registry.
@@ -356,13 +366,14 @@ class Journal(BaseModel):
     def _find_content_after_page(self, page_num: int) -> Optional[str]:
         """Find the first content ID that appears after a given source page.
 
-        Uses source XMLDocument to map page numbers to content IDs.
+        Uses source XMLDocument to find content on the page, then maps the original
+        page-based ID to the semantic ID using the stored mapping.
 
         Args:
             page_num: Source page number (1-indexed)
 
         Returns:
-            Content ID or None if not found
+            Semantic content ID or None if not found
         """
         if not self.source:
             return None
@@ -374,11 +385,11 @@ class Journal(BaseModel):
                 for content in page.content:
                     if content.type not in ["chapter_title", "section", "subsection", "subsubsection"]:
                         # Map original page-based ID to semantic ID
-                        # This requires reverse lookup in the Journal hierarchy
-                        # For now, we'll use a heuristic: first content in next section
-                        return self._get_first_content_id_heuristic()
+                        if content.id and content.id in self._page_to_semantic_id_map:
+                            return self._page_to_semantic_id_map[content.id]
 
-        return None
+        # Fallback: if we can't find a matching page, use heuristic
+        return self._get_first_content_id_heuristic()
 
     def _get_first_content_id_heuristic(self) -> Optional[str]:
         """Get first content ID as fallback heuristic."""

@@ -36,7 +36,15 @@ def test_add_map_assets_positions_images_near_source_page():
     assert "page_005_goblin_ambush" in journal.image_registry
     assert "page_008_cragmaw_hideout" in journal.image_registry
 
-    # Verify positioning: should be at first content after page 5
-    img_meta = journal.image_registry["page_005_goblin_ambush"]
-    assert img_meta.insert_before_content_id is not None
-    assert "chapter_0_section" in img_meta.insert_before_content_id
+    # Verify positioning: different pages should get different positions
+    img_meta_5 = journal.image_registry["page_005_goblin_ambush"]
+    img_meta_8 = journal.image_registry["page_008_cragmaw_hideout"]
+
+    assert img_meta_5.insert_before_content_id is not None
+    assert img_meta_8.insert_before_content_id is not None
+    assert "chapter_0_section" in img_meta_5.insert_before_content_id
+    assert "chapter_0_section" in img_meta_8.insert_before_content_id
+
+    # Critical assertion: different source pages MUST get different positions
+    assert img_meta_5.insert_before_content_id != img_meta_8.insert_before_content_id, \
+        "Images from different pages should not have the same position"
