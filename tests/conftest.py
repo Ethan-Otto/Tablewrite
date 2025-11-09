@@ -24,7 +24,7 @@ def pytest_configure(config):
     if config.getoption("--full"):
         # Only clear default marker if no explicit -m flag was provided
         # Check if markexpr is the default from pytest.ini
-        if config.option.markexpr == "not integration and not slow":
+        if config.option.markexpr == "(not integration and not slow) or smoke":
             config.option.markexpr = ""  # Run all tests
 
 

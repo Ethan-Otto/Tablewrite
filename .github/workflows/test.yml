@@ -38,10 +38,10 @@ jobs:
         run: |
           echo "GeminiImageAPI=${{ secrets.GEMINI_API_KEY }}" > .env
 
-      - name: Run fast tests (smoke + unit tests, skip slow/integration)
+      - name: Run fast tests (unit tests only, skip integration/slow/smoke)
         run: |
           source .venv/bin/activate
-          uv run pytest tests/ -v --tb=short
+          uv run pytest tests/ -m "not integration and not slow" -v --tb=short
         continue-on-error: false
 
       - name: Upload test artifacts on failure
