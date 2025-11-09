@@ -1,6 +1,28 @@
 # D&D Module Converter
 
-Utilities for turning official Dungeons & Dragons PDFs into structured assets that can be post-processed into FoundryVTT content. The current pipeline extracts chapter PDFs, feeds them through Gemini for XML generation, and renders quick HTML previews for review.
+Utilities for turning official Dungeons & Dragons PDFs into structured assets that can be post-processed into FoundryVTT content. The pipeline uses Google's Gemini 2.5 Pro for AI-powered document analysis, extracting chapters, stat blocks, NPCs, maps, and scenes into structured XML, then uploading complete journal entries and actors to FoundryVTT.
+
+## Public API
+
+The project provides a clean public API for external applications (chat UI, CLI tools) located in `src/api.py`:
+
+```python
+from api import create_actor, extract_maps, process_pdf_to_journal
+
+# Create D&D actor from natural language description
+result = create_actor(description="A cunning kobold scout with a poisoned dagger", challenge_rating=0.5)
+print(f"Created: {result.name} - {result.foundry_uuid}")
+
+# Extract maps from PDF
+maps_result = extract_maps(pdf_path="data/pdfs/module.pdf", chapter="Chapter 1")
+print(f"Extracted {maps_result.total_maps} maps")
+
+# Process PDF to FoundryVTT journal
+journal_result = process_pdf_to_journal(pdf_path="data/pdfs/module.pdf", journal_name="Lost Mine of Phandelver")
+print(f"Created journal: {journal_result.journal_uuid}")
+```
+
+All functions raise `APIError` on failure and use environment variables from `.env` for configuration. See `tests/api/` for usage examples.
 
 ## Layout
 - `src/pdf_processing/` – PDF processing scripts:
@@ -22,12 +44,26 @@ Utilities for turning official Dungeons & Dragons PDFs into structured assets th
   - `identify_scenes.py` – scene location identification using Gemini
   - `generate_artwork.py` – AI image generation using Gemini Imagen
   - `create_gallery.py` – HTML gallery generation with collapsible prompts
+- `src/actors/` – Actor/NPC extraction and creation:
+  - `models.py` – Pydantic models (StatBlock, NPC)
+  - `parse_stat_blocks.py` – parse stat blocks from XML using Gemini
+  - `extract_npcs.py` – extract named NPCs from XML
+  - `orchestrate.py` – complete actor creation pipeline from natural language
+  - `process_actors.py` – batch processing for PDF workflows
 - `src/foundry/` – FoundryVTT integration:
   - `client.py` – REST API client base class
   - `journals.py` – `JournalManager` class for journal CRUD operations
+  - `actors/` – Actor management:
+    - `models.py` – ParsedActorData and FoundryVTT-specific models
+    - `spell_cache.py` – SpellCache for resolving spell UUIDs
+    - `converter.py` – convert parsed actors to FoundryVTT JSON
+    - `manager.py` – ActorManager for create/update/delete operations
   - `upload_to_foundry.py` – batch upload script for journals
   - `export_from_foundry.py` – export journals from FoundryVTT to HTML/JSON
-- `scripts/full_pipeline.py` – complete pipeline: split → XML generation → upload → export
+- `src/models/` – Core data models:
+  - `xml_document.py` – XMLDocument model (immutable, page-based XML representation)
+  - `journal.py` – Journal model (mutable, semantic hierarchy with image registry)
+- `scripts/full_pipeline.py` – complete pipeline: split → XML generation → actors → upload → export
 - `scripts/generate_scene_art.py` – scene artwork generation orchestration script
 - `src/logging_config.py` – centralized logging configuration
 - `xml_examples/` – reference markup while refining the converters
@@ -43,12 +79,13 @@ Utilities for turning official Dungeons & Dragons PDFs into structured assets th
 
 **Full Pipeline (recommended):**
 ```bash
-# Complete workflow: split → XML → upload → export
+# Complete workflow: split → XML → actors → upload → export
 uv run python scripts/full_pipeline.py --journal-name "Lost Mine of Phandelver"
 
 # Skip steps as needed
-uv run python scripts/full_pipeline.py --skip-split --skip-xml  # Only upload + export
-uv run python scripts/full_pipeline.py --skip-export             # Skip final export
+uv run python scripts/full_pipeline.py --skip-split --skip-xml  # Only actors + upload + export
+uv run python scripts/full_pipeline.py --skip-actors             # Skip actor/NPC extraction
+uv run python scripts/full_pipeline.py --actors-only --run-dir output/runs/20241023_143022  # Process actors only
 ```
 
 **Individual Steps:**
@@ -131,9 +168,63 @@ The UI uses hot module replacement for fast development:
 
 See `ui/CLAUDE.md` for detailed architecture documentation, component breakdown, and development guidelines.
 
+## Actor/NPC Extraction & Creation
+
+The project automatically extracts and creates D&D 5e actors and NPCs from module PDFs or natural language descriptions.
+
+### From Natural Language (API)
+
+```python
+from api import create_actor
+
+# Create actor from description
+result = create_actor(
+    description="A fierce red dragon wyrmling with fire breath",
+    challenge_rating=2.0
+)
+print(f"Created: {result.name} - {result.foundry_uuid}")
+```
+
+### From PDF (Pipeline)
+
+```bash
+# Full pipeline with actors
+uv run python scripts/full_pipeline.py --journal-name "Lost Mine of Phandelver"
+
+# Process actors only from existing run
+uv run python scripts/full_pipeline.py --actors-only --run-dir output/runs/20241023_143022
+```
+
+### Processing Pipeline
+
+```
+PDF → XML (with <stat_block> tags)
+    ↓
+parse_stat_blocks.py (Gemini → StatBlock models)
+    ↓
+extract_npcs.py (Gemini → NPC models)
+    ↓
+ActorManager (creates FoundryVTT Actors)
+```
+
+### Actor Types
+
+1. **Creature Actors**: Full stat blocks (AC, HP, abilities, actions, spells) - reuses compendium actors if name matches
+2. **NPC Actors**: Named characters with bio (description, plot role, location) - links to creature stat block via @UUID
+
+### Key Features
+
+- **Two-Stage Parsing**: Basic extraction (StatBlock) → detailed parsing (ParsedActorData with attacks, traits, spells)
+- **Spell Resolution**: SpellCache resolves spell names to compendium UUIDs for accurate spell data
+- **FoundryVTT v10+ Activities**: Proper activity structure for attacks, saves, and damage
+- **Batch Creation**: Process multiple actors in parallel with shared resources
+- **Output Artifacts**: Saves raw text, JSON models, and FoundryVTT JSON for debugging
+
+See `src/actors/` and `src/foundry/actors/` for implementation details.
+
 ## FoundryVTT Integration
 
-The project includes optional integration for uploading generated HTML content directly to FoundryVTT as journal entries.
+The project includes full integration for uploading journal entries and actors directly to FoundryVTT via REST API.
 
 ### Setup
 
@@ -168,10 +259,11 @@ The project includes optional integration for uploading generated HTML content d
 
 ### Features
 
-- **Create or Replace**: Automatically searches for existing journals by name and replaces them (no duplicates)
+- **Journals**: Create/replace journals with proper pages structure (FoundryVTT v10+)
+- **Actors**: Create/update creatures and NPCs with stat blocks, spells, and traits
 - **Export Support**: Download journals from FoundryVTT as HTML or JSON
-- **UUID-based Operations**: Proper UUID handling for all journal operations
-- **Pages Structure**: Compatible with FoundryVTT v10+ pages architecture
+- **UUID-based Operations**: Proper UUID handling for all operations
+- **Self-Hosted Relay**: Uses local relay server (`relay-server/`) for development - see `docs/RELAY_SERVER_SETUP.md`
 - **Dual Environment Support**: Works with both local FoundryVTT and The Forge
 
 ### Architecture
@@ -182,6 +274,50 @@ The integration uses the ThreeHats REST API module with a relay server:
 **JournalManager Pattern:**
 - `src/foundry/journals.py` - `JournalManager` class handles all journal CRUD operations
 - `src/foundry/client.py` - Base `FoundryClient` delegates to specialized managers
+
+## Core Data Models: XMLDocument & Journal
+
+The project uses two core Pydantic models representing different pipeline stages:
+
+**XMLDocument** (`src/models/xml_document.py`):
+- **Immutable** representation of raw XML output from Gemini
+- **Page-based structure**: `XMLDocument → Page[] → Content[]`
+- Direct parsing from XML strings/files
+- Round-trip serialization to XML
+
+**Journal** (`src/models/journal.py`):
+- **Mutable** working representation with semantic hierarchy
+- **Chapter-based structure**: `Journal → Chapter[] → Section[] → Subsection[]`
+- Transforms flat page structure into semantic hierarchy
+- Manages image registry for all image references
+- Reassigns content IDs from `page_X_content_Y` to `chapter_A_section_B_content_C`
+- Exports to HTML, Markdown, or FoundryVTT-ready HTML
+
+**Data Flow:**
+```
+PDF → XML (Gemini) → XMLDocument.from_xml() → Journal.from_xml_document() → journal.to_foundry_html() → FoundryVTT
+```
+
+**Usage Example:**
+```python
+from models.xml_document import parse_xml_file
+from models.journal import Journal, ImageMetadata
+
+# Parse XML to XMLDocument
+xml_doc = parse_xml_file("output/runs/20241023_143022/documents/Chapter_1.xml")
+
+# Convert to Journal with semantic hierarchy
+journal = Journal.from_xml_document(xml_doc)
+
+# Add custom scene artwork
+journal.add_image(key="scene_goblin_ambush", metadata=ImageMetadata(...))
+journal.reposition_image(key="scene_goblin_ambush", new_content_id="chapter_0_section_2_content_0")
+
+# Export to FoundryVTT HTML
+html = journal.to_foundry_html(image_mapping={"scene_goblin_ambush": "https://..."})
+```
+
+See `src/models/` for full API documentation.
 
 ## Scene Artwork Generation
 
@@ -373,21 +509,28 @@ The project includes a comprehensive pytest test suite that mirrors the `src/` d
 tests/
 ├── conftest.py              # Shared fixtures and configuration
 ├── test_main.py             # End-to-end pipeline tests (PDF → XML → HTML)
+├── api/                     # Tests for public API
+│   ├── test_api.py         # Unit tests for api.py
+│   └── test_api_integration.py # Integration tests with real Gemini calls
 ├── pdf_processing/          # Tests for PDF processing scripts
 │   ├── test_split_pdf.py   # PDF splitting tests
 │   ├── test_pdf_to_xml.py  # XML generation tests
-│   ├── test_get_toc.py     # TOC extraction tests
-│   └── test_xml_to_html.py # HTML conversion tests
+│   └── test_get_toc.py     # TOC extraction tests
+├── actors/                  # Tests for actor extraction and creation
+│   ├── test_models.py      # StatBlock and NPC model tests
+│   ├── test_parse_stat_blocks.py # Stat block parsing tests
+│   └── test_orchestrate.py # Actor creation orchestration tests
 ├── scene_extraction/        # Tests for scene extraction and artwork
 │   ├── test_extract_context.py    # Context extraction tests
 │   ├── test_identify_scenes.py    # Scene identification tests
-│   ├── test_generate_artwork.py   # Image generation tests
-│   ├── test_create_gallery.py     # Gallery HTML generation tests
-│   └── test_real_api.py            # Real API integration tests (Gemini & Imagen)
+│   └── test_generate_artwork.py   # Image generation tests
 └── foundry/                 # Tests for FoundryVTT integration
     ├── test_client.py       # FoundryClient API tests
-    ├── test_upload_script.py # Upload script tests
-    └── test_xml_to_journal_html.py # XML to journal converter tests
+    ├── actors/              # Tests for actor management
+    │   ├── test_models.py  # ParsedActorData model tests
+    │   ├── test_spell_cache.py # SpellCache tests
+    │   └── test_converter.py # Actor converter tests
+    └── test_upload_script.py # Upload script tests
 ```
 
 ### Running Tests
@@ -437,23 +580,32 @@ GitHub Actions automatically runs the full test suite on all pull requests. See 
 - GitHub Actions runs all tests automatically on pull requests
 
 ### Current Status
-✅ **Full Pipeline**: Complete workflow from PDF → XML → FoundryVTT → HTML export
-✅ **FoundryVTT Integration**: Upload, export, create/replace journals with UUID-based operations
-✅ **Scene Artwork Generation**: AI-powered scene extraction and image generation with Gemini Imagen
-✅ **Bug Fixes**: Mixed XML content handling, improved heading hierarchy detection
+✅ **Full Pipeline**: PDF → XML → Actors → Maps → Scenes → FoundryVTT upload → Export
+✅ **Public API**: Clean Python API for external applications (`api.py`)
+✅ **Actor/NPC Extraction**: Automatic extraction and creation of creatures and NPCs from PDFs
+✅ **Actor Creation**: Create D&D 5e actors from natural language descriptions
+✅ **XMLDocument & Journal Models**: Immutable and mutable data models for document processing
+✅ **FoundryVTT Integration**: Full journal and actor CRUD operations via REST API
+✅ **Scene Artwork Generation**: AI-powered scene extraction and image generation
+✅ **Map Asset Extraction**: Hybrid PyMuPDF + Imagen segmentation for battle maps
+✅ **Web UI**: Chat interface with Gemini integration
+✅ **Self-Hosted Relay**: Local relay server for development
+✅ **Comprehensive Testing**: 50+ tests with unit and integration coverage
 
 ### Recent Updates
-- **Scene Artwork Generation** (`scripts/generate_scene_art.py`): AI-powered scene extraction, image generation with Gemini Imagen, and HTML gallery creation with collapsible prompts
-- **Location-Aware Context**: Each scene tagged with location type (underground/outdoor/interior) for accurate image generation
-- **Parallel Image Processing**: ThreadPoolExecutor with 5 workers for fast concurrent generation
-- **Full Pipeline Script** (`scripts/full_pipeline.py`): Orchestrates all 4 stages with skip flags
-- **Journal Export**: Download journals from FoundryVTT as HTML or JSON
-- **JournalManager Refactor**: Specialized manager class for journal operations
-- **XML Mixed Content Fix**: Properly handles bare text + child elements in definitions
-- **Improved Prompts**: Better heading hierarchy detection (context over font size)
+- **Public API** (`src/api.py`): Clean API for `create_actor()`, `extract_maps()`, `process_pdf_to_journal()`
+- **Actor Creation Orchestration** (`src/actors/orchestrate.py`): Complete pipeline from natural language → FoundryVTT actors
+- **Two-Stage Actor Parsing**: Basic StatBlock extraction → detailed ParsedActorData with attacks, traits, spells
+- **SpellCache** (`src/foundry/actors/spell_cache.py`): Resolve spell names to compendium UUIDs
+- **XMLDocument & Journal Models** (`src/models/`): Immutable page-based and mutable semantic hierarchy models
+- **Map Asset Extraction** (`src/pdf_processing/image_asset_processing/`): Hybrid extraction with AI classification
+- **Scene Artwork Generation** (`scripts/generate_scene_art.py`): Parallel image generation with Gemini Imagen
+- **Self-Hosted Relay Server** (`relay-server/`): Docker-based local development relay
+- **Actor Manager** (`src/foundry/actors/manager.py`): Create/update actors with spell integration
 
 ### Future Work
-- Normalize XML schema for consistent journal structure
-- Attach media assets (images, maps) to journal entries
+- Attach scene artwork and maps to journal entries automatically
 - Build complete FoundryVTT module manifest exporter
-- Add folder organization for journal entries
+- Add folder organization for journal entries and actors
+- Item extraction and creation (weapons, armor, magic items)
+- Spell extraction from module custom spells

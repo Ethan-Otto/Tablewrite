@@ -860,3 +860,5 @@ Based on git history:
 - Consider adding pytest suites under `tests/` directory
 - Mock Gemini calls for offline testing
 - Use fixtures from `xml_examples/` or trimmed pages
+- "whenever creating a new worktree cp the .env file
+- If there is a failure, report with big red X, especially if you plan on showing greencheck marks
