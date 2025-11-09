@@ -22,22 +22,25 @@ def pytest_addoption(parser):
 def pytest_configure(config):
     """Configure test run based on flags"""
     if config.getoption("--full"):
-        # Override default -m "smoke" behavior
-        config.option.markexpr = ""  # Run all tests
+        # Only clear default marker if no explicit -m flag was provided
+        # Check if markexpr is the default from pytest.ini
+        if config.option.markexpr == "smoke or (not integration and not slow)":
+            config.option.markexpr = ""  # Run all tests
 
 
 def pytest_sessionfinish(session, exitstatus):
-    """Auto-escalate to full suite if smoke tests fail"""
+    """Auto-escalate to full suite if default fast tests fail"""
     # Check if auto-escalation is enabled
     auto_escalate = os.getenv("AUTO_ESCALATE", "true").lower() == "true"
 
-    # Check if we're already running full suite
-    is_full_run = session.config.getoption("--full") or not session.config.option.markexpr
+    # Check if we're already running full suite or using default markers
+    is_full_run = session.config.getoption("--full")
+    is_default_markers = session.config.option.markexpr == "smoke or (not integration and not slow)"
 
-    # Only escalate if: smoke mode + failures + auto-escalate enabled
-    if not is_full_run and exitstatus != 0 and auto_escalate:
+    # Only escalate if: default markers + failures + auto-escalate enabled
+    if not is_full_run and is_default_markers and exitstatus != 0 and auto_escalate:
         print("\n" + "="*70)
-        print("⚠️  Smoke tests failed. Running full test suite...")
+        print("⚠️  Fast tests failed. Running full test suite (including slow/integration)...")
         print("="*70 + "\n")
 
         # Re-run pytest with full suite

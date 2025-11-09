@@ -4,6 +4,7 @@ from pathlib import Path
 from models import XMLDocument, Journal
 
 
+@pytest.mark.integration
 def test_full_workflow_with_real_xml():
     """Test complete workflow: Load XML → Parse → Create Journal → Export HTML"""
     # Use test fixture XML file
