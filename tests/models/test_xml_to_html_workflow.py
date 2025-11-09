@@ -1,11 +1,11 @@
-"""End-to-end integration tests for Phase 2: PDF → XML → XMLDocument → Journal → HTML workflow.
+"""Integration tests for XML → XMLDocument → Journal → HTML transformation workflow.
 
-This test suite validates the complete Phase 2 pipeline:
-1. XML parsing with XMLDocument models
-2. Stat block extraction using XMLDocument
-3. Image reference extraction
-4. Journal conversion from XMLDocument
-5. HTML generation for FoundryVTT
+This test suite validates the complete document model pipeline:
+1. XML parsing to XMLDocument models
+2. Stat block extraction from XMLDocument
+3. Image reference extraction and registry management
+4. Journal creation from XMLDocument with semantic hierarchy
+5. HTML generation for FoundryVTT from Journal
 """
 
 import pytest
@@ -15,14 +15,14 @@ from models import XMLDocument, Journal, ImageRef, StatBlockRaw
 
 @pytest.mark.smoke
 @pytest.mark.integration
-def test_full_pipeline_with_models():
-    """Smoke test: Validates entire PDF→XML→Journal→HTML workflow
+def test_xml_document_to_journal_to_html_complete_workflow():
+    """Smoke test: Validates complete XML→XMLDocument→Journal→HTML transformation
 
-    This is the end-to-end test validating:
+    This end-to-end test validates:
     - XMLDocument parsing from real XML files
-    - Journal creation from XMLDocument
+    - Journal creation from XMLDocument with semantic hierarchy
     - HTML export with image mapping
-    - Round-trip XML serialization
+    - Round-trip XML serialization preserves data
     """
     # Use the freshly generated test XML file
     xml_path = Path("output/runs/20251108_233753/documents/02_Part_1_Goblin_Arrows.xml")
@@ -66,12 +66,12 @@ def test_full_pipeline_with_models():
 
 
 @pytest.mark.integration
-def test_stat_block_extraction_from_real_xml():
-    """Test stat block extraction using XMLDocument models.
+def test_xmldocument_extracts_stat_blocks_from_xml():
+    """Test XMLDocument correctly extracts and preserves stat blocks from XML.
 
     Validates:
-    - StatBlockRaw extraction from XML
-    - Stat block name and raw_text preservation
+    - StatBlockRaw extraction from XML <stat_block> tags
+    - Stat block name and xml_element preservation
     - Integration with XMLDocument parser
     """
     # Find a real XML file with stat blocks
@@ -113,14 +113,14 @@ def test_stat_block_extraction_from_real_xml():
 
 
 @pytest.mark.integration
-def test_image_ref_extraction():
-    """Test image reference extraction and placeholder generation.
+def test_journal_image_registry_and_html_replacement():
+    """Test Journal image registry and HTML placeholder replacement.
 
     Validates:
-    - ImageRef parsing from XML
+    - ImageRef parsing from XML <image> tags
+    - Image registry population in Journal
     - Placeholder format ({{image:path}})
-    - Image registry population
-    - Image replacement in HTML export
+    - Image URL replacement in HTML export
     """
     # Use a known good XML file - try multiple locations for one with images
     test_paths = [
@@ -177,8 +177,8 @@ def test_image_ref_extraction():
 
 
 @pytest.mark.integration
-def test_empty_xml_handling():
-    """Test handling of minimal/empty XML documents."""
+def test_minimal_xml_document_converts_to_html():
+    """Test that minimal XML documents convert correctly to HTML without errors."""
     minimal_xml = """
     <Chapter_01>
       <page number="1">
@@ -205,8 +205,8 @@ def test_empty_xml_handling():
 
 
 @pytest.mark.integration
-def test_complex_content_types():
-    """Test handling of complex content types (tables, lists, definition lists)."""
+def test_tables_lists_and_definition_lists_convert_to_html():
+    """Test that complex content types (tables, lists, definition lists) convert correctly to HTML."""
     complex_xml = """
     <Chapter_01>
       <page number="1">
@@ -261,8 +261,8 @@ def test_complex_content_types():
 
 
 @pytest.mark.integration
-def test_multi_page_chapter():
-    """Test handling of chapters spanning multiple pages."""
+def test_multi_page_chapter_flattens_to_journal_hierarchy():
+    """Test that multi-page chapters correctly flatten into Journal's semantic hierarchy."""
     multi_page_xml = """
     <Chapter_02>
       <page number="1">

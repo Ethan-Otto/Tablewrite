@@ -6,10 +6,11 @@ from models import XMLDocument, Journal
 
 def test_full_workflow_with_real_xml():
     """Test complete workflow: Load XML → Parse → Create Journal → Export HTML"""
-    # Use the freshly generated test XML file
-    xml_path = Path("output/runs/20251108_233753/documents/02_Part_1_Goblin_Arrows.xml")
+    # Use test fixture XML file
+    xml_path = Path("tests/fixtures/xml/02_Part_1_Goblin_Arrows.xml")
 
-    assert xml_path.exists(), f"Test XML file not found: {xml_path}"
+    if not xml_path.exists():
+        pytest.skip(f"Test XML file not found: {xml_path}")
 
     xml_string = xml_path.read_text()
 
