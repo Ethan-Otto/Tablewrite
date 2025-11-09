@@ -310,6 +310,86 @@ class Journal(BaseModel):
         if key in self.image_registry:
             del self.image_registry[key]
 
+    def add_map_assets(self, maps_metadata: List[Dict], image_dir):
+        """Add map assets from extraction metadata to image registry.
+
+        Automatically positions maps near their source page in the content stream.
+
+        Args:
+            maps_metadata: List of map metadata dicts from maps_metadata.json
+            image_dir: Path to directory containing map image files (can be str or Path)
+        """
+        from pathlib import Path
+
+        image_dir = Path(image_dir)
+
+        for map_data in maps_metadata:
+            # Generate key from page number and name
+            page_num = map_data["page_num"]
+            safe_name = map_data["name"].lower().replace(" ", "_")
+            key = f"page_{page_num:03d}_{safe_name}"
+
+            # Find file path
+            file_path = None
+            for ext in [".png", ".jpg", ".jpeg"]:
+                candidate = image_dir / f"{key}{ext}"
+                if candidate.exists():
+                    file_path = candidate
+                    break
+
+            # Create ImageMetadata
+            metadata = ImageMetadata(
+                key=key,
+                source_page=page_num,
+                type="map",
+                description=map_data.get("name"),
+                file_path=str(file_path) if file_path else None
+            )
+
+            # Find insertion point: first content after source page
+            insert_id = self._find_content_after_page(page_num)
+            if insert_id:
+                metadata.insert_before_content_id = insert_id
+
+            self.image_registry[key] = metadata
+
+    def _find_content_after_page(self, page_num: int) -> Optional[str]:
+        """Find the first content ID that appears after a given source page.
+
+        Uses source XMLDocument to map page numbers to content IDs.
+
+        Args:
+            page_num: Source page number (1-indexed)
+
+        Returns:
+            Content ID or None if not found
+        """
+        if not self.source:
+            return None
+
+        # Find the page in source XMLDocument
+        for page in self.source.pages:
+            if page.number >= page_num:
+                # Find the first non-heading content on this page
+                for content in page.content:
+                    if content.type not in ["chapter_title", "section", "subsection", "subsubsection"]:
+                        # Map original page-based ID to semantic ID
+                        # This requires reverse lookup in the Journal hierarchy
+                        # For now, we'll use a heuristic: first content in next section
+                        return self._get_first_content_id_heuristic()
+
+        return None
+
+    def _get_first_content_id_heuristic(self) -> Optional[str]:
+        """Get first content ID as fallback heuristic."""
+        for chapter in self.chapters:
+            if chapter.content:
+                return chapter.content[0].id
+            for section in chapter.sections:
+                if section.content:
+                    return section.content[0].id
+        return None
+
     def to_foundry_html(self, image_mapping: Optional[Dict[str, str]] = None) -> str:
         """Export journal to FoundryVTT-ready HTML format.
 

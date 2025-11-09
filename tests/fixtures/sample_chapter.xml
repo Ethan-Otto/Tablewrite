@@ -1,0 +1,19 @@
+<Chapter_1>
+  <page number="1">
+    <chapter_title>Chapter 1: Goblin Arrows</chapter_title>
+    <p>The adventure begins on the High Road.</p>
+  </page>
+  <page number="2">
+    <section>Goblin Ambush</section>
+    <p>The party encounters goblins on the road.</p>
+  </page>
+  <page number="5">
+    <p>A battle map shows the ambush site.</p>
+    <image_ref key="page_5_battle_map" />
+  </page>
+  <page number="8">
+    <section>The Cragmaw Hideout</section>
+    <subsection>Area 1: Cave Entrance</subsection>
+    <p>Twin pools of water flank the cave entrance.</p>
+  </page>
+</Chapter_1>
