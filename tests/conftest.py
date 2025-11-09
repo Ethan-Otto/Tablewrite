@@ -24,7 +24,7 @@ def pytest_configure(config):
     if config.getoption("--full"):
         # Only clear default marker if no explicit -m flag was provided
         # Check if markexpr is the default from pytest.ini
-        if config.option.markexpr == "smoke or (not integration and not slow)":
+        if config.option.markexpr == "not integration and not slow":
             config.option.markexpr = ""  # Run all tests
 
 
@@ -43,7 +43,7 @@ def pytest_sessionfinish(session, exitstatus):
 
     # Check if we're already running full suite or using default markers
     is_full_run = session.config.getoption("--full")
-    is_default_markers = session.config.option.markexpr == "smoke or (not integration and not slow)"
+    is_default_markers = session.config.option.markexpr == "not integration and not slow"
 
     # Only escalate if a SMOKE test specifically failed
     if not is_full_run and is_default_markers and exitstatus != 0 and auto_escalate:
