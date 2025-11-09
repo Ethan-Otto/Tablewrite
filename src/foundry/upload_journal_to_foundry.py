@@ -115,6 +115,88 @@ def build_image_mapping(run_dir: Path) -> Dict[str, str]:
     return image_mapping
 
 
+def load_and_position_images(run_dir: Path) -> Journal:
+    """Load Journal from XML and automatically position all extracted images.
+
+    Processes:
+    1. Load XMLDocument from documents/ directory
+    2. Convert to Journal
+    3. Add map assets with automatic positioning
+    4. Add scene artwork with automatic positioning
+
+    Args:
+        run_dir: Run directory containing documents/, map_assets/, scene_artwork/
+
+    Returns:
+        Journal with all images positioned
+    """
+    import json
+
+    # Load all XML documents
+    xml_dir = run_dir / "documents"
+    xml_files = sorted(xml_dir.glob("*.xml"))
+
+    if not xml_files:
+        raise ValueError(f"No XML files found in {xml_dir}")
+
+    # For now, merge all chapters into one Journal
+    # TODO: Support multi-chapter journals properly
+    journals = []
+    for xml_file in xml_files:
+        xml_doc = parse_xml_file(xml_file)
+        journal = Journal.from_xml_document(xml_doc)
+        journals.append(journal)
+
+    # Use first journal (single-chapter workflow)
+    journal = journals[0]
+    logger.info(f"Loaded journal: {journal.title}")
+
+    # Add map assets if present
+    maps_metadata_file = run_dir / "map_assets" / "maps_metadata.json"
+    if maps_metadata_file.exists():
+        with open(maps_metadata_file) as f:
+            maps_data = json.load(f)
+            maps = maps_data.get("maps", [])
+
+        if maps:
+            maps_dir = run_dir / "map_assets" / "images"
+            journal.add_map_assets(maps, maps_dir)
+            logger.info(f"Added {len(maps)} map assets to journal")
+
+    # Add scene artwork if present
+    scenes_metadata_file = run_dir / "scene_artwork" / "scenes_metadata.json"
+    if scenes_metadata_file.exists():
+        with open(scenes_metadata_file) as f:
+            scenes_data = json.load(f)
+            scenes = scenes_data.get("scenes", [])
+
+        if scenes:
+            scenes_dir = run_dir / "scene_artwork" / "images"
+            journal.add_scene_artwork(scenes, scenes_dir)
+            logger.info(f"Added {len(scenes)} scene artworks to journal")
+    elif (run_dir / "scene_artwork" / "images").exists():
+        # Fallback to filename parsing if no metadata
+        logger.warning("No scenes_metadata.json found, using filename heuristic")
+        scenes_dir = run_dir / "scene_artwork" / "images"
+        scenes = []
+        for i, img_file in enumerate(sorted(scenes_dir.glob("scene_*.png")), start=1):
+            # Extract name from filename: scene_001_forest_ambush.png -> Forest Ambush
+            name_part = img_file.stem.split("_", 2)[-1] if len(img_file.stem.split("_")) > 2 else img_file.stem
+            name = name_part.replace("_", " ").title()
+
+            scenes.append({
+                "section_path": f"{journal.title} → Scene {i}",
+                "name": name,
+                "description": ""
+            })
+
+        if scenes:
+            journal.add_scene_artwork(scenes, scenes_dir)
+            logger.info(f"Added {len(scenes)} scene artworks to journal (using filename heuristic)")
+
+    return journal
+
+
 def upload_scene_gallery(client: FoundryClient, run_dir: Path) -> Optional[Dict[str, Any]]:
     """
     Upload scene artwork and create gallery journal page.
@@ -226,8 +308,37 @@ def upload_run_to_foundry(
             xml_doc = parse_xml_file(xml_file)
             logger.debug(f"  Parsed {xml_file.name} -> {xml_doc.title}")
 
-            # Convert XMLDocument to Journal
+            # Convert XMLDocument to Journal with positioned images
             journal = Journal.from_xml_document(xml_doc)
+
+            # Add positioned images if this is the first/only chapter
+            # (For multi-chapter support, this logic will need refinement)
+            if len(xml_files) == 1 or xml_file == xml_files[0]:
+                # Add map assets if present
+                maps_metadata_file = run_path / "map_assets" / "maps_metadata.json"
+                if maps_metadata_file.exists():
+                    import json
+                    with open(maps_metadata_file) as f:
+                        maps_data = json.load(f)
+                        maps = maps_data.get("maps", [])
+
+                    if maps:
+                        maps_dir = run_path / "map_assets" / "images"
+                        journal.add_map_assets(maps, maps_dir)
+                        logger.info(f"Added {len(maps)} map assets to journal")
+
+                # Add scene artwork if present
+                scenes_metadata_file = run_path / "scene_artwork" / "scenes_metadata.json"
+                if scenes_metadata_file.exists():
+                    import json
+                    with open(scenes_metadata_file) as f:
+                        scenes_data = json.load(f)
+                        scenes = scenes_data.get("scenes", [])
+
+                    if scenes:
+                        scenes_dir = run_path / "scene_artwork" / "images"
+                        journal.add_scene_artwork(scenes, scenes_dir)
+                        logger.info(f"Added {len(scenes)} scene artworks to journal")
 
             # Render Journal to HTML using to_foundry_html()
             html = journal.to_foundry_html(image_mapping)
