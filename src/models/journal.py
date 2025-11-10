@@ -255,8 +255,13 @@ class Journal(BaseModel):
 
                 else:
                     # Regular content - add to current container
-                    # Reassign content ID to semantic format
-                    new_id = f"chapter_{chapter_idx}_section_{section_idx}_content_{content_counter}"
+                    # Reassign content ID to semantic format (include subsection/subsubsection to ensure uniqueness)
+                    if current_subsubsection is not None:
+                        new_id = f"chapter_{chapter_idx}_section_{section_idx}_subsection_{subsection_idx}_subsubsection_{subsubsection_idx}_content_{content_counter}"
+                    elif current_subsection is not None:
+                        new_id = f"chapter_{chapter_idx}_section_{section_idx}_subsection_{subsection_idx}_content_{content_counter}"
+                    else:
+                        new_id = f"chapter_{chapter_idx}_section_{section_idx}_content_{content_counter}"
                     content_counter += 1
 
                     # Track the ID mapping (original -> semantic)
@@ -320,14 +325,17 @@ class Journal(BaseModel):
         if key in self.image_registry:
             del self.image_registry[key]
 
-    def add_map_assets(self, maps_metadata: List[Dict], image_dir):
+    def add_map_assets(self, maps_metadata: List[Dict], image_dir, positioning_mode: str = "page"):
         """Add map assets from extraction metadata to image registry.
 
-        Automatically positions maps near their source page in the content stream.
+        Automatically positions maps using one of two strategies:
+        - "page": Position based on source page number (uses section boundaries)
+        - "semantic": Use Gemini to match map name to best section/subsection
 
         Args:
             maps_metadata: List of map metadata dicts from maps_metadata.json
             image_dir: Path to directory containing map image files (can be str or Path)
+            positioning_mode: "page" (default) or "semantic"
         """
         from pathlib import Path
 
@@ -356,8 +364,12 @@ class Journal(BaseModel):
                 file_path=str(file_path) if file_path else None
             )
 
-            # Find insertion point: first content after source page
-            insert_id = self._find_content_after_page(page_num)
+            # Find insertion point based on mode
+            if positioning_mode == "semantic":
+                insert_id = self._find_content_by_semantic_match(map_data["name"])
+            else:  # "page" mode (default)
+                insert_id = self._find_content_after_page(page_num)
+
             if insert_id:
                 metadata.insert_before_content_id = insert_id
 
@@ -366,8 +378,9 @@ class Journal(BaseModel):
     def _find_content_after_page(self, page_num: int) -> Optional[str]:
         """Find the first content ID that appears after a given source page.
 
-        Uses source XMLDocument to find content on the page, then maps the original
-        page-based ID to the semantic ID using the stored mapping.
+        Prefers to position at the start of the section that contains the page
+        (better for maps that represent entire sections). Falls back to first
+        content on the page if no section is found.
 
         Args:
             page_num: Source page number (1-indexed)
@@ -378,17 +391,34 @@ class Journal(BaseModel):
         if not self.source:
             return None
 
-        # Find the page in source XMLDocument
+        # Strategy 1: Find the section that contains this page and position at its first content
+        current_section_title = None
+        for page in self.source.pages:
+            for content in page.content:
+                if content.type == "section":
+                    current_section_title = content.data
+
+                # If we're on the target page and have a section title, find its first content
+                if page.number == page_num and current_section_title:
+                    # Find the first non-heading content in this section (from any page)
+                    found_section = False
+                    for search_page in self.source.pages:
+                        for search_content in search_page.content:
+                            if search_content.type == "section" and search_content.data == current_section_title:
+                                found_section = True
+                            elif found_section and search_content.type not in ["chapter_title", "section", "subsection", "subsubsection", "header", "footer"]:
+                                if search_content.id and search_content.id in self._page_to_semantic_id_map:
+                                    return self._page_to_semantic_id_map[search_content.id]
+
+        # Strategy 2: Fallback to first non-heading content on the page
         for page in self.source.pages:
             if page.number >= page_num:
-                # Find the first non-heading content on this page
                 for content in page.content:
-                    if content.type not in ["chapter_title", "section", "subsection", "subsubsection"]:
-                        # Map original page-based ID to semantic ID
+                    if content.type not in ["chapter_title", "section", "subsection", "subsubsection", "header", "footer"]:
                         if content.id and content.id in self._page_to_semantic_id_map:
                             return self._page_to_semantic_id_map[content.id]
 
-        # Fallback: if we can't find a matching page, use heuristic
+        # Strategy 3: Ultimate fallback
         return self._get_first_content_id_heuristic()
 
     def _get_first_content_id_heuristic(self) -> Optional[str]:
@@ -400,6 +430,70 @@ class Journal(BaseModel):
                 if section.content:
                     return section.content[0].id
         return None
+
+    def _find_content_by_semantic_match(self, map_name: str) -> Optional[str]:
+        """Use Gemini to find the best section/subsection for a map based on its name.
+
+        Args:
+            map_name: Name of the map (e.g., "Cragmaw Hideout", "Goblin Den")
+
+        Returns:
+            Content ID for insertion point, or None if no match found
+        """
+        import os
+        from util.gemini import GeminiAPI
+
+        # Build list of all sections and subsections with their first content IDs
+        sections_data = []
+        for ch_idx, chapter in enumerate(self.chapters):
+            for sec_idx, section in enumerate(chapter.sections):
+                if section.content:
+                    sections_data.append({
+                        "path": f"{chapter.title} → {section.title}",
+                        "content_id": section.content[0].id
+                    })
+
+                for subsec_idx, subsection in enumerate(section.subsections):
+                    if subsection.content:
+                        sections_data.append({
+                            "path": f"{chapter.title} → {section.title} → {subsection.title}",
+                            "content_id": subsection.content[0].id
+                        })
+
+        if not sections_data:
+            return None
+
+        # Create prompt for Gemini
+        sections_list = "\n".join([f"{i+1}. {s['path']}" for i, s in enumerate(sections_data)])
+
+        prompt = f"""You are analyzing a D&D adventure module to position a map named "{map_name}".
+
+Below is a list of all sections in the module:
+
+{sections_list}
+
+Which section number (1-{len(sections_data)}) is the BEST place to insert the "{map_name}" map?
+The map should appear at the START of the most relevant section.
+
+Respond with ONLY the number (e.g., "5"), nothing else."""
+
+        try:
+            gemini_api = GeminiAPI()
+            response = gemini_api.generate_content(prompt)
+
+            if response and response.text:
+                # Parse the number from response
+                import re
+                match = re.search(r'\d+', response.text.strip())
+                if match:
+                    section_idx = int(match.group()) - 1  # Convert to 0-indexed
+                    if 0 <= section_idx < len(sections_data):
+                        return sections_data[section_idx]["content_id"]
+        except Exception as e:
+            # If Gemini fails, fall back to first content
+            pass
+
+        return self._get_first_content_id_heuristic()
 
     def add_scene_artwork(self, scenes: List[Dict], image_dir):
         """Add scene artwork to image registry with intelligent positioning.

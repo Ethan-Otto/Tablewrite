@@ -86,7 +86,7 @@ class Content(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     id: str
-    type: Literal["paragraph", "section", "subsection", "subsubsection", "chapter_title", "table", "list", "definition_list", "stat_block", "image_ref", "boxed_text", "footer", "page_number"]
+    type: Literal["paragraph", "section", "subsection", "subsubsection", "chapter_title", "table", "list", "definition_list", "stat_block", "image_ref", "boxed_text", "header", "footer", "page_number"]
     data: Union[str, Table, ListContent, DefinitionList, StatBlockRaw, ImageRef]
 
 

@@ -115,7 +115,7 @@ def build_image_mapping(run_dir: Path) -> Dict[str, str]:
     return image_mapping
 
 
-def load_and_position_images(run_dir: Path) -> Journal:
+def load_and_position_images(run_dir: Path, map_positioning_mode: str = "page") -> Journal:
     """Load Journal from XML and automatically position all extracted images.
 
     Processes:
@@ -126,6 +126,7 @@ def load_and_position_images(run_dir: Path) -> Journal:
 
     Args:
         run_dir: Run directory containing documents/, map_assets/, scene_artwork/
+        map_positioning_mode: "page" (use page number + section logic) or "semantic" (use Gemini to match map name to sections)
 
     Returns:
         Journal with all images positioned
@@ -159,9 +160,9 @@ def load_and_position_images(run_dir: Path) -> Journal:
             maps = maps_data.get("maps", [])
 
         if maps:
-            maps_dir = run_dir / "map_assets" / "images"
-            journal.add_map_assets(maps, maps_dir)
-            logger.info(f"Added {len(maps)} map assets to journal")
+            maps_dir = run_dir / "map_assets"
+            journal.add_map_assets(maps, maps_dir, positioning_mode=map_positioning_mode)
+            logger.info(f"Added {len(maps)} map assets to journal (mode: {map_positioning_mode})")
 
     # Add scene artwork if present
     scenes_metadata_file = run_dir / "scene_artwork" / "scenes_metadata.json"

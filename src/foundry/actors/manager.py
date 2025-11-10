@@ -7,10 +7,23 @@ from typing import Optional, Dict, Any, List
 logger = logging.getLogger(__name__)
 
 
+def _is_running_in_tests() -> bool:
+    """Check if running in pytest."""
+    import sys
+    return "pytest" in sys.modules
+
+
 class ActorManager:
     """Manages actor operations for FoundryVTT."""
 
-    def __init__(self, relay_url: str, foundry_url: str, api_key: str, client_id: str):
+    def __init__(
+        self,
+        relay_url: str,
+        foundry_url: str,
+        api_key: str,
+        client_id: str,
+        folder_manager: Optional[Any] = None
+    ):
         """
         Initialize actor manager.
 
@@ -19,11 +32,13 @@ class ActorManager:
             foundry_url: URL of the FoundryVTT instance
             api_key: API key for authentication
             client_id: Client ID for the FoundryVTT instance
+            folder_manager: Optional FolderManager instance for organizing actors
         """
         self.relay_url = relay_url
         self.foundry_url = foundry_url
         self.api_key = api_key
         self.client_id = client_id
+        self.folder_manager = folder_manager
 
     def search_all_compendiums(self, name: str) -> Optional[str]:
         """
@@ -248,6 +263,8 @@ class ActorManager:
         (as produced by convert_to_foundry) and uploads it to FoundryVTT.
         Optionally adds compendium spells via /give endpoint after creation.
 
+        When running in pytest, automatically creates actors in a "tests" folder.
+
         Args:
             actor_data: Complete FoundryVTT actor JSON with 'name', 'type',
                        'system', 'items', etc.
@@ -260,6 +277,15 @@ class ActorManager:
         Raises:
             RuntimeError: If creation fails
         """
+        # Auto-organize test actors into "tests" folder
+        folder_id = None
+        if _is_running_in_tests() and self.folder_manager:
+            try:
+                folder_id = self.folder_manager.get_or_create_folder("tests", "Actor")
+                logger.debug("Adding actor to 'tests' folder (running in pytest)")
+            except Exception as e:
+                logger.warning(f"Failed to set test folder: {e}")
+
         url = f"{self.relay_url}/create?clientId={self.client_id}"
 
         headers = {
@@ -271,6 +297,10 @@ class ActorManager:
             "entityType": "Actor",
             "data": actor_data
         }
+
+        # Add folder at top level of payload if needed
+        if folder_id:
+            payload["folder"] = folder_id
 
         actor_name = actor_data.get("name", "Unknown")
         logger.debug(f"Creating actor: {actor_name}")
