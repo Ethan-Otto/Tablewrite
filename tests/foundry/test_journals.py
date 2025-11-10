@@ -95,6 +95,7 @@ class TestJournalManagerOperations:
         assert payload["data"]["pages"][0]["name"] == "Test Journal"
         assert payload["data"]["pages"][0]["text"]["content"] == "<p>Test content</p>"
 
+    @pytest.mark.integration
     @patch('requests.post')
     def test_create_journal_entry_with_folder(self, mock_post, manager):
         """Test creating a journal entry with folder parameter."""
