@@ -14,7 +14,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from util.parallel_image_gen import generate_images_parallel
 
-MODEL_NAME = "gemini-2.5-flash-image"
+MODEL_NAME = "imagen-4.0-fast-generate-001"
 DEFAULT_STYLE_PROMPT = "fantasy illustration, D&D 5e art style, detailed environment, high quality"
 
 
@@ -83,12 +83,11 @@ async def generate_scene_image_async(
     logger.debug(f"Image generation prompt: {prompt}")
 
     try:
-        # Use our parallel image generation utility
+        # Use our parallel image generation utility (auto-detects imagen-4.0 API)
         results = await generate_images_parallel(
             prompts=[prompt],
             max_concurrent=1,
-            model=MODEL_NAME,
-            temperature=1.0
+            model=MODEL_NAME
         )
 
         if not results or results[0] is None:

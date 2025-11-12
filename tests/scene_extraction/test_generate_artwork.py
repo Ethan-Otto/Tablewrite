@@ -33,47 +33,30 @@ class TestGenerateSceneImage:
 
     @pytest.mark.integration
     def test_generate_image_calls_gemini_imagen(self, sample_scene, sample_context):
-        """Test that generate_scene_image calls Gemini Imagen API."""
-        with patch('src.scene_extraction.generate_artwork.genai.Client') as mock_client_class:
-            # Mock the PIL Image
-            mock_pil_image = MagicMock()
+        """Test that generate_scene_image calls generate_images_parallel."""
+        with patch('src.scene_extraction.generate_artwork.generate_images_parallel') as mock_generate:
+            # Mock successful generation
+            mock_generate.return_value = [b"fake_image_data"]
 
-            # Mock the generated image
-            mock_generated_image = MagicMock()
-            mock_generated_image.image._pil_image = mock_pil_image
+            # Call function
+            image_bytes, prompt = generate_scene_image(sample_scene, sample_context, style_prompt="fantasy art")
 
-            # Mock the response with generated_images list
-            mock_response = MagicMock()
-            mock_response.generated_images = [mock_generated_image]
+            # Verify generate_images_parallel was called
+            assert mock_generate.called
+            call_args = mock_generate.call_args
 
-            # Mock the client instance and models.generate_images
-            mock_client = MagicMock()
-            mock_client.models.generate_images.return_value = mock_response
-            mock_client_class.return_value = mock_client
+            # Verify model parameter is imagen-4.0-fast-generate-001
+            assert call_args.kwargs['model'] == 'imagen-4.0-fast-generate-001'
 
-            # Mock BytesIO save
-            with patch('src.scene_extraction.generate_artwork.BytesIO') as mock_bytesio_class:
-                mock_buffer = MagicMock()
-                mock_buffer.getvalue.return_value = b"fake_image_data"
-                mock_bytesio_class.return_value = mock_buffer
+            # Verify prompts were passed
+            prompts = call_args.kwargs.get('prompts', call_args[0] if call_args[0] else [])
+            assert len(prompts) == 1
 
-                # Call function
-                image_bytes, prompt = generate_scene_image(sample_scene, sample_context, style_prompt="fantasy art")
-
-                # Verify Client was created
-                mock_client_class.assert_called_once()
-
-                # Verify generate_images was called
-                mock_client.models.generate_images.assert_called_once()
-
-                # Verify PIL image save was called
-                mock_pil_image.save.assert_called_once()
-
-                # Verify result
-                assert isinstance(image_bytes, bytes)
-                assert image_bytes == b"fake_image_data"
-                assert isinstance(prompt, str)
-                assert len(prompt) > 0
+            # Verify result
+            assert isinstance(image_bytes, bytes)
+            assert image_bytes == b"fake_image_data"
+            assert isinstance(prompt, str)
+            assert len(prompt) > 0
 
     def test_generate_image_constructs_prompt_with_context(self, sample_scene, sample_context):
         """Test that prompt includes scene description and chapter context."""

@@ -132,6 +132,10 @@ def _generate_image_sync(
 
     This runs in a thread pool executor to avoid blocking the event loop.
 
+    Supports two API patterns:
+    - imagen-4.0-* models: Use generate_images() API
+    - gemini-*-image models: Use generate_content() with response_modalities=["IMAGE"]
+
     Args:
         reference_image_path: Path to reference image file (each thread loads its own copy)
         temperature: Sampling temperature 0.0-2.0
@@ -142,31 +146,61 @@ def _generate_image_sync(
 
     client = genai.Client(api_key=api_key)
 
-    # Build contents list: [prompt] or [prompt, image]
-    contents = [prompt]
-    if reference_image_path is not None:
-        # Each thread loads its own copy of the image for thread safety
-        ref_image = Image.open(reference_image_path)
-        contents.append(ref_image)
+    # Detect which API to use based on model name
+    use_generate_images_api = model.startswith("imagen-")
 
-    response = client.models.generate_content(
-        model=model,
-        contents=contents,
-        config=types.GenerateContentConfig(
-            temperature=temperature,
-            response_modalities=["IMAGE"]
+    if use_generate_images_api:
+        # Use generate_images() API for imagen-4.0-* models
+        # Note: generate_images() doesn't support reference images or temperature
+        if reference_image_path is not None:
+            logger.warning(f"Reference images not supported with {model}, ignoring reference_image")
+        if temperature != 1.0:
+            logger.warning(f"Temperature not supported with {model}, ignoring temperature={temperature}")
+
+        response = client.models.generate_images(
+            model=model,
+            prompt=prompt,
+            config=types.GenerateImagesConfig(
+                number_of_images=1,
+            )
         )
-    )
 
-    # Extract image bytes from response
-    generated_image_bytes = None
-    for part in response.candidates[0].content.parts:
-        if part.inline_data is not None:
-            generated_image_bytes = part.inline_data.data
-            break
+        if not response.generated_images:
+            raise RuntimeError("No images generated")
 
-    if generated_image_bytes is None:
-        raise RuntimeError("No image data in response")
+        # Get PIL image and convert to bytes
+        pil_image = response.generated_images[0].image._pil_image
+        buffer = BytesIO()
+        pil_image.save(buffer, format='PNG')
+        generated_image_bytes = buffer.getvalue()
+
+    else:
+        # Use generate_content() API for gemini-*-image models
+        # Build contents list: [prompt] or [prompt, image]
+        contents = [prompt]
+        if reference_image_path is not None:
+            # Each thread loads its own copy of the image for thread safety
+            ref_image = Image.open(reference_image_path)
+            contents.append(ref_image)
+
+        response = client.models.generate_content(
+            model=model,
+            contents=contents,
+            config=types.GenerateContentConfig(
+                temperature=temperature,
+                response_modalities=["IMAGE"]
+            )
+        )
+
+        # Extract image bytes from response
+        generated_image_bytes = None
+        for part in response.candidates[0].content.parts:
+            if part.inline_data is not None:
+                generated_image_bytes = part.inline_data.data
+                break
+
+        if generated_image_bytes is None:
+            raise RuntimeError("No image data in response")
 
     # Optionally save to disk
     if save_dir and index is not None:
