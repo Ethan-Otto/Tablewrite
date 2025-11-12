@@ -46,3 +46,6 @@ dev_output/
 test-results.xml
 .pytest_cache/
 github.secrets
+
+# Gallery (internal only, not for GitHub)
+gallery/
