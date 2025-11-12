@@ -77,37 +77,28 @@ class TestGenerateSceneImage:
 
     def test_generate_image_constructs_prompt_with_context(self, sample_scene, sample_context):
         """Test that prompt includes scene description and chapter context."""
-        with patch('src.scene_extraction.generate_artwork.genai.Client') as mock_client_class:
-            # Mock the PIL Image
-            mock_pil_image = MagicMock()
+        # Mock generate_images_parallel from our utility
+        with patch('src.scene_extraction.generate_artwork.generate_images_parallel') as mock_generate:
+            # Mock successful generation
+            mock_generate.return_value = [b"fake_image_data"]
 
-            # Mock the generated image
-            mock_generated_image = MagicMock()
-            mock_generated_image.image._pil_image = mock_pil_image
+            # Call the function
+            image_bytes, prompt = generate_scene_image(sample_scene, sample_context)
 
-            # Mock the response
-            mock_response = MagicMock()
-            mock_response.generated_images = [mock_generated_image]
+            # Verify the function was called with correct parameters
+            assert mock_generate.called
+            call_args = mock_generate.call_args
 
-            # Mock the client
-            mock_client = MagicMock()
-            mock_client.models.generate_images.return_value = mock_response
-            mock_client_class.return_value = mock_client
+            # Verify prompt was passed and contains scene details
+            prompts = call_args.kwargs.get('prompts', call_args[0] if call_args[0] else [])
+            assert len(prompts) == 1
+            prompt_text = prompts[0]
+            assert "cave" in prompt_text.lower()
+            assert "underground" in prompt_text.lower()
 
-            # Mock BytesIO
-            with patch('src.scene_extraction.generate_artwork.BytesIO') as mock_bytesio_class:
-                mock_buffer = MagicMock()
-                mock_buffer.getvalue.return_value = b"data"
-                mock_bytesio_class.return_value = mock_buffer
-
-                generate_scene_image(sample_scene, sample_context)
-
-                # Verify prompt contains scene description and context
-                call_args = mock_client.models.generate_images.call_args
-                # The prompt is passed as the 'prompt' keyword argument
-                prompt = call_args.kwargs.get('prompt', '')
-                assert "cave" in prompt.lower()
-                assert "underground" in prompt.lower()
+            # Verify result
+            assert image_bytes == b"fake_image_data"
+            assert isinstance(prompt, str)
 
 
 class TestSaveSceneImage:

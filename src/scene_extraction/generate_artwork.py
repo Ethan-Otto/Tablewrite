@@ -1,25 +1,20 @@
 """Generate scene artwork using Gemini Imagen."""
 
 import logging
-import os
-import time
+import asyncio
 from typing import Optional
-from dotenv import load_dotenv
-from google import genai
-from google.genai import types
-from io import BytesIO
+from pathlib import Path
 
 from .models import Scene, ChapterContext
 
-# Load environment variables
-load_dotenv()
-
 logger = logging.getLogger(__name__)
 
-# Configure Gemini API
-GEMINI_API_KEY = os.getenv("GeminiImageAPI")
+# Import our parallel image generation utility
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from util.parallel_image_gen import generate_images_parallel
 
-IMAGEN_MODEL_NAME = "imagen-3.0-generate-002"
+MODEL_NAME = "gemini-2.5-flash-image"
 DEFAULT_STYLE_PROMPT = "fantasy illustration, D&D 5e art style, detailed environment, high quality"
 
 
@@ -59,13 +54,13 @@ IMPORTANT CONSTRAINTS:
 """
 
 
-def generate_scene_image(
+async def generate_scene_image_async(
     scene: Scene,
     chapter_context: ChapterContext,
     style_prompt: Optional[str] = None
 ) -> tuple[bytes, str]:
     """
-    Generate artwork for a scene using Gemini Imagen.
+    Generate artwork for a scene using Gemini Imagen (async).
 
     Args:
         scene: Scene object with description
@@ -88,33 +83,48 @@ def generate_scene_image(
     logger.debug(f"Image generation prompt: {prompt}")
 
     try:
-        # Create client with API key
-        client = genai.Client(api_key=GEMINI_API_KEY)
-
-        # Generate image using new Imagen API
-        response = client.models.generate_images(
-            model=IMAGEN_MODEL_NAME,
-            prompt=prompt,
-            config=types.GenerateImagesConfig(
-                number_of_images=1,
-            )
+        # Use our parallel image generation utility
+        results = await generate_images_parallel(
+            prompts=[prompt],
+            max_concurrent=1,
+            model=MODEL_NAME,
+            temperature=1.0
         )
 
-        # Extract image from response
-        generated_image = response.generated_images[0]
+        if not results or results[0] is None:
+            raise RuntimeError("Image generation returned no data")
 
-        # The image object has a _pil_image attribute with the actual PIL Image
-        # Convert to bytes (PNG format)
-        image_buffer = BytesIO()
-        generated_image.image._pil_image.save(image_buffer, format='PNG')
-        image_data = image_buffer.getvalue()
-
+        image_data = results[0]
         logger.info(f"Generated image for '{scene.name}' ({len(image_data)} bytes)")
         return (image_data, prompt)
 
     except Exception as e:
         logger.error(f"Failed to generate image for scene '{scene.name}': {e}")
         raise RuntimeError(f"Failed to generate scene image: {e}") from e
+
+
+def generate_scene_image(
+    scene: Scene,
+    chapter_context: ChapterContext,
+    style_prompt: Optional[str] = None
+) -> tuple[bytes, str]:
+    """
+    Generate artwork for a scene using Gemini Imagen (sync wrapper).
+
+    Args:
+        scene: Scene object with description
+        chapter_context: Chapter environmental context
+        style_prompt: Optional custom style prompt (uses default if not provided)
+
+    Returns:
+        Tuple of (image_bytes, prompt_text)
+        - image_bytes: Image data as bytes (PNG format)
+        - prompt_text: Full prompt sent to Gemini
+
+    Raises:
+        RuntimeError: If image generation fails
+    """
+    return asyncio.run(generate_scene_image_async(scene, chapter_context, style_prompt))
 
 
 def save_scene_image(image_bytes: bytes, output_path: str) -> None:
