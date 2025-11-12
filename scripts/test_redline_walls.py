@@ -1,69 +1,70 @@
 #!/usr/bin/env python3
-"""Test redline_walls function."""
+"""Test complete wall detection pipeline."""
 
 import asyncio
 import sys
+import logging
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from wall_detection.redline_walls import redline_walls
 
+logging.basicConfig(level=logging.INFO, format='%(message)s')
 
-async def test_redline():
-    """Test redlining a battle map."""
-    print("=" * 70)
-    print("Testing redline_walls Function")
-    print("=" * 70)
 
-    # Create a simple test battle map
-    print("\nCreating test battle map...")
-    from PIL import Image, ImageDraw
+async def test_pipeline():
+    """Test complete wall detection pipeline with Cragmaw.webp."""
+    print("=" * 80)
+    print("Wall Detection Pipeline Test")
+    print("=" * 80)
 
-    # Create a simple map with walls
-    img = Image.new('RGB', (1024, 1024), color='white')
-    draw = ImageDraw.Draw(img)
+    # Use the Cragmaw map
+    test_map = Path("data/image_examples/Cragmaw.webp")
 
-    # Draw some "walls" in gray
-    draw.rectangle([100, 100, 900, 150], fill='gray')  # Top wall
-    draw.rectangle([100, 850, 900, 900], fill='gray')  # Bottom wall
-    draw.rectangle([100, 100, 150, 900], fill='gray')  # Left wall
-    draw.rectangle([850, 100, 900, 900], fill='gray')  # Right wall
-    draw.rectangle([400, 400, 600, 450], fill='gray')  # Interior wall
+    if not test_map.exists():
+        print(f"❌ Test map not found: {test_map}")
+        print("Please ensure Cragmaw.webp is in data/image_examples/")
+        return
 
-    test_map_path = Path("output/test_battle_map.png")
-    test_map_path.parent.mkdir(exist_ok=True)
-    img.save(test_map_path)
-    print(f"✓ Created test map: {test_map_path}")
+    print(f"\nInput: {test_map}")
+    print(f"Size: {test_map.stat().st_size / 1024:.1f} KB")
 
-    # Test redlining
-    print("\nGenerating redlined version...")
-    results = await redline_walls(
-        test_map_path,
-        save_dir=Path("output/redlined_walls"),
+    # Run complete pipeline
+    print("\n" + "=" * 80)
+    print("Running complete pipeline...")
+    print("=" * 80)
+
+    result = await redline_walls(
+        input_image=test_map,
+        save_dir=Path("output/wall_detection_test"),
         make_run=True,
-        temperature=0.5
+        temperature=0.5,
+        alpha=0.8
     )
 
-    successful = sum(1 for r in results if r is not None)
-    print(f"\n✓ Generated {successful}/{len(results)} redlined images")
+    # Display results
+    print("\n" + "=" * 80)
+    print("✓ Pipeline completed successfully!")
+    print("=" * 80)
 
-    # Show output
-    print("\nOutput directory:")
-    output_dir = Path("output/redlined_walls")
-    if output_dir.exists():
-        for subdir in sorted(output_dir.iterdir()):
-            if subdir.is_dir():
-                print(f"  📁 {subdir.name}/")
-                for img in sorted(subdir.glob("*.png")):
-                    size_mb = img.stat().st_size / (1024 * 1024)
-                    print(f"      🖼️  {img.name} ({size_mb:.2f} MB)")
+    print("\nOutput files:")
+    for key, path in result.items():
+        if path.exists():
+            if path.is_file():
+                size_kb = path.stat().st_size / 1024
+                print(f"  ✓ {key:20} → {path.name} ({size_kb:.1f} KB)")
+            else:
+                # Directory
+                num_files = len(list(path.glob("*")))
+                print(f"  ✓ {key:20} → {path.name}/ ({num_files} files)")
+        else:
+            print(f"  ✗ {key:20} → NOT FOUND")
 
-    print("\n" + "=" * 70)
-    print("✓ Test completed!")
-    print(f"View results in: {output_dir}")
-    print("=" * 70)
+    print("\n" + "=" * 80)
+    print(f"View final overlay: {result['overlay']}")
+    print("=" * 80)
 
 
 if __name__ == "__main__":
-    asyncio.run(test_redline())
+    asyncio.run(test_pipeline())

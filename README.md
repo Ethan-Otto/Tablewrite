@@ -629,9 +629,71 @@ GitHub Actions automatically runs the full test suite on all pull requests. See 
 - **Self-Hosted Relay Server** (`relay-server/`): Docker-based local development relay
 - **Actor Manager** (`src/foundry/actors/manager.py`): Create/update actors with spell integration
 
+## Wall Detection & FoundryVTT Export
+
+The project includes AI-powered wall detection for automatically extracting walls from battle maps and exporting them in FoundryVTT-ready format.
+
+### Features
+
+- **Complete Pipeline**: Image → PNG → Grayscale → AI Redlines → Vector Extraction → FoundryVTT JSON
+- **Format Support**: Handles any image format (webp, png, jpg)
+- **Visual Verification**: Generates overlay with semi-transparent red lines (alpha=0.8) on original map
+- **FoundryVTT Export**: Exports walls as JSON with proper coordinates, blocking settings
+- **Composable Functions**: 6 small functions for flexible reuse
+
+### Usage
+
+```bash
+# Run complete wall detection pipeline
+PYTHONPATH=src uv run python scripts/test_redline_walls.py
+```
+
+### Pipeline Steps
+
+1. **`convert_to_png()`** - Convert any format to PNG
+2. **`create_grayscale()`** - Generate grayscale for AI processing
+3. **`generate_redlines()`** - AI detects walls using Gemini (gemini-2.5-flash-image)
+4. **`polygonize_redlines()`** - Extract vector polylines
+5. **`create_overlay()`** - Visual verification with red lines (alpha=0.8)
+6. **`convert_to_foundry_format()`** - Export to FoundryVTT JSON
+
+### Output Files
+
+- `01_original.png` - Original map
+- `02_grayscale.png` - Grayscale version
+- `03_redlined.png` - AI-generated red lines
+- `04_polygonized/` - Vector data (7 files)
+- `05_final_overlay.png` - Red line overlay for verification
+- `06_foundry_walls.json` - FoundryVTT-ready walls
+
+### FoundryVTT Format
+
+```json
+{
+  "walls": [
+    {
+      "c": [x1, y1, x2, y2],
+      "move": 0,
+      "sense": 0,
+      "door": 0,
+      "ds": 0
+    }
+  ],
+  "image_dimensions": {"width": 1380, "height": 940},
+  "total_walls": 874
+}
+```
+
+### Modules
+
+- `src/wall_detection/redline_walls.py` - Complete pipeline with 6 composable functions
+- `src/wall_detection/polygonize.py` - Vector extraction from red-lined images
+- `src/util/parallel_image_gen.py` - Parallel image generation utility
+
 ### Future Work
 - Attach scene artwork and maps to journal entries automatically
 - Build complete FoundryVTT module manifest exporter
 - Add folder organization for journal entries and actors
 - Item extraction and creation (weapons, armor, magic items)
 - Spell extraction from module custom spells
+- Auto-upload walls to FoundryVTT scenes

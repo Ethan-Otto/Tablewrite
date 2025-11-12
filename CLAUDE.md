@@ -744,6 +744,47 @@ uv run python src/pdf_processing/image_asset_processing/extract_map_assets.py --
 3. **Resolution Scaling**: Corrects for Gemini's image downscaling during segmentation
 4. **Fully Parallel**: Uses `asyncio.to_thread()` for blocking PyMuPDF operations
 
+### Wall Detection & FoundryVTT Export
+
+AI-powered wall detection extracts walls from battle maps and exports to FoundryVTT format.
+
+**Pipeline:** Image → PNG → Grayscale → AI Redlines → Polygonize → FoundryVTT JSON
+
+**Usage:**
+```bash
+PYTHONPATH=src uv run python scripts/test_redline_walls.py
+```
+
+**6 Composable Functions:**
+1. `convert_to_png()` - Format conversion
+2. `create_grayscale()` - Grayscale for AI processing
+3. `generate_redlines()` - AI wall detection (gemini-2.5-flash-image)
+4. `polygonize_redlines()` - Vector extraction
+5. `create_overlay()` - Visual verification (red lines, alpha=0.8)
+6. `convert_to_foundry_format()` - FoundryVTT JSON export
+
+**Output Files:**
+- `01_original.png` - Original map
+- `02_grayscale.png` - Grayscale version
+- `03_redlined.png` - AI red lines
+- `04_polygonized/` - Vector data (7 files)
+- `05_final_overlay.png` - Red line overlay for verification
+- `06_foundry_walls.json` - FoundryVTT walls (coordinates, blocking settings)
+
+**FoundryVTT Format:**
+```json
+{
+  "walls": [{"c": [x1, y1, x2, y2], "move": 0, "sense": 0, "door": 0, "ds": 0}],
+  "image_dimensions": {"width": 1380, "height": 940},
+  "total_walls": 874
+}
+```
+
+**Modules:**
+- `src/wall_detection/redline_walls.py` - Complete pipeline
+- `src/wall_detection/polygonize.py` - Vector extraction
+- `src/util/parallel_image_gen.py` - Parallel image generation utility
+
 ## Web UI
 
 Chat-based web UI with wax seal aesthetic for D&D Module Assistant.
