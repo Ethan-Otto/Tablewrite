@@ -7,10 +7,23 @@ from typing import Dict, Any, Optional
 logger = logging.getLogger(__name__)
 
 
+def _is_running_in_tests() -> bool:
+    """Check if running in pytest."""
+    import sys
+    return "pytest" in sys.modules
+
+
 class JournalManager:
     """Manages journal entry operations for FoundryVTT."""
 
-    def __init__(self, relay_url: str, foundry_url: str, api_key: str, client_id: str):
+    def __init__(
+        self,
+        relay_url: str,
+        foundry_url: str,
+        api_key: str,
+        client_id: str,
+        folder_manager: Optional[Any] = None
+    ):
         """
         Initialize journal manager.
 
@@ -19,11 +32,13 @@ class JournalManager:
             foundry_url: URL of the FoundryVTT instance
             api_key: API key for authentication
             client_id: Client ID for the FoundryVTT instance
+            folder_manager: Optional FolderManager instance for organizing journals
         """
         self.relay_url = relay_url
         self.foundry_url = foundry_url
         self.api_key = api_key
         self.client_id = client_id
+        self.folder_manager = folder_manager
 
     def create_journal_entry(
         self,
@@ -82,6 +97,14 @@ class JournalManager:
         else:
             raise ValueError("Must provide either 'pages' or 'content'")
 
+        # Auto-organize test journals into "tests" folder
+        if not folder and _is_running_in_tests() and self.folder_manager:
+            try:
+                folder = self.folder_manager.get_or_create_folder("tests", "JournalEntry")
+                logger.debug("Adding journal to 'tests' folder (running in pytest)")
+            except Exception as e:
+                logger.warning(f"Failed to set test folder: {e}")
+
         payload = {
             "entityType": "JournalEntry",
             "data": {
@@ -90,8 +113,9 @@ class JournalManager:
             }
         }
 
+        # Add folder at top level of payload if needed
         if folder:
-            payload["data"]["folder"] = folder
+            payload["folder"] = folder
 
         page_count = len(pages_data)
         logger.debug(f"Creating journal entry: {name} with {page_count} page(s)")

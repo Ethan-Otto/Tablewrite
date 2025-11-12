@@ -291,3 +291,96 @@ class TestJournalBasedUpload:
         # Content from both pages should be merged under semantic hierarchy
         assert "Welcome to the adventure" in html
         assert "To begin your quest" in html
+
+
+@pytest.mark.integration
+def test_upload_journal_includes_positioned_images(tmp_path):
+    """Test that upload includes automatically positioned images."""
+    # Create mock run directory structure
+    run_dir = tmp_path / "runs" / "test_run"
+    docs_dir = run_dir / "documents"
+    maps_dir = run_dir / "map_assets" / "images"
+    scenes_dir = run_dir / "scene_artwork" / "images"
+
+    docs_dir.mkdir(parents=True)
+    maps_dir.mkdir(parents=True)
+    scenes_dir.mkdir(parents=True)
+
+    # Copy sample XML
+    import shutil
+    shutil.copy("tests/fixtures/sample_chapter.xml", docs_dir / "chapter_01.xml")
+
+    # Create mock metadata files
+    import json
+
+    maps_metadata = {
+        "maps": [
+            {
+                "name": "Test Map",
+                "page_num": 5,
+                "type": "battle_map",
+                "source": "extracted"
+            }
+        ]
+    }
+
+    with open(run_dir / "map_assets" / "maps_metadata.json", "w") as f:
+        json.dump(maps_metadata, f)
+
+    # Create mock image files
+    from PIL import Image
+    img = Image.new('RGB', (100, 100), color='red')
+    img.save(maps_dir / "page_005_test_map.png")
+    img.save(scenes_dir / "scene_001_test_scene.png")
+
+    # Load and process journal
+    from foundry.upload_journal_to_foundry import load_and_position_images
+
+    journal = load_and_position_images(run_dir)
+
+    # Verify images are in registry with positions
+    assert "page_005_test_map" in journal.image_registry
+    assert journal.image_registry["page_005_test_map"].insert_before_content_id is not None
+
+
+def test_load_and_position_uses_scene_metadata(tmp_path):
+    """Test that scene positioning uses scenes_metadata.json."""
+    run_dir = tmp_path / "run"
+    docs_dir = run_dir / "documents"
+    scenes_dir = run_dir / "scene_artwork" / "images"
+
+    docs_dir.mkdir(parents=True)
+    scenes_dir.mkdir(parents=True)
+
+    # Copy XML
+    import shutil
+    shutil.copy("tests/fixtures/sample_chapter.xml", docs_dir / "chapter_01.xml")
+
+    # Create scene metadata
+    import json
+    scenes_metadata = {
+        "scenes": [
+            {
+                "section_path": "Chapter 1: Goblin Arrows → Goblin Ambush",
+                "name": "Forest Ambush",
+                "description": "Dense forest path",
+                "location_type": "outdoor",
+                "image_file": "images/scene_001_forest_ambush.png"
+            }
+        ]
+    }
+
+    with open(run_dir / "scene_artwork" / "scenes_metadata.json", "w") as f:
+        json.dump(scenes_metadata, f)
+
+    # Create mock image
+    from PIL import Image
+    img = Image.new('RGB', (100, 100), color='blue')
+    img.save(scenes_dir / "scene_001_forest_ambush.png")
+
+    # Load journal
+    from foundry.upload_journal_to_foundry import load_and_position_images
+    journal = load_and_position_images(run_dir)
+
+    # Verify scene was positioned using metadata
+    assert "scene_forest_ambush" in journal.image_registry

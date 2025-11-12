@@ -6,7 +6,7 @@ Journal is mutable and owns the image registry for managing image references.
 """
 
 from typing import List, Dict, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 from models.xml_document import XMLDocument, Content
 
@@ -64,6 +64,7 @@ class Journal(BaseModel):
     chapters: List[Chapter] = Field(default_factory=list)
     image_registry: Dict[str, ImageMetadata] = Field(default_factory=dict)
     source: Optional[XMLDocument] = Field(default=None, exclude=True)
+    _page_to_semantic_id_map: Dict[str, str] = PrivateAttr(default_factory=dict)
 
     @classmethod
     def from_xml_document(cls, xml_doc: XMLDocument) -> 'Journal':
@@ -81,15 +82,18 @@ class Journal(BaseModel):
         # Extract image references and build registry
         image_registry = cls._extract_image_refs(xml_doc)
 
-        # Build semantic hierarchy from pages
-        chapters = cls._build_hierarchy(xml_doc)
+        # Build semantic hierarchy from pages and capture ID mapping
+        chapters, id_map = cls._build_hierarchy(xml_doc)
 
-        return cls(
+        journal = cls(
             title=xml_doc.title,
             chapters=chapters,
             image_registry=image_registry,
             source=xml_doc
         )
+        journal._page_to_semantic_id_map = id_map
+
+        return journal
 
     @staticmethod
     def _extract_image_refs(xml_doc: XMLDocument) -> Dict[str, ImageMetadata]:
@@ -152,7 +156,7 @@ class Journal(BaseModel):
         return registry
 
     @staticmethod
-    def _build_hierarchy(xml_doc: XMLDocument) -> List[Chapter]:
+    def _build_hierarchy(xml_doc: XMLDocument) -> tuple[List[Chapter], Dict[str, str]]:
         """Build semantic hierarchy from page-based XMLDocument structure.
 
         Converts flat page structure to hierarchical structure where sections
@@ -162,9 +166,11 @@ class Journal(BaseModel):
             xml_doc: The source XMLDocument
 
         Returns:
-            List of Chapter objects with nested hierarchy
+            Tuple of (chapters, id_map) where id_map maps original page-based IDs
+            to new semantic IDs (e.g., "page_5_content_3" -> "chapter_0_section_2_content_5")
         """
         chapters = []
+        id_map = {}  # Maps original ID -> semantic ID
         current_chapter = None
         current_section = None
         current_subsection = None
@@ -249,9 +255,18 @@ class Journal(BaseModel):
 
                 else:
                     # Regular content - add to current container
-                    # Reassign content ID to semantic format
-                    new_id = f"chapter_{chapter_idx}_section_{section_idx}_content_{content_counter}"
+                    # Reassign content ID to semantic format (include subsection/subsubsection to ensure uniqueness)
+                    if current_subsubsection is not None:
+                        new_id = f"chapter_{chapter_idx}_section_{section_idx}_subsection_{subsection_idx}_subsubsection_{subsubsection_idx}_content_{content_counter}"
+                    elif current_subsection is not None:
+                        new_id = f"chapter_{chapter_idx}_section_{section_idx}_subsection_{subsection_idx}_content_{content_counter}"
+                    else:
+                        new_id = f"chapter_{chapter_idx}_section_{section_idx}_content_{content_counter}"
                     content_counter += 1
+
+                    # Track the ID mapping (original -> semantic)
+                    if content.id:
+                        id_map[content.id] = new_id
 
                     # Create new content with reassigned ID
                     new_content = Content(
@@ -280,7 +295,7 @@ class Journal(BaseModel):
         if current_chapter is not None:
             chapters.append(current_chapter)
 
-        return chapters
+        return chapters, id_map
 
     def add_image(self, key: str, metadata: ImageMetadata):
         """Add new image (scene artwork, custom, etc.) to registry.
@@ -309,6 +324,275 @@ class Journal(BaseModel):
         """
         if key in self.image_registry:
             del self.image_registry[key]
+
+    def add_map_assets(self, maps_metadata: List[Dict], image_dir, positioning_mode: str = "page"):
+        """Add map assets from extraction metadata to image registry.
+
+        Automatically positions maps using one of two strategies:
+        - "page": Position based on source page number (uses section boundaries)
+        - "semantic": Use Gemini to match map name to best section/subsection
+
+        Args:
+            maps_metadata: List of map metadata dicts from maps_metadata.json
+            image_dir: Path to directory containing map image files (can be str or Path)
+            positioning_mode: "page" (default) or "semantic"
+        """
+        from pathlib import Path
+
+        image_dir = Path(image_dir)
+
+        for map_data in maps_metadata:
+            # Generate key from page number and name
+            page_num = map_data["page_num"]
+            safe_name = map_data["name"].lower().replace(" ", "_")
+            key = f"page_{page_num:03d}_{safe_name}"
+
+            # Find file path
+            file_path = None
+            for ext in [".png", ".jpg", ".jpeg"]:
+                candidate = image_dir / f"{key}{ext}"
+                if candidate.exists():
+                    file_path = candidate
+                    break
+
+            # Create ImageMetadata
+            metadata = ImageMetadata(
+                key=key,
+                source_page=page_num,
+                type="map",
+                description=map_data.get("name"),
+                file_path=str(file_path) if file_path else None
+            )
+
+            # Find insertion point based on mode
+            if positioning_mode == "semantic":
+                insert_id = self._find_content_by_semantic_match(map_data["name"])
+            else:  # "page" mode (default)
+                insert_id = self._find_content_after_page(page_num)
+
+            if insert_id:
+                metadata.insert_before_content_id = insert_id
+
+            self.image_registry[key] = metadata
+
+    def _find_content_after_page(self, page_num: int) -> Optional[str]:
+        """Find the first content ID that appears after a given source page.
+
+        Prefers to position at the start of the section that contains the page
+        (better for maps that represent entire sections). Falls back to first
+        content on the page if no section is found.
+
+        Args:
+            page_num: Source page number (1-indexed)
+
+        Returns:
+            Semantic content ID or None if not found
+        """
+        if not self.source:
+            return None
+
+        # Strategy 1: Find the section that contains this page and position at its first content
+        current_section_title = None
+        for page in self.source.pages:
+            for content in page.content:
+                if content.type == "section":
+                    current_section_title = content.data
+
+                # If we're on the target page and have a section title, find its first content
+                if page.number == page_num and current_section_title:
+                    # Find the first non-heading content in this section (from any page)
+                    found_section = False
+                    for search_page in self.source.pages:
+                        for search_content in search_page.content:
+                            if search_content.type == "section" and search_content.data == current_section_title:
+                                found_section = True
+                            elif found_section and search_content.type not in ["chapter_title", "section", "subsection", "subsubsection", "header", "footer"]:
+                                if search_content.id and search_content.id in self._page_to_semantic_id_map:
+                                    return self._page_to_semantic_id_map[search_content.id]
+
+        # Strategy 2: Fallback to first non-heading content on the page
+        for page in self.source.pages:
+            if page.number >= page_num:
+                for content in page.content:
+                    if content.type not in ["chapter_title", "section", "subsection", "subsubsection", "header", "footer"]:
+                        if content.id and content.id in self._page_to_semantic_id_map:
+                            return self._page_to_semantic_id_map[content.id]
+
+        # Strategy 3: Ultimate fallback
+        return self._get_first_content_id_heuristic()
+
+    def _get_first_content_id_heuristic(self) -> Optional[str]:
+        """Get first content ID as fallback heuristic."""
+        for chapter in self.chapters:
+            if chapter.content:
+                return chapter.content[0].id
+            for section in chapter.sections:
+                if section.content:
+                    return section.content[0].id
+        return None
+
+    def _find_content_by_semantic_match(self, map_name: str) -> Optional[str]:
+        """Use Gemini to find the best section/subsection for a map based on its name.
+
+        Args:
+            map_name: Name of the map (e.g., "Cragmaw Hideout", "Goblin Den")
+
+        Returns:
+            Content ID for insertion point, or None if no match found
+        """
+        import os
+        from util.gemini import GeminiAPI
+
+        # Build list of all sections and subsections with their first content IDs
+        sections_data = []
+        for ch_idx, chapter in enumerate(self.chapters):
+            for sec_idx, section in enumerate(chapter.sections):
+                if section.content:
+                    sections_data.append({
+                        "path": f"{chapter.title} → {section.title}",
+                        "content_id": section.content[0].id
+                    })
+
+                for subsec_idx, subsection in enumerate(section.subsections):
+                    if subsection.content:
+                        sections_data.append({
+                            "path": f"{chapter.title} → {section.title} → {subsection.title}",
+                            "content_id": subsection.content[0].id
+                        })
+
+        if not sections_data:
+            return None
+
+        # Create prompt for Gemini
+        sections_list = "\n".join([f"{i+1}. {s['path']}" for i, s in enumerate(sections_data)])
+
+        prompt = f"""You are analyzing a D&D adventure module to position a map named "{map_name}".
+
+Below is a list of all sections in the module:
+
+{sections_list}
+
+Which section number (1-{len(sections_data)}) is the BEST place to insert the "{map_name}" map?
+The map should appear at the START of the most relevant section.
+
+Respond with ONLY the number (e.g., "5"), nothing else."""
+
+        try:
+            gemini_api = GeminiAPI()
+            response = gemini_api.generate_content(prompt)
+
+            if response and response.text:
+                # Parse the number from response
+                import re
+                match = re.search(r'\d+', response.text.strip())
+                if match:
+                    section_idx = int(match.group()) - 1  # Convert to 0-indexed
+                    if 0 <= section_idx < len(sections_data):
+                        return sections_data[section_idx]["content_id"]
+        except Exception as e:
+            # If Gemini fails, fall back to first content
+            pass
+
+        return self._get_first_content_id_heuristic()
+
+    def add_scene_artwork(self, scenes: List[Dict], image_dir):
+        """Add scene artwork to image registry with intelligent positioning.
+
+        Positions scenes at section/subsection boundaries by fuzzy-matching
+        section_path to Journal hierarchy.
+
+        Args:
+            scenes: List of scene dicts with section_path, name, description
+            image_dir: Path to scene_artwork/images directory (can be str or Path)
+        """
+        import re
+        from pathlib import Path
+
+        image_dir = Path(image_dir)
+
+        for i, scene in enumerate(scenes, start=1):
+            # Generate key from scene name
+            safe_name = re.sub(r'[^\w\s-]', '', scene["name"].lower())
+            safe_name = re.sub(r'[-\s]+', '_', safe_name)
+            key = f"scene_{safe_name}"
+
+            # Find file path (format: scene_NNN_name.png)
+            file_path = None
+            for image_file in image_dir.glob(f"scene_{i:03d}_*.png"):
+                file_path = image_file
+                break
+
+            # Create ImageMetadata
+            metadata = ImageMetadata(
+                key=key,
+                source_page=0,  # Scene artwork doesn't have source page
+                type="illustration",
+                description=scene.get("description"),
+                file_path=str(file_path) if file_path else None
+            )
+
+            # Find insertion point by matching section_path
+            insert_id = self._find_section_by_path(scene["section_path"])
+            if insert_id:
+                metadata.insert_before_content_id = insert_id
+
+            self.image_registry[key] = metadata
+
+    def _find_section_by_path(self, section_path: str) -> Optional[str]:
+        """Find content ID for a section by fuzzy-matching section_path.
+
+        Section path format: "Chapter Title → Section Title → Subsection Title"
+
+        Args:
+            section_path: Hierarchical path from scene extraction
+
+        Returns:
+            Content ID of first content in matched section/subsection
+        """
+        import re
+
+        # Parse section path
+        parts = [p.strip() for p in section_path.split("→")]
+        if len(parts) < 2:
+            return None
+
+        chapter_title = parts[0]
+        section_title = parts[1] if len(parts) > 1 else None
+        subsection_title = parts[2] if len(parts) > 2 else None
+
+        # Normalize titles for fuzzy matching (lowercase, remove punctuation)
+        def normalize(text):
+            return re.sub(r'[^\w\s]', '', text.lower())
+
+        chapter_norm = normalize(chapter_title)
+
+        # Find matching chapter
+        for chapter in self.chapters:
+            if normalize(chapter.title) == chapter_norm:
+                # If only chapter specified, insert at first section
+                if not section_title:
+                    if chapter.sections and chapter.sections[0].content:
+                        return chapter.sections[0].content[0].id
+                    return None
+
+                # Find matching section
+                section_norm = normalize(section_title)
+                for section in chapter.sections:
+                    if normalize(section.title) == section_norm:
+                        # If only chapter + section, insert at first content
+                        if not subsection_title:
+                            if section.content:
+                                return section.content[0].id
+                            return None
+
+                        # Find matching subsection
+                        subsection_norm = normalize(subsection_title)
+                        for subsection in section.subsections:
+                            if normalize(subsection.title) == subsection_norm:
+                                if subsection.content:
+                                    return subsection.content[0].id
+
+        return None
 
     def to_foundry_html(self, image_mapping: Optional[Dict[str, str]] = None) -> str:
         """Export journal to FoundryVTT-ready HTML format.
@@ -550,3 +834,138 @@ class Journal(BaseModel):
             Markdown string (currently a placeholder)
         """
         return "TODO: Markdown export not yet implemented"
+
+    def export_standalone_html(self, output_dir) -> str:
+        """Export journal as standalone HTML with embedded images.
+
+        Creates a self-contained HTML export with images copied to a local directory.
+        Useful for viewing/sharing journals without FoundryVTT.
+
+        Directory structure created:
+            output_dir/
+                journal.html       - Main HTML file
+                images/            - Copied image files
+                    *.png
+
+        Args:
+            output_dir: Path to output directory (can be str or Path)
+
+        Returns:
+            Path to generated journal.html file
+
+        Raises:
+            ValueError: If output_dir creation fails
+        """
+        from pathlib import Path
+        import shutil
+
+        output_dir = Path(output_dir)
+        images_dir = output_dir / "images"
+
+        # Create directories
+        output_dir.mkdir(parents=True, exist_ok=True)
+        images_dir.mkdir(exist_ok=True)
+
+        # Build image mapping with relative paths and copy images
+        image_mapping = {}
+        for key, metadata in self.image_registry.items():
+            if metadata.file_path:
+                source_path = Path(metadata.file_path)
+                if source_path.exists():
+                    # Copy to images directory
+                    dest_path = images_dir / source_path.name
+                    shutil.copy2(source_path, dest_path)
+                    # Use relative path in HTML
+                    image_mapping[key] = f"images/{source_path.name}"
+
+        # Generate HTML content
+        html_content = self.to_foundry_html(image_mapping)
+
+        # Wrap in complete HTML document with styling
+        full_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{self.title}</title>
+    <style>
+        body {{
+            font-family: 'Bookman Old Style', Georgia, serif;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5dc;
+            color: #2c1810;
+            line-height: 1.6;
+        }}
+        h1 {{
+            color: #8b4513;
+            border-bottom: 3px solid #8b4513;
+            padding-bottom: 10px;
+            font-size: 2.5em;
+        }}
+        h2 {{
+            color: #a0522d;
+            margin-top: 40px;
+            font-size: 2em;
+            border-bottom: 2px solid #cd853f;
+        }}
+        h3 {{
+            color: #cd853f;
+            margin-top: 30px;
+            font-size: 1.5em;
+        }}
+        h4 {{
+            color: #d2691e;
+            margin-top: 20px;
+            font-size: 1.2em;
+        }}
+        p {{
+            margin: 15px 0;
+            text-align: justify;
+        }}
+        img {{
+            display: block;
+            max-width: 100%;
+            height: auto;
+            margin: 30px auto;
+            border: 3px solid #8b4513;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            border-radius: 4px;
+        }}
+        table {{
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+            background: white;
+        }}
+        table td {{
+            border: 1px solid #8b4513;
+            padding: 8px;
+        }}
+        aside {{
+            background: #fffaf0 !important;
+            border-left: 4px solid #8b4513 !important;
+            padding: 15px 20px !important;
+            margin: 20px 0 !important;
+            font-style: italic;
+        }}
+        ul, ol {{
+            margin: 15px 0;
+            padding-left: 40px;
+        }}
+        li {{
+            margin: 8px 0;
+        }}
+    </style>
+</head>
+<body>
+{html_content}
+</body>
+</html>"""
+
+        # Write to file
+        output_file = output_dir / "journal.html"
+        output_file.write_text(full_html, encoding='utf-8')
+
+        return str(output_file)

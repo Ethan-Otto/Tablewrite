@@ -18,7 +18,9 @@ import os
 import sys
 import argparse
 import logging
+import json
 from pathlib import Path
+from datetime import datetime
 from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -137,10 +139,38 @@ def process_chapter(
     gallery_file.write_text(gallery_html)
     logger.info(f"  Saved gallery to: {gallery_file}")
 
+    # Step 5: Save scene metadata
+    logger.info("Step 5: Saving scene metadata...")
+    scenes_metadata = []
+    for i, scene in enumerate(scenes, start=1):
+        safe_name = sanitize_filename(scene.name)
+        image_filename = f"scene_{i:03d}_{safe_name}.png"
+
+        scenes_metadata.append({
+            "section_path": scene.section_path,
+            "name": scene.name,
+            "description": scene.description,
+            "location_type": scene.location_type,
+            "image_file": f"images/{image_filename}"
+        })
+
+    metadata_file = output_dir / "scenes_metadata.json"
+    metadata_content = {
+        "generated_at": datetime.now().isoformat(),
+        "total_scenes": len(scenes),
+        "scenes": scenes_metadata
+    }
+
+    with open(metadata_file, "w") as f:
+        json.dump(metadata_content, f, indent=2)
+
+    logger.info(f"  Saved metadata to: {metadata_file}")
+
     return {
         "scenes_found": len(scenes),
         "images_generated": len(image_paths),
-        "gallery_file": str(gallery_file)
+        "gallery_file": str(gallery_file),
+        "metadata_file": str(metadata_file)
     }
 
 
