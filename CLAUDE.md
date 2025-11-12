@@ -680,7 +680,7 @@ AI-powered scene extraction and artwork generation for creating visual galleries
 **Processing Workflow:**
 1. **Context Extraction**: Analyzes chapter XML to determine environment type, lighting, terrain
 2. **Scene Identification**: Extracts physical locations, filters out NPCs/monsters
-3. **Image Generation**: Creates AI artwork using Gemini Imagen (5 parallel workers)
+3. **Image Generation**: Creates AI artwork using `imagen-4.0-fast-generate-001` (parallel processing)
 4. **Gallery Creation**: Generates HTML gallery with collapsible prompts
 
 **Scene Model:**
