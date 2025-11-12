@@ -189,7 +189,7 @@ class TestPitFiendIntegration:
     @pytest.mark.asyncio
     async def test_pit_fiend_round_trip(self, pit_fiend_data, spell_cache):
         """Full upload/download round-trip with spells added via /give."""
-        client = FoundryClient(target="local")
+        client = FoundryClient()
 
         # Convert and upload (with spell UUIDs for /give)
         foundry_json, spell_uuids = await convert_to_foundry(pit_fiend_data, spell_cache=spell_cache)

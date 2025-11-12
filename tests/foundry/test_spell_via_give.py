@@ -57,7 +57,7 @@ async def test_spell_via_give_workflow(check_foundry_credentials):
     assert len(spells_in_payload) == 0, "Should have 0 spells in payload (added via /give)"
 
     # Create actor with spell UUIDs
-    client = FoundryClient(target="local")
+    client = FoundryClient()
     actor_uuid = client.actors.create_actor(actor_json, spell_uuids=spell_uuids)
 
     # Download and verify
@@ -125,7 +125,7 @@ async def test_multiple_actors_with_spells(check_foundry_credentials):
     """Test creating multiple actors with spells doesn't cause race conditions."""
     spell_cache = SpellCache()
     spell_cache.load()
-    client = FoundryClient(target="local")
+    client = FoundryClient()
 
     results = []
 

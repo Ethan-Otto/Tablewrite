@@ -3,7 +3,7 @@
 import os
 import logging
 import requests
-from typing import Literal, Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List
 
 from .journals import JournalManager
 from .items.manager import ItemManager
@@ -16,44 +16,26 @@ logger = logging.getLogger(__name__)
 class FoundryClient:
     """Client for interacting with FoundryVTT via REST API."""
 
-    def __init__(self, target: Literal["local", "forge"] = "local"):
+    def __init__(self):
         """
         Initialize FoundryVTT API client.
-
-        Args:
-            target: Target environment ('local' or 'forge')
 
         Raises:
             ValueError: If required environment variables are not set
         """
-        self.target = target
         self.relay_url = os.getenv("FOUNDRY_RELAY_URL")
+        self.foundry_url = os.getenv("FOUNDRY_URL")
+        self.api_key = os.getenv("FOUNDRY_API_KEY")
+        self.client_id = os.getenv("FOUNDRY_CLIENT_ID")
 
         if not self.relay_url:
             raise ValueError("FOUNDRY_RELAY_URL not set in environment")
-
-        if target == "local":
-            self.foundry_url = os.getenv("FOUNDRY_URL")
-            self.api_key = os.getenv("FOUNDRY_API_KEY")
-            self.client_id = os.getenv("FOUNDRY_CLIENT_ID")
-            if not self.foundry_url:
-                raise ValueError("FOUNDRY_URL not set in environment")
-            if not self.api_key:
-                raise ValueError("FOUNDRY_API_KEY not set in environment")
-            if not self.client_id:
-                raise ValueError("FOUNDRY_CLIENT_ID not set in environment")
-        elif target == "forge":
-            self.foundry_url = os.getenv("FOUNDRY_FORGE_URL")
-            self.api_key = os.getenv("FOUNDRY_FORGE_API_KEY")
-            self.client_id = os.getenv("FOUNDRY_FORGE_CLIENT_ID")
-            if not self.foundry_url:
-                raise ValueError("FOUNDRY_FORGE_URL not set in environment")
-            if not self.api_key:
-                raise ValueError("FOUNDRY_FORGE_API_KEY not set in environment")
-            if not self.client_id:
-                raise ValueError("FOUNDRY_FORGE_CLIENT_ID not set in environment")
-        else:
-            raise ValueError(f"Invalid target: {target}. Must be 'local' or 'forge'")
+        if not self.foundry_url:
+            raise ValueError("FOUNDRY_URL not set in environment")
+        if not self.api_key:
+            raise ValueError("FOUNDRY_API_KEY not set in environment")
+        if not self.client_id:
+            raise ValueError("FOUNDRY_CLIENT_ID not set in environment")
 
         # Initialize managers
         self.journals = JournalManager(
@@ -79,7 +61,7 @@ class FoundryClient:
 
         self.icons = IconCache()
 
-        logger.info(f"Initialized FoundryClient for {target} at {self.foundry_url}")
+        logger.info(f"Initialized FoundryClient at {self.foundry_url}")
 
     # Journal operations (delegated to JournalManager)
 
