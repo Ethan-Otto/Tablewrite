@@ -101,9 +101,9 @@ uv run pytest tests/api/test_api_integration.py -v -m integration
 
    # FoundryVTT Configuration (optional - for journal upload)
    FOUNDRY_RELAY_URL=https://foundryvtt-rest-api-relay.fly.dev
-   FOUNDRY_LOCAL_URL=http://localhost:30000
-   FOUNDRY_LOCAL_API_KEY=<your_foundry_api_key>
-   FOUNDRY_LOCAL_CLIENT_ID=<your_client_id>
+   FOUNDRY_URL=http://localhost:30000
+   FOUNDRY_API_KEY=<your_foundry_api_key>
+   FOUNDRY_CLIENT_ID=<your_client_id>
    FOUNDRY_AUTO_UPLOAD=false
    FOUNDRY_TARGET=local
    ```

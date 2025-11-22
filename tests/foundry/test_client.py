@@ -12,9 +12,9 @@ class TestFoundryClientInit:
 
     def test_client_initialization_with_env_vars(self, monkeypatch):
         """Test client initializes with environment variables."""
-        monkeypatch.setenv("FOUNDRY_LOCAL_URL", "http://localhost:30000")
-        monkeypatch.setenv("FOUNDRY_LOCAL_API_KEY", "test-api-key")
-        monkeypatch.setenv("FOUNDRY_LOCAL_CLIENT_ID", "test-client-id")
+        monkeypatch.setenv("FOUNDRY_URL", "http://localhost:30000")
+        monkeypatch.setenv("FOUNDRY_API_KEY", "test-api-key")
+        monkeypatch.setenv("FOUNDRY_CLIENT_ID", "test-client-id")
         monkeypatch.setenv("FOUNDRY_RELAY_URL", "https://relay.example.com")
 
         client = FoundryClient(target="local")
@@ -40,8 +40,8 @@ class TestFoundryClientInit:
     def test_client_raises_on_missing_env_vars(self, monkeypatch):
         """Test client raises ValueError when required env vars missing."""
         # Clear all relevant env vars
-        monkeypatch.delenv("FOUNDRY_LOCAL_URL", raising=False)
-        monkeypatch.delenv("FOUNDRY_LOCAL_API_KEY", raising=False)
+        monkeypatch.delenv("FOUNDRY_URL", raising=False)
+        monkeypatch.delenv("FOUNDRY_API_KEY", raising=False)
         monkeypatch.delenv("FOUNDRY_RELAY_URL", raising=False)
 
         with pytest.raises(ValueError, match="FOUNDRY_RELAY_URL not set"):
@@ -54,9 +54,9 @@ class TestJournalOperations:
     @pytest.fixture
     def mock_client(self, monkeypatch):
         """Create a FoundryClient with mocked environment."""
-        monkeypatch.setenv("FOUNDRY_LOCAL_URL", "http://localhost:30000")
-        monkeypatch.setenv("FOUNDRY_LOCAL_API_KEY", "test-key")
-        monkeypatch.setenv("FOUNDRY_LOCAL_CLIENT_ID", "test-client-id")
+        monkeypatch.setenv("FOUNDRY_URL", "http://localhost:30000")
+        monkeypatch.setenv("FOUNDRY_API_KEY", "test-key")
+        monkeypatch.setenv("FOUNDRY_CLIENT_ID", "test-client-id")
         monkeypatch.setenv("FOUNDRY_RELAY_URL", "https://relay.example.com")
         return FoundryClient(target="local")
 
@@ -112,9 +112,9 @@ class TestFoundryIntegration:
         # Check if required environment variables are set
         required_vars = [
             "FOUNDRY_RELAY_URL",
-            "FOUNDRY_LOCAL_URL",
-            "FOUNDRY_LOCAL_API_KEY",
-            "FOUNDRY_LOCAL_CLIENT_ID"
+            "FOUNDRY_URL",
+            "FOUNDRY_API_KEY",
+            "FOUNDRY_CLIENT_ID"
         ]
 
         missing_vars = [var for var in required_vars if not os.getenv(var)]
@@ -339,9 +339,9 @@ class TestActorOperations:
     @pytest.fixture
     def mock_client(self, monkeypatch):
         """Create a FoundryClient with mocked environment."""
-        monkeypatch.setenv("FOUNDRY_LOCAL_URL", "http://localhost:30000")
-        monkeypatch.setenv("FOUNDRY_LOCAL_API_KEY", "test-key")
-        monkeypatch.setenv("FOUNDRY_LOCAL_CLIENT_ID", "test-client-id")
+        monkeypatch.setenv("FOUNDRY_URL", "http://localhost:30000")
+        monkeypatch.setenv("FOUNDRY_API_KEY", "test-key")
+        monkeypatch.setenv("FOUNDRY_CLIENT_ID", "test-client-id")
         monkeypatch.setenv("FOUNDRY_RELAY_URL", "https://relay.example.com")
         return FoundryClient(target="local")
 

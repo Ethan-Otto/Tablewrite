@@ -33,15 +33,15 @@ class FoundryClient:
             raise ValueError("FOUNDRY_RELAY_URL not set in environment")
 
         if target == "local":
-            self.foundry_url = os.getenv("FOUNDRY_LOCAL_URL")
-            self.api_key = os.getenv("FOUNDRY_LOCAL_API_KEY")
-            self.client_id = os.getenv("FOUNDRY_LOCAL_CLIENT_ID")
+            self.foundry_url = os.getenv("FOUNDRY_URL")
+            self.api_key = os.getenv("FOUNDRY_API_KEY")
+            self.client_id = os.getenv("FOUNDRY_CLIENT_ID")
             if not self.foundry_url:
-                raise ValueError("FOUNDRY_LOCAL_URL not set in environment")
+                raise ValueError("FOUNDRY_URL not set in environment")
             if not self.api_key:
-                raise ValueError("FOUNDRY_LOCAL_API_KEY not set in environment")
+                raise ValueError("FOUNDRY_API_KEY not set in environment")
             if not self.client_id:
-                raise ValueError("FOUNDRY_LOCAL_CLIENT_ID not set in environment")
+                raise ValueError("FOUNDRY_CLIENT_ID not set in environment")
         elif target == "forge":
             self.foundry_url = os.getenv("FOUNDRY_FORGE_URL")
             self.api_key = os.getenv("FOUNDRY_FORGE_API_KEY")

@@ -238,9 +238,9 @@ The project includes full integration for uploading journal entries and actors d
    Add to your `.env` file:
    ```bash
    FOUNDRY_RELAY_URL=https://foundryvtt-rest-api-relay.fly.dev
-   FOUNDRY_LOCAL_URL=http://localhost:30000
-   FOUNDRY_LOCAL_API_KEY=<your_api_key>
-   FOUNDRY_LOCAL_CLIENT_ID=<your_client_id>
+   FOUNDRY_URL=http://localhost:30000
+   FOUNDRY_API_KEY=<your_api_key>
+   FOUNDRY_CLIENT_ID=<your_client_id>
    FOUNDRY_AUTO_UPLOAD=false
    FOUNDRY_TARGET=local
    ```

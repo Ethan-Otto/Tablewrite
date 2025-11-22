@@ -50,8 +50,8 @@ GEMINI_API_KEY=your_gemini_api_key_here
 
 # FoundryVTT (optional)
 FOUNDRY_RELAY_URL=http://localhost:3010
-FOUNDRY_LOCAL_API_KEY=
-FOUNDRY_LOCAL_CLIENT_ID=
+FOUNDRY_API_KEY=
+FOUNDRY_CLIENT_ID=
 
 # Module paths
 MODULE_OUTPUT_DIR=../../output/runs

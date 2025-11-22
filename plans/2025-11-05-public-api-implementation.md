@@ -1038,8 +1038,8 @@ Configuration:
 
 Requires .env file with:
     - GeminiImageAPI: Google Gemini API key
-    - FOUNDRY_LOCAL_URL: FoundryVTT server URL
-    - FOUNDRY_LOCAL_API_KEY: FoundryVTT API key
+    - FOUNDRY_URL: FoundryVTT server URL
+    - FOUNDRY_API_KEY: FoundryVTT API key
 
 See CLAUDE.md for complete setup instructions.
 """

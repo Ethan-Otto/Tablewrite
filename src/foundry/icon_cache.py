@@ -63,8 +63,8 @@ class IconCache:
 
         # Get credentials from env if not provided
         relay_url = relay_url or os.getenv("FOUNDRY_RELAY_URL")
-        api_key = api_key or os.getenv("FOUNDRY_LOCAL_API_KEY")
-        client_id = client_id or os.getenv("FOUNDRY_LOCAL_CLIENT_ID")
+        api_key = api_key or os.getenv("FOUNDRY_API_KEY")
+        client_id = client_id or os.getenv("FOUNDRY_CLIENT_ID")
 
         if not all([relay_url, api_key, client_id]):
             raise ValueError("Missing required credentials: relay_url, api_key, client_id")
