@@ -57,8 +57,8 @@ Add these lines to `.env`:
 
 ```bash
 # FoundryVTT Configuration
-FOUNDRY_LOCAL_URL=http://localhost:30000
-FOUNDRY_LOCAL_API_KEY=your_local_api_key_here
+FOUNDRY_URL=http://localhost:30000
+FOUNDRY_API_KEY=your_local_api_key_here
 FOUNDRY_FORGE_URL=https://your-game.forge-vtt.com
 FOUNDRY_FORGE_API_KEY=your_forge_api_key_here
 FOUNDRY_RELAY_URL=https://foundryvtt-rest-api-relay.fly.dev
@@ -85,8 +85,8 @@ Create or update `.env.example`:
 GeminiImageAPI=your_gemini_api_key
 
 # FoundryVTT Configuration
-FOUNDRY_LOCAL_URL=http://localhost:30000
-FOUNDRY_LOCAL_API_KEY=your_local_api_key
+FOUNDRY_URL=http://localhost:30000
+FOUNDRY_API_KEY=your_local_api_key
 FOUNDRY_FORGE_URL=https://your-game.forge-vtt.com
 FOUNDRY_FORGE_API_KEY=your_forge_api_key
 FOUNDRY_RELAY_URL=https://foundryvtt-rest-api-relay.fly.dev
@@ -459,8 +459,8 @@ class TestFoundryClientInit:
 
     def test_client_initialization_with_env_vars(self, monkeypatch):
         """Test client initializes with environment variables."""
-        monkeypatch.setenv("FOUNDRY_LOCAL_URL", "http://localhost:30000")
-        monkeypatch.setenv("FOUNDRY_LOCAL_API_KEY", "test-api-key")
+        monkeypatch.setenv("FOUNDRY_URL", "http://localhost:30000")
+        monkeypatch.setenv("FOUNDRY_API_KEY", "test-api-key")
         monkeypatch.setenv("FOUNDRY_RELAY_URL", "https://relay.example.com")
 
         client = FoundryClient(target="local")
@@ -482,7 +482,7 @@ class TestFoundryClientInit:
 
     def test_client_raises_on_missing_env_vars(self):
         """Test client raises ValueError when required env vars missing."""
-        with pytest.raises(ValueError, match="FOUNDRY_LOCAL_URL not set"):
+        with pytest.raises(ValueError, match="FOUNDRY_URL not set"):
             FoundryClient(target="local")
 ```
 
@@ -528,12 +528,12 @@ class FoundryClient:
             raise ValueError("FOUNDRY_RELAY_URL not set in environment")
 
         if target == "local":
-            self.foundry_url = os.getenv("FOUNDRY_LOCAL_URL")
-            self.api_key = os.getenv("FOUNDRY_LOCAL_API_KEY")
+            self.foundry_url = os.getenv("FOUNDRY_URL")
+            self.api_key = os.getenv("FOUNDRY_API_KEY")
             if not self.foundry_url:
-                raise ValueError("FOUNDRY_LOCAL_URL not set in environment")
+                raise ValueError("FOUNDRY_URL not set in environment")
             if not self.api_key:
-                raise ValueError("FOUNDRY_LOCAL_API_KEY not set in environment")
+                raise ValueError("FOUNDRY_API_KEY not set in environment")
         elif target == "forge":
             self.foundry_url = os.getenv("FOUNDRY_FORGE_URL")
             self.api_key = os.getenv("FOUNDRY_FORGE_API_KEY")
@@ -584,8 +584,8 @@ class TestJournalOperations:
     @pytest.fixture
     def mock_client(self, monkeypatch):
         """Create a FoundryClient with mocked environment."""
-        monkeypatch.setenv("FOUNDRY_LOCAL_URL", "http://localhost:30000")
-        monkeypatch.setenv("FOUNDRY_LOCAL_API_KEY", "test-key")
+        monkeypatch.setenv("FOUNDRY_URL", "http://localhost:30000")
+        monkeypatch.setenv("FOUNDRY_API_KEY", "test-key")
         monkeypatch.setenv("FOUNDRY_RELAY_URL", "https://relay.example.com")
         return FoundryClient(target="local")
 
@@ -1405,8 +1405,8 @@ Add to "Required Configuration" section:
 ```markdown
 4. **FoundryVTT Integration (Optional)**: For automatic journal upload:
    ```
-   FOUNDRY_LOCAL_URL=http://localhost:30000
-   FOUNDRY_LOCAL_API_KEY=<your_api_key>
+   FOUNDRY_URL=http://localhost:30000
+   FOUNDRY_API_KEY=<your_api_key>
    FOUNDRY_FORGE_URL=https://your-game.forge-vtt.com
    FOUNDRY_FORGE_API_KEY=<your_forge_api_key>
    FOUNDRY_RELAY_URL=https://foundryvtt-rest-api-relay.fly.dev
@@ -1448,13 +1448,13 @@ def test_foundry_upload_integration(tmp_path, monkeypatch):
     Test complete pipeline: HTML generation → Foundry upload.
 
     This test requires:
-    - FOUNDRY_LOCAL_URL set in environment
-    - FOUNDRY_LOCAL_API_KEY set in environment
+    - FOUNDRY_URL set in environment
+    - FOUNDRY_API_KEY set in environment
     - FoundryVTT running locally with REST API module installed
     """
     # Check prerequisites
-    if not os.getenv("FOUNDRY_LOCAL_URL"):
-        pytest.skip("FOUNDRY_LOCAL_URL not set - skipping integration test")
+    if not os.getenv("FOUNDRY_URL"):
+        pytest.skip("FOUNDRY_URL not set - skipping integration test")
 
     # Create test HTML file
     html_dir = tmp_path / "documents" / "html"
@@ -1759,8 +1759,8 @@ Repeat for both local and Forge if using both.
 Add to `.env`:
 
 ```bash
-FOUNDRY_LOCAL_URL=http://localhost:30000
-FOUNDRY_LOCAL_API_KEY=<paste_your_key>
+FOUNDRY_URL=http://localhost:30000
+FOUNDRY_API_KEY=<paste_your_key>
 FOUNDRY_FORGE_URL=https://your-game.forge-vtt.com
 FOUNDRY_FORGE_API_KEY=<paste_forge_key>
 FOUNDRY_RELAY_URL=https://foundryvtt-rest-api-relay.fly.dev
@@ -1791,7 +1791,7 @@ Now `xml_to_html.py` will automatically upload after generation.
 
 ## Troubleshooting
 
-**"FOUNDRY_LOCAL_URL not set"**
+**"FOUNDRY_URL not set"**
 - Check `.env` file exists and has correct values
 - Ensure you ran `source .venv/bin/activate` or used `uv run`
 

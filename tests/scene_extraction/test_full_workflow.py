@@ -74,11 +74,9 @@ class TestSceneProcessingWorkflow:
             assert len(scenes) == 1
             assert scenes[0].name == "Forest Clearing"
 
-            # Mock BytesIO for image generation
-            with patch('src.scene_extraction.generate_artwork.BytesIO') as mock_bytesio_class:
-                mock_buffer = MagicMock()
-                mock_buffer.getvalue.return_value = b"fake_png_data"
-                mock_bytesio_class.return_value = mock_buffer
+            # Mock generate_images_parallel for image generation
+            with patch('src.scene_extraction.generate_artwork.generate_images_parallel') as mock_gen:
+                mock_gen.return_value = [b"fake_png_data"]
 
                 image_bytes, prompt = generate_scene_image(scenes[0], context)
                 assert image_bytes == b"fake_png_data"

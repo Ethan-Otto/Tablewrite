@@ -1320,9 +1320,9 @@ class TestFoundryClientActorDelegation:
         """Test client creates ActorManager instance."""
         with patch.dict('os.environ', {
             'FOUNDRY_RELAY_URL': 'http://relay',
-            'FOUNDRY_LOCAL_URL': 'http://local',
-            'FOUNDRY_LOCAL_API_KEY': 'key123',
-            'FOUNDRY_LOCAL_CLIENT_ID': 'client123'
+            'FOUNDRY_URL': 'http://local',
+            'FOUNDRY_API_KEY': 'key123',
+            'FOUNDRY_CLIENT_ID': 'client123'
         }):
             client = FoundryClient(target="local")
 
@@ -1333,9 +1333,9 @@ class TestFoundryClientActorDelegation:
         """Test client.search_actor delegates to ActorManager."""
         with patch.dict('os.environ', {
             'FOUNDRY_RELAY_URL': 'http://relay',
-            'FOUNDRY_LOCAL_URL': 'http://local',
-            'FOUNDRY_LOCAL_API_KEY': 'key123',
-            'FOUNDRY_LOCAL_CLIENT_ID': 'client123'
+            'FOUNDRY_URL': 'http://local',
+            'FOUNDRY_API_KEY': 'key123',
+            'FOUNDRY_CLIENT_ID': 'client123'
         }):
             client = FoundryClient(target="local")
 

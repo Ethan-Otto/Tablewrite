@@ -29,8 +29,8 @@ def fetch_items_by_type(
     Args:
         item_subtype: Item subtype to fetch (e.g., "spell", "weapon", "equipment")
         relay_url: Relay server URL (defaults to FOUNDRY_RELAY_URL env var)
-        api_key: API key (defaults to FOUNDRY_LOCAL_API_KEY env var)
-        client_id: Client ID (defaults to FOUNDRY_LOCAL_CLIENT_ID env var)
+        api_key: API key (defaults to FOUNDRY_API_KEY env var)
+        client_id: Client ID (defaults to FOUNDRY_CLIENT_ID env var)
         use_two_letter_fallback: Use two-letter combos for queries that hit 200 limit
 
     Returns:
@@ -42,13 +42,13 @@ def fetch_items_by_type(
     """
     # Use environment variables if not provided
     relay_url = relay_url or os.getenv("FOUNDRY_RELAY_URL")
-    api_key = api_key or os.getenv("FOUNDRY_LOCAL_API_KEY")
-    client_id = client_id or os.getenv("FOUNDRY_LOCAL_CLIENT_ID")
+    api_key = api_key or os.getenv("FOUNDRY_API_KEY")
+    client_id = client_id or os.getenv("FOUNDRY_CLIENT_ID")
 
     if not all([relay_url, api_key, client_id]):
         raise ValueError(
             "Missing required credentials: FOUNDRY_RELAY_URL, "
-            "FOUNDRY_LOCAL_API_KEY, FOUNDRY_LOCAL_CLIENT_ID"
+            "FOUNDRY_API_KEY, FOUNDRY_CLIENT_ID"
         )
 
     logger.info(f"Fetching all items of subtype '{item_subtype}'...")

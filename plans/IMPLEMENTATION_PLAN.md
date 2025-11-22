@@ -593,8 +593,8 @@ class TestSpellCacheIntegration:
 
         cache = SpellCache(
             os.getenv('FOUNDRY_RELAY_URL'),
-            os.getenv('FOUNDRY_LOCAL_API_KEY'),
-            os.getenv('FOUNDRY_LOCAL_CLIENT_ID')
+            os.getenv('FOUNDRY_API_KEY'),
+            os.getenv('FOUNDRY_CLIENT_ID')
         )
         cache.load()
 

@@ -15,8 +15,8 @@ class TestFetchItemsByType:
         # Setup environment variables
         mock_getenv.side_effect = lambda key: {
             'FOUNDRY_RELAY_URL': 'http://localhost:3010',
-            'FOUNDRY_LOCAL_API_KEY': 'test-key',
-            'FOUNDRY_LOCAL_CLIENT_ID': 'test-client'
+            'FOUNDRY_API_KEY': 'test-key',
+            'FOUNDRY_CLIENT_ID': 'test-client'
         }.get(key)
 
         # Setup mock response
@@ -50,8 +50,8 @@ class TestFetchItemsByType:
         """Should deduplicate items by UUID."""
         mock_getenv.side_effect = lambda key: {
             'FOUNDRY_RELAY_URL': 'http://localhost:3010',
-            'FOUNDRY_LOCAL_API_KEY': 'test-key',
-            'FOUNDRY_LOCAL_CLIENT_ID': 'test-client'
+            'FOUNDRY_API_KEY': 'test-key',
+            'FOUNDRY_CLIENT_ID': 'test-client'
         }.get(key)
 
         # Setup mock to return same item multiple times
@@ -76,8 +76,8 @@ class TestFetchItemsByType:
         """Should use two-letter combos when hitting 200 limit."""
         mock_getenv.side_effect = lambda key: {
             'FOUNDRY_RELAY_URL': 'http://localhost:3010',
-            'FOUNDRY_LOCAL_API_KEY': 'test-key',
-            'FOUNDRY_LOCAL_CLIENT_ID': 'test-client'
+            'FOUNDRY_API_KEY': 'test-key',
+            'FOUNDRY_CLIENT_ID': 'test-client'
         }.get(key)
 
         # Setup mock: 'a' returns exactly 200 items, triggering fallback
@@ -137,8 +137,8 @@ class TestFetchItemsByType:
 
         mock_getenv.side_effect = lambda key: {
             'FOUNDRY_RELAY_URL': 'http://localhost:3010',
-            'FOUNDRY_LOCAL_API_KEY': 'test-key',
-            'FOUNDRY_LOCAL_CLIENT_ID': 'test-client'
+            'FOUNDRY_API_KEY': 'test-key',
+            'FOUNDRY_CLIENT_ID': 'test-client'
         }.get(key)
 
         mock_get.side_effect = requests.exceptions.RequestException("API Error")

@@ -48,9 +48,9 @@ class SpellCache:
 
         # Store credentials for lazy fetching
         relay_url = relay_url or os.getenv("FOUNDRY_RELAY_URL")
-        api_key = api_key or os.getenv("FOUNDRY_LOCAL_API_KEY")
-        client_id = client_id or os.getenv("FOUNDRY_LOCAL_CLIENT_ID")
-        foundry_url = os.getenv("FOUNDRY_LOCAL_URL")
+        api_key = api_key or os.getenv("FOUNDRY_API_KEY")
+        client_id = client_id or os.getenv("FOUNDRY_CLIENT_ID")
+        foundry_url = os.getenv("FOUNDRY_URL")
 
         # Initialize ItemManager for lazy fetching full data
         self._item_manager = ItemManager(relay_url, foundry_url, api_key, client_id)
