@@ -671,7 +671,7 @@ uv run python scripts/test_relay_connection.py
 - Database: In-memory (bypasses authentication)
 - Built from source for Apple Silicon (ARM64) compatibility
 
-See `docs/RELAY_SERVER_SETUP.md` for complete documentation.
+See `reference/RELAY_SERVER_SETUP.md` for complete documentation.
 
 ### Scene Extraction & Artwork Generation
 
