@@ -113,9 +113,9 @@ class JournalManager:
             }
         }
 
-        # Add folder at top level of payload if needed
+        # Add folder to document data if provided
         if folder:
-            payload["folder"] = folder
+            payload["data"]["folder"] = folder
 
         page_count = len(pages_data)
         logger.debug(f"Creating journal entry: {name} with {page_count} page(s)")
