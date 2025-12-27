@@ -152,15 +152,16 @@ async def extract_single_page(pdf_path: str, page_num: int, detection, output_di
 
 
 async def extract_maps_from_pdf(pdf_path: str, output_dir: str, chapter_name: str = None) -> list[MapMetadata]:
-    """Extract all maps from PDF using hybrid approach.
-
-    Args:
-        pdf_path: Path to PDF file
-        output_dir: Directory to save extracted maps
-        chapter_name: Optional chapter name for metadata
-
+    """
+    Extract maps from the given PDF into the output directory using a hybrid extraction pipeline.
+    
+    Parameters:
+        pdf_path (str): Path to the source PDF file.
+        output_dir (str): Directory where extracted map images and metadata will be saved.
+        chapter_name (str, optional): Optional chapter identifier to attach to each map's metadata.
+    
     Returns:
-        List of MapMetadata for all extracted maps
+        list[MapMetadata]: List of MapMetadata objects for maps that were successfully extracted.
     """
     # Step 1: Detect which pages have maps
     logger.info(f"Step 1: Detecting maps in {pdf_path}...")

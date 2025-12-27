@@ -8,19 +8,34 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(o
 
 @pytest.fixture
 def test_pdf_path():
-    """Path to test PDF with extractable images."""
+    """
+    Path to the test PDF that contains images suitable for extraction.
+    
+    Returns:
+        str: Filesystem path to the test PDF `data/pdfs/Strongholds_Followers_extraction_test.pdf` within the project root.
+    """
     return os.path.join(PROJECT_ROOT, "data/pdfs/Strongholds_Followers_extraction_test.pdf")
 
 
 @pytest.fixture(scope="session")
 def session_test_pdf_path():
-    """Session-scoped path to test PDF."""
+    """
+    Session-scoped path to the test PDF used for image asset extraction tests.
+    
+    Returns:
+        str: Filesystem path to Strongholds_Followers_extraction_test.pdf inside the project's data/pdfs directory.
+    """
     return os.path.join(PROJECT_ROOT, "data/pdfs/Strongholds_Followers_extraction_test.pdf")
 
 
 @pytest.fixture
 def test_output_dir(tmp_path):
-    """Temporary directory for test outputs."""
+    """
+    Provide a temporary directory named "test_image_assets" for test outputs.
+    
+    Returns:
+        output_dir (str): String path to the created temporary directory.
+    """
     output_dir = tmp_path / "test_image_assets"
     output_dir.mkdir()
     return str(output_dir)
@@ -28,14 +43,26 @@ def test_output_dir(tmp_path):
 
 @pytest.fixture(scope="session")
 def session_output_dir(tmp_path_factory):
-    """Session-scoped temporary directory for shared extraction results."""
+    """
+    Create a session-scoped temporary directory for shared image extraction results.
+    
+    Returns:
+        output_dir (str): Path to the created temporary directory.
+    """
     output_dir = tmp_path_factory.mktemp("shared_image_assets")
     return str(output_dir)
 
 
 @pytest.fixture
 def check_api_key():
-    """Verify Gemini API key is configured for integration tests."""
+    """
+    Ensure the GeminiImageAPI key is available for integration tests.
+    
+    Loads environment variables from a .env file and calls pytest.skip if the GeminiImageAPI variable is not set.
+    
+    Returns:
+        api_key (str): The GeminiImageAPI value from the environment.
+    """
     from dotenv import load_dotenv
     load_dotenv()
     api_key = os.getenv("GeminiImageAPI")
@@ -46,7 +73,14 @@ def check_api_key():
 
 @pytest.fixture(scope="session")
 def session_check_api_key():
-    """Session-scoped API key check."""
+    """
+    Ensure the GeminiImageAPI key is available for the test session.
+    
+    Loads environment variables from a .env file and returns the `GeminiImageAPI` value. If the key is not present, calls `pytest.skip` to skip the test session.
+    
+    Returns:
+        str: The configured GeminiImageAPI key.
+    """
     from dotenv import load_dotenv
     load_dotenv()
     api_key = os.getenv("GeminiImageAPI")
@@ -57,10 +91,11 @@ def session_check_api_key():
 
 @pytest.fixture(scope="session")
 def shared_extracted_maps(session_test_pdf_path, session_output_dir, session_check_api_key):
-    """Session-scoped fixture that runs extraction once and shares results.
-
-    This dramatically reduces test time by avoiding repeated API calls.
-    Returns tuple of (maps, output_dir) for tests to use.
+    """
+    Run map extraction once for the test session and provide the extracted maps alongside the shared output directory.
+    
+    Returns:
+        tuple: (maps, output_dir) where `maps` are the extracted map assets (in the format returned by `extract_maps_from_pdf`) and `output_dir` is the session-scoped output directory path.
     """
     from src.pdf_processing.image_asset_processing.extract_map_assets import extract_maps_from_pdf
 
