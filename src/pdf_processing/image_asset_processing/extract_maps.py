@@ -2,11 +2,8 @@
 import logging
 import fitz
 import asyncio
-import os
-from google import genai
-from dotenv import load_dotenv
+from src.util.gemini import create_client
 
-load_dotenv()
 logger = logging.getLogger(__name__)
 
 # Size thresholds
@@ -15,19 +12,18 @@ PAGE_AREA_THRESHOLD = 0.10  # 10% of page area (lowered from 25% to catch more m
 
 
 async def extract_image_with_pymupdf_async(page: fitz.Page, output_path: str, use_ai_classification: bool = True) -> bool:
-    """Extract large images from PDF page using PyMuPDF with async AI classification.
-
-    Searches for images that meet size thresholds (>10% page area AND >200x200px).
-    Uses async Gemini Vision to verify images are actually maps, not decorative elements.
-
-    Args:
-        page: PyMuPDF page object
-        output_path: Path to save extracted image (PNG format)
-        use_ai_classification: If True, use Gemini to classify images as maps.
-                               If False, use old behavior (largest image wins).
-
+    """
+    Extract a large image from a PDF page and save it to disk, optionally using AI to verify the image is a map.
+    
+    Searches the page for images that exceed the configured minimum dimensions (200x200 px) and a page-area threshold (10% of page area). If use_ai_classification is True and an AI client can be created, candidates are classified and the first image identified as a map is saved; otherwise the largest qualifying image is saved.
+    
+    Parameters:
+        page (fitz.Page): PyMuPDF page to search for images.
+        output_path (str): File path to write the extracted image bytes (PNG format).
+        use_ai_classification (bool): If True, attempt to classify candidate images with Gemini Vision and only save an image if classified as a map. If False (or if AI client cannot be created), save the largest qualifying image.
+    
     Returns:
-        True if extraction succeeded and image is a map, False otherwise
+        bool: `true` if an image was written to output_path (and, when AI classification was enabled, it was classified as a map), `false` otherwise.
     """
     # Import here to avoid circular dependency
     from src.pdf_processing.image_asset_processing.detect_maps import is_map_image_async
@@ -76,12 +72,12 @@ async def extract_image_with_pymupdf_async(page: fitz.Page, output_path: str, us
 
         # If AI classification enabled, classify all candidates in parallel
         if use_ai_classification:
-            api_key = os.getenv("GeminiImageAPI")
-            if not api_key:
+            try:
+                client = create_client()  # 60s timeout for classification
+            except ValueError:
                 logger.warning("GeminiImageAPI not set, falling back to largest image")
                 use_ai_classification = False
             else:
-                client = genai.Client(api_key=api_key)
                 logger.info(f"Classifying {len(candidates)} large image(s) with Gemini Vision (async)...")
 
                 # Classify all in parallel

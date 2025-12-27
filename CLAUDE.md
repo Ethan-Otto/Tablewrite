@@ -671,7 +671,7 @@ uv run python scripts/test_relay_connection.py
 - Database: In-memory (bypasses authentication)
 - Built from source for Apple Silicon (ARM64) compatibility
 
-See `docs/RELAY_SERVER_SETUP.md` for complete documentation.
+See `reference/RELAY_SERVER_SETUP.md` for complete documentation.
 
 ### Scene Extraction & Artwork Generation
 
@@ -943,6 +943,10 @@ uv run pytest tests/pdf_processing/test_split_pdf.py -v
 4. **Test real behavior**: Integration tests make REAL Gemini API calls (not mocked)
 
 **Integration Test Warning:** Tests marked `@pytest.mark.integration` consume API quota and cost money. Run unit tests only for fast feedback: `uv run pytest -m "not integration and not slow"`
+
+## Claude Code Workflow
+
+- **Test Output**: When running tests, write output to a log file (e.g., `uv run pytest 2>&1 | tee test_output.log`) instead of truncating with `head`/`tail`. This preserves full warnings, errors, and test summaries for review.
 
 ## Coding Conventions
 

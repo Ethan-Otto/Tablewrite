@@ -9,11 +9,48 @@ import os
 import concurrent.futures
 from typing import Optional, Any
 from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 from pathlib import Path
 
 # Default model name
 DEFAULT_MODEL_NAME = "gemini-2.5-pro"
+
+# Default timeout in milliseconds
+DEFAULT_TIMEOUT_MS = 60000  # 60 seconds
+IMAGE_TIMEOUT_MS = 180000   # 180 seconds for image generation
+
+
+def create_client(timeout_ms: int = DEFAULT_TIMEOUT_MS) -> genai.Client:
+    """
+    Create a Gemini client with timeout configuration.
+
+    Args:
+        timeout_ms: Request timeout in milliseconds (default: 60000 = 60 seconds)
+
+    Returns:
+        Configured genai.Client instance
+
+    Raises:
+        ValueError: If API key is not found in environment
+
+    Example:
+        # Standard client (60s timeout)
+        client = create_client()
+
+        # Extended timeout for image generation (180s)
+        client = create_client(timeout_ms=180000)
+    """
+    api_key = os.getenv("GeminiImageAPI") or os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise ValueError(
+            "Gemini API key not found. Set GeminiImageAPI or GEMINI_API_KEY in environment."
+        )
+
+    return genai.Client(
+        api_key=api_key,
+        http_options=types.HttpOptions(timeout=timeout_ms)
+    )
 
 
 class GeminiAPI:

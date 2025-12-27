@@ -48,20 +48,22 @@ class JournalManager:
         folder: str = None
     ) -> Dict[str, Any]:
         """
-        Create a new journal entry in FoundryVTT.
-
-        Args:
-            name: Name of the journal entry
-            pages: List of page dicts with 'name' and 'content' keys (preferred)
-            content: HTML content for single-page journal (legacy, use pages instead)
-            folder: Optional folder ID to organize the journal
-
+        Create a journal entry in FoundryVTT via the relay API.
+        
+        Builds the journal payload from either a list of pages or a single HTML content string and submits it to the relay. If running under pytest and no folder is provided, attempts to place the journal in a "tests" folder when a folder_manager is available. When provided, the folder ID is embedded under the returned document's data.
+        
+        Parameters:
+            name (str): Title of the journal entry.
+            pages (list, optional): List of page objects with keys "name" and "content"; preferred for multi-page entries.
+            content (str, optional): HTML content for a single-page entry (legacy alternative to `pages`).
+            folder (str, optional): Folder ID to assign to the journal entry.
+        
         Returns:
-            Dict containing created journal entry data
-
+            dict: Parsed JSON response from the relay API representing the created journal entry.
+        
         Raises:
-            RuntimeError: If API request fails
-            ValueError: If neither pages nor content provided
+            ValueError: If neither `pages` nor `content` is provided.
+            RuntimeError: If the API request fails or returns a non-200 response.
         """
         url = f"{self.relay_url}/create?clientId={self.client_id}"
 
@@ -113,9 +115,9 @@ class JournalManager:
             }
         }
 
-        # Add folder at top level of payload if needed
+        # Add folder to document data if provided
         if folder:
-            payload["folder"] = folder
+            payload["data"]["folder"] = folder
 
         page_count = len(pages_data)
         logger.debug(f"Creating journal entry: {name} with {page_count} page(s)")

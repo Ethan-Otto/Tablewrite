@@ -6,10 +6,9 @@ from PIL import Image
 import io
 from google import genai
 from google.genai import types
-from dotenv import load_dotenv
 import pytesseract
+from src.util.gemini import create_client, IMAGE_TIMEOUT_MS
 
-load_dotenv()
 logger = logging.getLogger(__name__)
 
 IMAGEN_MODEL = "gemini-2.5-flash-image"
@@ -159,24 +158,21 @@ def calculate_bounding_box(red_pixels: np.ndarray) -> tuple:
 
 
 def segment_with_imagen(page_image: bytes, map_type: str, output_path: str, temperature: float = 0.5) -> None:
-    """Segment baked-in map using Gemini Imagen red perimeter technique.
-
-    Args:
-        page_image: PDF page rendered as PNG bytes
-        map_type: "navigation_map" or "battle_map"
-        output_path: Path to save cropped image
-        temperature: Model temperature for generation (0-1, default 0.2)
-
+    """
+    Generate a tight red perimeter with Gemini Imagen and crop the corresponding map region from the original image.
+    
+    Parameters:
+        page_image (bytes): PNG bytes of a rendered PDF page containing the baked-in map.
+        map_type (str): Map style hint used to build the prompt; expected values are "navigation_map" or "battle_map".
+        output_path (str): Filesystem path where the cropped map PNG will be saved.
+        temperature (float): Model sampling temperature in [0, 1] controlling generation variability.
+    
     Raises:
-        SegmentationError: If output validation fails
+        SegmentationError: If generated output fails validation or segmentation cannot be completed after retries.
     """
     from src.pdf_processing.image_asset_processing.preprocess_image import remove_existing_red_pixels
 
-    api_key = os.getenv("GeminiImageAPI")
-    if not api_key:
-        raise ValueError("GeminiImageAPI environment variable not set")
-
-    client = genai.Client(api_key=api_key)
+    client = create_client(timeout_ms=IMAGE_TIMEOUT_MS)  # 180s timeout for image generation
 
     # Create temp directory for debug files
     # If output_path is already in a "temp" directory, use it; otherwise create temp/
