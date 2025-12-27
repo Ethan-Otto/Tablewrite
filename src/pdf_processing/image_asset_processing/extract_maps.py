@@ -2,11 +2,8 @@
 import logging
 import fitz
 import asyncio
-import os
-from google import genai
-from dotenv import load_dotenv
+from src.util.gemini import create_client
 
-load_dotenv()
 logger = logging.getLogger(__name__)
 
 # Size thresholds
@@ -76,12 +73,12 @@ async def extract_image_with_pymupdf_async(page: fitz.Page, output_path: str, us
 
         # If AI classification enabled, classify all candidates in parallel
         if use_ai_classification:
-            api_key = os.getenv("GeminiImageAPI")
-            if not api_key:
+            try:
+                client = create_client()  # 60s timeout for classification
+            except ValueError:
                 logger.warning("GeminiImageAPI not set, falling back to largest image")
                 use_ai_classification = False
             else:
-                client = genai.Client(api_key=api_key)
                 logger.info(f"Classifying {len(candidates)} large image(s) with Gemini Vision (async)...")
 
                 # Classify all in parallel

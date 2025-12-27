@@ -6,10 +6,9 @@ from PIL import Image
 import io
 from google import genai
 from google.genai import types
-from dotenv import load_dotenv
 import pytesseract
+from src.util.gemini import create_client, IMAGE_TIMEOUT_MS
 
-load_dotenv()
 logger = logging.getLogger(__name__)
 
 IMAGEN_MODEL = "gemini-2.5-flash-image"
@@ -172,11 +171,7 @@ def segment_with_imagen(page_image: bytes, map_type: str, output_path: str, temp
     """
     from src.pdf_processing.image_asset_processing.preprocess_image import remove_existing_red_pixels
 
-    api_key = os.getenv("GeminiImageAPI")
-    if not api_key:
-        raise ValueError("GeminiImageAPI environment variable not set")
-
-    client = genai.Client(api_key=api_key)
+    client = create_client(timeout_ms=IMAGE_TIMEOUT_MS)  # 180s timeout for image generation
 
     # Create temp directory for debug files
     # If output_path is already in a "temp" directory, use it; otherwise create temp/

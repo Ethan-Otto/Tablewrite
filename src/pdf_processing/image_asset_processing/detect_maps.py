@@ -1,16 +1,14 @@
 """Gemini Vision-based map detection."""
 import asyncio
 import logging
-import os
 import fitz
 import io
 from google import genai
 from google.genai import types
 from typing import List
-from dotenv import load_dotenv
 from src.pdf_processing.image_asset_processing.models import MapDetectionResult
+from src.util.gemini import create_client
 
-load_dotenv()
 logger = logging.getLogger(__name__)
 
 GEMINI_MODEL = "gemini-2.0-flash"
@@ -170,11 +168,7 @@ async def detect_maps_async(pdf_path: str) -> List[MapDetectionResult]:
     Returns:
         List of MapDetectionResult, one per page
     """
-    api_key = os.getenv("GeminiImageAPI")
-    if not api_key:
-        raise ValueError("GeminiImageAPI environment variable not set")
-
-    client = genai.Client(api_key=api_key)
+    client = create_client()  # 60s timeout for text detection
 
     # Get page count
     doc = await asyncio.to_thread(fitz.open, pdf_path)

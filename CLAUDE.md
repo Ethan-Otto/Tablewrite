@@ -944,6 +944,10 @@ uv run pytest tests/pdf_processing/test_split_pdf.py -v
 
 **Integration Test Warning:** Tests marked `@pytest.mark.integration` consume API quota and cost money. Run unit tests only for fast feedback: `uv run pytest -m "not integration and not slow"`
 
+## Claude Code Workflow
+
+- **Test Output**: When running tests, write output to a log file (e.g., `uv run pytest 2>&1 | tee test_output.log`) instead of truncating with `head`/`tail`. This preserves full warnings, errors, and test summaries for review.
+
 ## Coding Conventions
 
 **General Principles:**
