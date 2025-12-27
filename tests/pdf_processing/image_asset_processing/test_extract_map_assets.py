@@ -91,7 +91,11 @@ class TestExtractMapsFromPDF:
             assert len(debug_files) >= len(segmented_maps) * 2, "Missing debug files for segmentation"
 
     def test_extraction_methods_used(self, shared_extracted_maps):
-        """Test that both extraction methods are represented."""
+        """
+        Assert that the extraction produced maps from at least one of the available methods.
+        
+        Counts maps with source "extracted" (PyMuPDF) and "segmented" (Imagen) and fails if both counts are zero. Prints the counts for debugging.
+        """
         maps, output_dir = shared_extracted_maps
 
         extracted_by_pymupdf = sum(1 for m in maps if m.source == "extracted")

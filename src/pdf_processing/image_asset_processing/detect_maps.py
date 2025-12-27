@@ -160,13 +160,14 @@ def _render_single_page(pdf_path: str, page_num: int) -> tuple[int, bytes]:
 
 
 async def detect_maps_async(pdf_path: str) -> List[MapDetectionResult]:
-    """Detect maps in all pages of PDF using async Gemini Vision calls.
-
-    Args:
-        pdf_path: Path to PDF file
-
+    """
+    Detect maps on every page of the given PDF and return per-page detection results.
+    
+    Parameters:
+        pdf_path (str): Filesystem path to the PDF to analyze.
+    
     Returns:
-        List of MapDetectionResult, one per page
+        results (List[MapDetectionResult]): A list of MapDetectionResult objects, one entry per PDF page in page order.
     """
     client = create_client()  # 60s timeout for text detection
 
