@@ -231,7 +231,7 @@ def export_journal(
         multi_file: For HTML export, create separate file per page
     """
     # Initialize client
-    client = FoundryClient(target=target)
+    client = FoundryClient()
 
     # Find journal
     logger.info(f"Searching for journal: {journal_name}")

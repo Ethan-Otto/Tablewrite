@@ -178,7 +178,7 @@ for act_id, act in bite["system"]["activities"].items():
 
 # Step 3: Upload to FoundryVTT
 print("\n3. Uploading to FoundryVTT...")
-client = FoundryClient(target="local")
+client = FoundryClient()
 actor_uuid = client.actors.create_actor(foundry_json)
 print(f"   ✓ Uploaded: {actor_uuid}")
 

@@ -23,7 +23,7 @@ def main():
     parser.add_argument("--yes", "-y", action="store_true", help="Skip confirmation prompt")
     args = parser.parse_args()
 
-    client = FoundryClient(target="local")
+    client = FoundryClient()
 
     print("Fetching all actors...")
     all_actors = client.actors.get_all_actors()

@@ -369,7 +369,7 @@ def upload_run_to_foundry(
         logger.info(f"Using default journal name: {journal_name}")
 
     # Initialize client
-    client = FoundryClient(target=target)
+    client = FoundryClient()
 
     # Add scene gallery page if present
     gallery_page = upload_scene_gallery(client, run_path)
@@ -449,7 +449,7 @@ def upload_file_to_foundry(
     logger.debug(f"  Local:  {local_path}")
     logger.debug(f"  Target: {target_path}")
 
-    client = FoundryClient(target=target)
+    client = FoundryClient()
 
     try:
         result = client.upload_file(local_path, target_path, overwrite=overwrite)

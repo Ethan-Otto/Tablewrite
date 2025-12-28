@@ -15,44 +15,12 @@ The project provides a clean public API for external applications (chat UI, CLI 
 **Key Functions:**
 
 ```python
-from api import create_actor, extract_maps, process_pdf_to_journal
+from api import create_actor, extract_maps, process_pdf_to_journal, APIError
 
-# 1. Create D&D actor from description
-result = create_actor(
-    description="A cunning kobold scout with a poisoned dagger",
-    challenge_rating=0.5
-)
-print(f"Created: {result.name} - {result.foundry_uuid}")
-# Output: Created: Kobold Scout - Actor.abc123
-
-# 2. Extract maps from PDF
-maps_result = extract_maps(
-    pdf_path="data/pdfs/module.pdf",
-    chapter="Chapter 1"
-)
-print(f"Extracted {maps_result.total_maps} maps")
-
-# 3. Process PDF to FoundryVTT journal
-journal_result = process_pdf_to_journal(
-    pdf_path="data/pdfs/module.pdf",
-    journal_name="Lost Mine of Phandelver",
-    skip_upload=False  # Set True to generate XML only
-)
-print(f"Created journal: {journal_result.journal_uuid}")
-```
-
-**Error Handling:**
-
-All functions raise `APIError` on failure:
-
-```python
-from api import APIError
-
-try:
-    result = create_actor("broken description")
-except APIError as e:
-    print(f"Failed: {e}")
-    print(f"Original error: {e.__cause__}")
+result = create_actor("A kobold scout", challenge_rating=0.5)  # → ActorCreationResult
+maps = extract_maps("data/pdfs/module.pdf", chapter="Chapter 1")  # → MapExtractionResult
+journal = process_pdf_to_journal("module.pdf", "Module Name")  # → JournalCreationResult
+# All raise APIError on failure
 ```
 
 **Return Types:**
@@ -84,6 +52,7 @@ uv run pytest tests/api/test_api_integration.py -v -m integration
    curl -LsSf https://astral.sh/uv/install.sh | sh
    # Or: pip install uv
    ```
+   - This also provides `uvx` for running tools without installing them (like `npx` for Node)
 
 2. **Create Virtual Environment and Install Dependencies**:
    ```bash
@@ -202,87 +171,24 @@ journal.to_foundry_html(image_mapping)
 FoundryVTT Journal Entry
 ```
 
-**Usage Examples:**
+**Quick Usage:**
 
 ```python
-from models.xml_document import XMLDocument, parse_xml_file
+from models.xml_document import parse_xml_file
 from models.journal import Journal, ImageMetadata
-from pathlib import Path
 
-# Parse XML file to XMLDocument
-xml_doc = parse_xml_file(Path("output/runs/20241023_143022/documents/Chapter_1.xml"))
-
-# Convert to Journal with semantic hierarchy
+xml_doc = parse_xml_file(Path("output/runs/.../Chapter_1.xml"))
 journal = Journal.from_xml_document(xml_doc)
-
-# Add custom scene artwork to image registry
-journal.add_image(
-    key="scene_chapter1_goblin_ambush",
-    metadata=ImageMetadata(
-        key="scene_chapter1_goblin_ambush",
-        source_page=5,
-        type="illustration",
-        file_path="output/runs/20241023_143022/scene_artwork/images/scene_01.png"
-    )
-)
-
-# Reposition image to appear before specific content
-journal.reposition_image(
-    key="scene_chapter1_goblin_ambush",
-    new_content_id="chapter_0_section_2_content_0"
-)
-
-# Export to FoundryVTT HTML
-image_mapping = {
-    "page_5_battle_map": "https://foundry.example.com/maps/goblin_ambush.png",
-    "scene_chapter1_goblin_ambush": "https://foundry.example.com/scenes/scene_01.png"
-}
+journal.add_image(key="scene_art", metadata=ImageMetadata(key="scene_art", source_page=5, type="illustration"))
 html = journal.to_foundry_html(image_mapping)
 ```
 
-**XMLDocument API:**
-
-```python
-# Parse from XML string
-xml_doc = XMLDocument.from_xml(xml_string)
-
-# Access structure
-for page in xml_doc.pages:
-    print(f"Page {page.number}")
-    for content in page.content:
-        print(f"  {content.type}: {content.data}")
-
-# Convert to FoundryVTT journal pages format
-journal_pages = xml_doc.to_journal_pages()
-# Returns: [{"name": "Page 1", "content": "<h1>...</h1>"}]
-
-# Serialize back to XML
-xml_string = xml_doc.to_xml()
-```
-
-**Journal API:**
-
-```python
-# Create from XMLDocument
-journal = Journal.from_xml_document(xml_doc)
-
-# Access semantic hierarchy
-for chapter in journal.chapters:
-    print(f"Chapter: {chapter.title}")
-    for section in chapter.sections:
-        print(f"  Section: {section.title}")
-        for subsection in section.subsections:
-            print(f"    Subsection: {subsection.title}")
-
-# Manage images
-journal.add_image(key="custom_art", metadata=ImageMetadata(...))
-journal.reposition_image(key="page_5_map", new_content_id="chapter_0_section_1_content_0")
-journal.remove_image(key="unwanted_image")
-
-# Export to different formats
-html = journal.to_foundry_html(image_mapping)  # FoundryVTT-ready HTML
-markdown = journal.to_markdown(image_mapping)  # Markdown (planned)
-```
+**Key Methods:**
+- `XMLDocument.from_xml(str)` / `parse_xml_file(Path)` → Parse XML
+- `xml_doc.to_journal_pages()` → FoundryVTT format
+- `Journal.from_xml_document(xml_doc)` → Semantic hierarchy
+- `journal.add_image()` / `reposition_image()` / `remove_image()` → Image management
+- `journal.to_foundry_html(mapping)` → Export HTML
 
 **Content Types:**
 - `chapter_title`: Top-level chapter heading (h1)
@@ -409,25 +315,11 @@ The project includes full integration with FoundryVTT for uploading and exportin
 **JournalManager API:**
 ```python
 from foundry.client import FoundryClient
-
 client = FoundryClient(target="local")  # or "forge"
 
-# Create or replace journal (returns UUID)
-uuid = client.journals.create_or_replace_journal(
-    name="Chapter 1",
-    pages=[{"name": "Page 1", "content": "<h1>...</h1>"}]
-)
-
-# Get journal by UUID or name
-entry = client.journals.get_journal_entry(
-    journal_name="Chapter 1",
-    journal_uuid="JournalEntry.abc123"  # optional
-)
-
-# Search for journals by name
+uuid = client.journals.create_or_replace_journal(name="Chapter 1", pages=[...])
+entry = client.journals.get_journal_entry(journal_name="Chapter 1")
 results = client.journals.search_journals(name="Chapter 1")
-
-# Delete journal
 client.journals.delete_journal(journal_uuid="JournalEntry.abc123")
 ```
 
@@ -577,83 +469,20 @@ Convert to FoundryVTT Format
 Upload to FoundryVTT Server
 ```
 
-**Usage Examples**:
+**Usage**:
 
 ```python
-from actors.orchestrate import create_actor_from_description_sync
+from actors.orchestrate import create_actor_from_description_sync, create_actors_batch_sync
 
-# Simple synchronous usage
-result = create_actor_from_description_sync(
-    description="A fierce red dragon wyrmling with fire breath",
-    challenge_rating=2.0
-)
-print(f"Created: {result.foundry_uuid}")
-print(f"Saved to: {result.output_dir}")
+# Single actor
+result = create_actor_from_description_sync("A red dragon wyrmling", challenge_rating=2.0)
+# → ActorCreationResult with foundry_uuid, output_dir, stat_block, parsed_actor_data
 
-# Async usage for more control
-from actors.orchestrate import create_actor_from_description
-
-result = await create_actor_from_description(
-    description="A cunning goblin assassin with poisoned daggers",
-    challenge_rating=1.0,
-    model_name="gemini-2.0-flash"
-)
+# Batch (pre-load SpellCache for efficiency)
+results = create_actors_batch_sync(["dragon", "goblin"], challenge_ratings=[2.0, 0.5])
 ```
 
-**Batch Creation**:
-
-```python
-from actors.orchestrate import create_actors_batch_sync
-from foundry.actors.spell_cache import SpellCache
-from foundry.client import FoundryClient
-
-# Pre-load shared resources for efficiency
-spell_cache = SpellCache()
-spell_cache.load()
-client = FoundryClient()
-
-descriptions = [
-    "A fierce red dragon wyrmling",
-    "A cunning goblin assassin",
-    "An ancient treant guardian"
-]
-crs = [2.0, 1.0, 9.0]
-
-results = create_actors_batch_sync(
-    descriptions,
-    challenge_ratings=crs,
-    spell_cache=spell_cache,
-    foundry_client=client
-)
-
-# Process results
-for i, result in enumerate(results):
-    if isinstance(result, Exception):
-        print(f"Failed: {descriptions[i]} - {result}")
-    else:
-        print(f"Created: {result.foundry_uuid}")
-```
-
-**ActorCreationResult Fields**:
-- `description` - Input description
-- `challenge_rating` - CR used (or auto-determined)
-- `raw_stat_block_text` - Generated stat block text
-- `stat_block` - Parsed StatBlock model
-- `parsed_actor_data` - Detailed ParsedActorData
-- `foundry_uuid` - FoundryVTT actor UUID
-- `output_dir` - Directory with all intermediate files
-- `raw_text_file`, `stat_block_file`, `parsed_data_file`, `foundry_json_file` - Saved artifacts
-- `timestamp` - ISO timestamp
-- `model_used` - Gemini model name
-
-**Output Directory Structure**:
-```
-output/runs/<timestamp>/actors/
-├── 01_raw_stat_block.txt
-├── 02_stat_block.json
-├── 03_parsed_actor_data.json
-└── 04_foundry_actor.json
-```
+**Output**: `output/runs/<timestamp>/actors/` with `01_raw_stat_block.txt`, `02_stat_block.json`, `03_parsed_actor_data.json`, `04_foundry_actor.json`
 
 ### Self-Hosted Relay Server
 
@@ -870,55 +699,17 @@ tests/
 └── output/test_runs/        # Persistent test output (NOT auto-cleaned)
 ```
 
-### Smoke Test Workflow
-
-**Default behavior:** Running `pytest` now executes only smoke tests (~6 tests, <2 min)
-
-**Smoke test markers:** Applied to critical tests covering major features:
-- PDF Processing: `test_full_pipeline_with_models`
-- Actor Creation: `test_full_pipeline_end_to_end`
-- FoundryVTT Integration: `test_create_and_delete`
-- XMLDocument Parsing: `test_xmldocument_parses_real_xml`
-- Image Asset Processing: `test_extract_maps_integration`
-- Public API: `test_create_actor_integration`
-
-**Auto-escalation:** If smoke tests fail, automatically runs full suite (set `AUTO_ESCALATE=false` to disable)
-
-**Usage:**
-```bash
-# Default: smoke tests only (<2 min)
-pytest
-
-# Full suite manually
-pytest --full
-
-# Disable auto-escalation
-AUTO_ESCALATE=false pytest
-
-# Run specific marker (overrides default)
-pytest -m integration
-```
-
 ### Running Tests
 
 ```bash
-# Smoke tests only (fast, <2 min) - DEFAULT
-pytest
-pytest -v
-
-# Full suite (comprehensive, ~35 min)
-pytest --full
-pytest --full -v
-
-# Disable auto-escalation
-AUTO_ESCALATE=false pytest
-
-# Unit tests only (fast, no API calls)
-uv run pytest -m "not integration and not slow"
-
-# Specific test file
-uv run pytest tests/pdf_processing/test_split_pdf.py -v
+pytest                                      # Smoke tests only (<2 min) - DEFAULT
+pytest --full                               # Full suite (~35 min)
+pytest -m "not integration and not slow"    # Unit tests only
+pytest -m integration                       # Integration tests (cost money)
+AUTO_ESCALATE=false pytest                  # Disable auto-escalation on failure
 ```
+
+**Smoke tests** cover: PDF Processing, Actor Creation, FoundryVTT Integration, XMLDocument Parsing, Image Asset Processing, Public API
 
 ### Test Markers
 
@@ -947,6 +738,7 @@ uv run pytest tests/pdf_processing/test_split_pdf.py -v
 ## Claude Code Workflow
 
 - **Test Output**: When running tests, write output to a log file (e.g., `uv run pytest 2>&1 | tee test_output.log`) instead of truncating with `head`/`tail`. This preserves full warnings, errors, and test summaries for review.
+- **Running Tests**: Run non-slow tests normally. Run full test suite (`pytest --full`) in the background since it takes ~40 minutes.
 
 ## Coding Conventions
 

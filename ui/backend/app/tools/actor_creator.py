@@ -1,12 +1,19 @@
 """Actor creation tool using the public API."""
 import sys
 from pathlib import Path
+from dotenv import load_dotenv
 from .base import BaseTool, ToolSchema, ToolResponse
 
 # Add project paths for api module imports
 project_root = Path(__file__).parent.parent.parent.parent.parent
 sys.path.insert(0, str(project_root))  # For "from src.xxx" imports
 sys.path.insert(0, str(project_root / "src"))  # For "from xxx" imports
+
+# Load environment variables from project root before imports
+env_path = project_root / ".env"
+if env_path.exists():
+    load_dotenv(env_path)
+
 from api import create_actor, APIError  # noqa: E402
 
 

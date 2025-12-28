@@ -47,7 +47,7 @@ def process_actors_for_run(
 
     # Initialize APIs
     gemini_api = GeminiAPI()
-    foundry_client = FoundryClient(target=target)
+    foundry_client = FoundryClient()
 
     # Statistics
     stats = {

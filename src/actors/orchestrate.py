@@ -219,9 +219,7 @@ async def create_actor_from_description(
         # Step 6: Upload to FoundryVTT
         logger.info("Step 6/6: Uploading to FoundryVTT...")
         if foundry_client is None:
-            foundry_client = FoundryClient(
-                target=os.getenv("FOUNDRY_TARGET", "local")
-            )
+            foundry_client = FoundryClient()
 
         actor_uuid = foundry_client.actors.create_actor(
             actor_data=actor_json,
@@ -376,9 +374,7 @@ async def create_actors_batch(
 
     if foundry_client is None:
         logger.info("Creating FoundryVTT client for batch processing...")
-        foundry_client = FoundryClient(
-            target=os.getenv("FOUNDRY_TARGET", "local")
-        )
+        foundry_client = FoundryClient()
 
     logger.info(f"Starting batch creation of {len(descriptions)} actors...")
 

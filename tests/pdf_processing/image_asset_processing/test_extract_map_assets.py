@@ -118,6 +118,7 @@ class TestExtractionPerformance:
     """Performance test that runs fresh extraction to measure timing."""
 
     @pytest.mark.timeout(360)  # 6 minute timeout
+    @pytest.mark.flaky(reruns=2, reruns_delay=30)
     def test_full_extraction_performance(self, test_pdf_path, test_output_dir, check_api_key):
         """Test extraction performance on real PDF.
 

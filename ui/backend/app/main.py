@@ -4,8 +4,18 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pathlib import Path
+from dotenv import load_dotenv
 from app.routers import chat
 from app.config import settings
+
+# Load environment variables from project root .env
+project_root = Path(__file__).parent.parent.parent.parent
+env_path = project_root / ".env"
+if env_path.exists():
+    load_dotenv(env_path)
+else:
+    # Fallback to backend .env
+    load_dotenv()
 
 app = FastAPI(
     title="D&D Module Assistant API",

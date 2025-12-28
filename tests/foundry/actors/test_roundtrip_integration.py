@@ -29,7 +29,7 @@ class TestActorRoundTrip:
     def foundry_client(self):
         """Create FoundryVTT client for testing."""
         try:
-            client = FoundryClient(target="local")
+            client = FoundryClient()
             # Test connection
             client.journals.get_all_journals_by_name("__test__")
             return client

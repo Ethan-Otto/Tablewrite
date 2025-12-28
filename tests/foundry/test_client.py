@@ -17,21 +17,21 @@ class TestFoundryClientInit:
         monkeypatch.setenv("FOUNDRY_CLIENT_ID", "test-client-id")
         monkeypatch.setenv("FOUNDRY_RELAY_URL", "https://relay.example.com")
 
-        client = FoundryClient(target="local")
+        client = FoundryClient()
 
         assert client.foundry_url == "http://localhost:30000"
         assert client.api_key == "test-api-key"
         assert client.client_id == "test-client-id"
         assert client.relay_url == "https://relay.example.com"
 
-    def test_client_initialization_forge(self, monkeypatch):
-        """Test client initializes with forge environment."""
-        monkeypatch.setenv("FOUNDRY_FORGE_URL", "https://game.forge-vtt.com")
-        monkeypatch.setenv("FOUNDRY_FORGE_API_KEY", "forge-api-key")
-        monkeypatch.setenv("FOUNDRY_FORGE_CLIENT_ID", "forge-client-id")
+    def test_client_initialization_with_different_urls(self, monkeypatch):
+        """Test client initializes with different URL configurations."""
+        monkeypatch.setenv("FOUNDRY_URL", "https://game.forge-vtt.com")
+        monkeypatch.setenv("FOUNDRY_API_KEY", "forge-api-key")
+        monkeypatch.setenv("FOUNDRY_CLIENT_ID", "forge-client-id")
         monkeypatch.setenv("FOUNDRY_RELAY_URL", "https://relay.example.com")
 
-        client = FoundryClient(target="forge")
+        client = FoundryClient()
 
         assert client.foundry_url == "https://game.forge-vtt.com"
         assert client.api_key == "forge-api-key"
@@ -42,10 +42,11 @@ class TestFoundryClientInit:
         # Clear all relevant env vars
         monkeypatch.delenv("FOUNDRY_URL", raising=False)
         monkeypatch.delenv("FOUNDRY_API_KEY", raising=False)
+        monkeypatch.delenv("FOUNDRY_CLIENT_ID", raising=False)
         monkeypatch.delenv("FOUNDRY_RELAY_URL", raising=False)
 
         with pytest.raises(ValueError, match="FOUNDRY_RELAY_URL not set"):
-            FoundryClient(target="local")
+            FoundryClient()
 
 
 class TestJournalOperations:
@@ -58,7 +59,7 @@ class TestJournalOperations:
         monkeypatch.setenv("FOUNDRY_API_KEY", "test-key")
         monkeypatch.setenv("FOUNDRY_CLIENT_ID", "test-client-id")
         monkeypatch.setenv("FOUNDRY_RELAY_URL", "https://relay.example.com")
-        return FoundryClient(target="local")
+        return FoundryClient()
 
     def test_client_has_journals_manager(self, mock_client):
         """Test that FoundryClient has journals manager."""
@@ -121,7 +122,7 @@ class TestFoundryIntegration:
         if missing_vars:
             pytest.skip(f"Missing required environment variables: {', '.join(missing_vars)}")
 
-        return FoundryClient(target="local")
+        return FoundryClient()
 
     @pytest.mark.smoke
     @pytest.mark.integration
@@ -269,7 +270,7 @@ class TestFoundryIntegration:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    @pytest.mark.flaky(reruns=2, reruns_delay=1)
+    @pytest.mark.flaky(reruns=2, reruns_delay=30)
     @pytest.mark.order(1)  # Run first - if infrastructure is down, fail fast
     def test_upload_and_download_file(self, real_client, tmp_path):
         """Test uploading a file to FoundryVTT and downloading it back.
@@ -343,7 +344,7 @@ class TestActorOperations:
         monkeypatch.setenv("FOUNDRY_API_KEY", "test-key")
         monkeypatch.setenv("FOUNDRY_CLIENT_ID", "test-client-id")
         monkeypatch.setenv("FOUNDRY_RELAY_URL", "https://relay.example.com")
-        return FoundryClient(target="local")
+        return FoundryClient()
 
     def test_client_initializes_actor_manager(self, mock_client):
         """Test client creates ActorManager instance."""

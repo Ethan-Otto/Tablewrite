@@ -240,7 +240,7 @@ class TestJournalBasedUpload:
         )
 
         # Verify FoundryClient was called
-        mock_client_class.assert_called_once_with(target="local")
+        mock_client_class.assert_called_once_with()
 
         # Verify create_or_replace_journal was called with pages
         mock_client.create_or_replace_journal.assert_called_once()

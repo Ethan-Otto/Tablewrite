@@ -97,6 +97,7 @@ class TestGeminiAPIIntegration:
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.requires_api
+    @pytest.mark.flaky(reruns=2, reruns_delay=5)
     def test_context_manager(self, check_api_key):
         """Test context manager auto-cleanup."""
         api = GeminiAPI()

@@ -92,7 +92,7 @@ class InnateSpell(BaseModel):
 class InnateSpellcasting(BaseModel):
     """Innate spellcasting ability."""
 
-    ability: str  # "charisma", "intelligence", etc.
+    ability: Optional[str] = None  # "charisma", "intelligence", etc. (optional if not specified)
     save_dc: Optional[int] = None
     attack_bonus: Optional[int] = None
     spells: List[InnateSpell] = Field(default_factory=list)

@@ -313,7 +313,7 @@ def export_from_foundry(
 
     try:
         # Initialize client
-        client = FoundryClient(target=target)
+        client = FoundryClient()
 
         # Get journal UUID (either provided or search by name)
         if journal_uuid:

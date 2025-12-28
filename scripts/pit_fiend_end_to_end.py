@@ -166,7 +166,7 @@ async def main():
 
     # Step 6: Upload to FoundryVTT
     print("\n6. Uploading to FoundryVTT...")
-    client = FoundryClient(target="local")
+    client = FoundryClient()
     actor_uuid = client.actors.create_actor(foundry_json, spell_uuids=spell_uuids)
     print(f"   ✓ Uploaded: {actor_uuid}")
 
