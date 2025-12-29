@@ -484,9 +484,67 @@ results = create_actors_batch_sync(["dragon", "goblin"], challenge_ratings=[2.0,
 
 **Output**: `output/runs/<timestamp>/actors/` with `01_raw_stat_block.txt`, `02_stat_block.json`, `03_parsed_actor_data.json`, `04_foundry_actor.json`
 
-### Self-Hosted Relay Server
+### WebSocket Push Architecture
 
-The project uses a **self-hosted local relay server** for local development.
+The backend includes a WebSocket endpoint for pushing content directly to connected Foundry clients, eliminating the need for the relay server.
+
+**Endpoint:** `/ws/foundry`
+
+**Protocol:**
+- **Connect:** Client receives `{"type": "connected", "client_id": "..."}`
+- **Ping/Pong:** Send `{"type": "ping"}` -> Receive `{"type": "pong"}`
+- **Push Messages:** Server sends `{"type": "actor|journal|scene", "data": {...}}`
+
+**Usage:**
+```python
+from app.websocket import push_actor, push_journal, push_scene
+
+# Push actor to all connected Foundry clients
+await push_actor({"name": "Goblin", "type": "npc", "uuid": "Actor.abc123"})
+
+# Push journal entry
+await push_journal({"name": "Chapter 1", "pages": [...]})
+
+# Push scene
+await push_scene({"name": "Cave Entrance", "walls": [...]})
+```
+
+**Foundry Module:**
+
+The `foundry-module/tablewrite-assistant/` directory contains the FoundryVTT module that:
+1. Connects to backend WebSocket on startup
+2. Receives push notifications for new content
+3. Automatically calls `Actor.create()`, `JournalEntry.create()`, `Scene.create()`
+4. Shows notifications when content is created
+
+**Quick Start:**
+```bash
+# Start backend with docker-compose
+docker-compose -f docker-compose.tablewrite.yml up -d
+
+# Or run directly
+cd ui/backend && uvicorn app.main:app --reload --port 8000
+
+# Install Foundry module:
+# 1. Copy foundry-module/tablewrite-assistant/ to your Foundry Data/modules/ directory
+# 2. Enable "Tablewrite Assistant" module in Foundry
+# 3. Configure backend URL in module settings (default: http://localhost:8000)
+```
+
+**Testing:**
+```bash
+# Backend WebSocket tests
+cd ui/backend && uv run pytest tests/websocket/ -v
+
+# Module unit tests
+cd foundry-module/tablewrite-assistant && npm test
+```
+
+### Self-Hosted Relay Server (DEPRECATED)
+
+> **Note:** The relay server has been deprecated in favor of the direct WebSocket endpoint above. See `relay-server/ARCHIVED.md` for migration details.
+
+The project previously used a **self-hosted local relay server** for local development.
 
 **Quick Setup:**
 ```bash
