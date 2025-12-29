@@ -15,6 +15,7 @@ if env_path.exists():
     load_dotenv(env_path)
 
 from api import create_actor, APIError  # noqa: E402
+from app.websocket import push_actor  # noqa: E402
 
 
 class ActorCreatorTool(BaseTool):
@@ -63,6 +64,13 @@ class ActorCreatorTool(BaseTool):
                 description,
                 challenge_rating
             )
+
+            # Push to connected Foundry clients
+            await push_actor({
+                "name": result.name,
+                "uuid": result.foundry_uuid,
+                "cr": result.challenge_rating
+            })
 
             # Format text response
             cr_text = f"CR {result.challenge_rating}"
