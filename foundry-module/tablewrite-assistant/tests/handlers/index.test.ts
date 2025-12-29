@@ -1,6 +1,26 @@
 // foundry-module/tablewrite-assistant/tests/handlers/index.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// Mock Foundry Document classes
+const mockActor = {
+  create: vi.fn().mockResolvedValue({ id: 'actor123', name: 'Goblin' }),
+};
+
+const mockJournalEntry = {
+  create: vi.fn().mockResolvedValue({ id: 'journal123', name: 'Chapter 1' }),
+};
+
+const mockScene = {
+  create: vi.fn().mockResolvedValue({ id: 'scene123', name: 'Cave' }),
+};
+
+// @ts-ignore
+globalThis.Actor = mockActor;
+// @ts-ignore
+globalThis.JournalEntry = mockJournalEntry;
+// @ts-ignore
+globalThis.Scene = mockScene;
+
 // Mock ui.notifications
 const mockNotifications = {
   info: vi.fn(),
