@@ -78,12 +78,12 @@ export class TablewriteClient {
   /**
    * Handle incoming WebSocket message.
    */
-  private handleMessage(data: string): void {
+  private async handleMessage(data: string): Promise<void> {
     try {
       const message: TablewriteMessage = JSON.parse(data);
       console.log('[Tablewrite] Received:', message.type);
 
-      handleMessage(message);
+      await handleMessage(message);
     } catch (e) {
       console.error('[Tablewrite] Failed to parse message:', e);
     }
