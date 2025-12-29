@@ -10,7 +10,7 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
-    "@league-of-foundry-developers/foundry-vtt-types": "^11.315.0",
+    "@league-of-foundry-developers/foundry-vtt-types": "^12.331.5",
     "typescript": "^5.3.0",
     "vitest": "^1.0.0"
   }

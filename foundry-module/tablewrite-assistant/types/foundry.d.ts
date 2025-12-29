@@ -1,0 +1,69 @@
+/**
+ * Foundry VTT type declarations for the module.
+ * Minimal types for the Foundry globals we use.
+ */
+
+// Make this a module
+export {};
+
+// Foundry VTT global types
+declare global {
+  interface SettingOptions {
+    name: string;
+    hint?: string;
+    default: unknown;
+    type: typeof String | typeof Number | typeof Boolean | typeof Object | typeof Array;
+    config: boolean;
+    scope: 'world' | 'client';
+    onChange?: (value: unknown) => void;
+  }
+
+  interface ClientSettings {
+    register(module: string, key: string, options: SettingOptions): void;
+    get(module: string, key: string): unknown;
+    set(module: string, key: string, value: unknown): Promise<unknown>;
+  }
+
+  interface Localization {
+    format(key: string, data?: Record<string, unknown>): string;
+    localize(key: string): string;
+  }
+
+  interface Notifications {
+    info(message: string, options?: { localize?: boolean }): void;
+    warn(message: string, options?: { localize?: boolean }): void;
+    error(message: string, options?: { localize?: boolean }): void;
+  }
+
+  interface UI {
+    notifications?: Notifications;
+  }
+
+  interface Game {
+    settings: ClientSettings;
+    i18n: Localization;
+  }
+
+  // Foundry globals
+  const game: Game;
+  const ui: UI;
+
+  // Foundry Hooks
+  const Hooks: {
+    once(hook: string, callback: (...args: unknown[]) => void): void;
+    on(hook: string, callback: (...args: unknown[]) => void): void;
+  };
+
+  // Foundry Document classes
+  const Actor: {
+    create(data: Record<string, unknown>): Promise<{ id: string; name: string } | null>;
+  };
+
+  const JournalEntry: {
+    create(data: Record<string, unknown>): Promise<{ id: string; name: string } | null>;
+  };
+
+  const Scene: {
+    create(data: Record<string, unknown>): Promise<{ id: string; name: string } | null>;
+  };
+}
