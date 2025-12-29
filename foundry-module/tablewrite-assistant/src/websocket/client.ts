@@ -1,6 +1,7 @@
 /**
  * WebSocket client for connecting to Tablewrite backend.
  */
+import { handleMessage, TablewriteMessage } from '../handlers';
 
 export class TablewriteClient {
   private ws: WebSocket | null = null;
@@ -79,10 +80,10 @@ export class TablewriteClient {
    */
   private handleMessage(data: string): void {
     try {
-      const message = JSON.parse(data);
+      const message: TablewriteMessage = JSON.parse(data);
       console.log('[Tablewrite] Received:', message.type);
 
-      // Message handling will be added in next task
+      handleMessage(message);
     } catch (e) {
       console.error('[Tablewrite] Failed to parse message:', e);
     }
