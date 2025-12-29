@@ -1,0 +1,9 @@
+{
+  "TABLEWRITE.SettingsBackendUrl": "Backend URL",
+  "TABLEWRITE.SettingsBackendUrlHint": "URL of your Tablewrite server (e.g., http://localhost:8000)",
+  "TABLEWRITE.Connected": "Connected to Tablewrite",
+  "TABLEWRITE.Disconnected": "Disconnected from Tablewrite",
+  "TABLEWRITE.CreatedActor": "Created actor: {name}",
+  "TABLEWRITE.CreatedJournal": "Created journal: {name}",
+  "TABLEWRITE.CreatedScene": "Created scene: {name}"
+}
