@@ -1,12 +1,13 @@
 """D&D Module Assistant API."""
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pathlib import Path
 from dotenv import load_dotenv
 from app.routers import chat
 from app.config import settings
+from app.websocket import foundry_websocket_endpoint
 
 # Load environment variables from project root .env
 project_root = Path(__file__).parent.parent.parent.parent
@@ -80,3 +81,9 @@ async def serve_image(filename: str):
         raise HTTPException(status_code=404, detail="Image not found")
 
     return FileResponse(file_path, media_type="image/png")
+
+
+@app.websocket("/ws/foundry")
+async def websocket_foundry(websocket: WebSocket):
+    """WebSocket endpoint for Foundry module connections."""
+    await foundry_websocket_endpoint(websocket)
