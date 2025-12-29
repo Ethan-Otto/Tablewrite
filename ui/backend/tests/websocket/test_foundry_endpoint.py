@@ -6,6 +6,17 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
+@pytest.mark.smoke
+def test_websocket_endpoint_exists():
+    """Smoke test: WebSocket endpoint is accessible."""
+    client = TestClient(app)
+
+    with client.websocket_connect("/ws/foundry") as ws:
+        data = ws.receive_json()
+        assert data["type"] == "connected"
+        assert "client_id" in data
+
+
 class TestFoundryWebSocket:
     """Test /ws/foundry endpoint with real WebSocket connections."""
 
