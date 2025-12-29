@@ -9,8 +9,13 @@ Run with: pytest tests/integration/test_e2e_actor_push.py -v -m integration
 """
 import pytest
 import os
+import sys
 from fastapi.testclient import TestClient
 from app.main import app
+
+# Add src directory to path for FoundryClient import
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', '..', 'src'))
+from foundry.client import FoundryClient
 
 
 @pytest.mark.integration
@@ -169,3 +174,98 @@ class TestActorPushE2E:
                     print(f"[TEST] Both clients received: {pushed1['data']['name']}")
                 else:
                     pytest.skip(f"Actor tool not triggered. Response: {response_data}")
+
+    @pytest.mark.skipif(
+        not os.getenv("GEMINI_API_KEY") and not os.getenv("GeminiImageAPI"),
+        reason="Requires GEMINI_API_KEY or GeminiImageAPI"
+    )
+    def test_created_actor_can_be_fetched_from_foundry(self):
+        """
+        Verify that an actor created via chat actually exists in FoundryVTT.
+
+        Full flow test:
+        1. Create actor via chat (triggers Gemini + FoundryVTT creation)
+        2. Get UUID from WebSocket push message
+        3. Use FoundryClient to fetch the actor directly from FoundryVTT
+        4. Verify fetched actor data matches what was pushed
+
+        This test proves the actor is not just pushed via WebSocket but
+        actually exists in the FoundryVTT database and can be retrieved.
+
+        Real data test: Uses actual Gemini API and FoundryVTT REST API.
+        """
+        # Skip if Foundry environment variables not set
+        required_env_vars = ["FOUNDRY_RELAY_URL", "FOUNDRY_URL", "FOUNDRY_API_KEY", "FOUNDRY_CLIENT_ID"]
+        missing_vars = [var for var in required_env_vars if not os.getenv(var)]
+        if missing_vars:
+            pytest.skip(f"Missing environment variables: {', '.join(missing_vars)}")
+
+        client = TestClient(app)
+        foundry_client = FoundryClient()
+
+        with client.websocket_connect("/ws/foundry") as ws:
+            # Consume welcome message
+            welcome = ws.receive_json()
+            assert welcome["type"] == "connected"
+            print(f"[TEST] Connected with client_id: {welcome['client_id']}")
+
+            # Request actor creation via chat with specific CR for verification
+            response = client.post("/api/chat", json={
+                "message": "Create a simple skeleton warrior with CR 0.25",
+                "context": {},
+                "conversation_history": []
+            })
+
+            assert response.status_code == 200
+            response_data = response.json()
+            print(f"[TEST] Chat response: {response_data}")
+
+            if response_data.get("type") == "text" and "Created" in response_data.get("message", ""):
+                # Get the pushed actor data from WebSocket
+                pushed = ws.receive_json()
+                print(f"[TEST] WebSocket push received: {pushed}")
+
+                assert pushed["type"] == "actor", f"Expected type 'actor', got '{pushed['type']}'"
+
+                pushed_data = pushed["data"]
+                actor_uuid = pushed_data["uuid"]
+                pushed_name = pushed_data["name"]
+                pushed_cr = pushed_data.get("cr")
+
+                print(f"[TEST] Pushed actor - Name: {pushed_name}, UUID: {actor_uuid}, CR: {pushed_cr}")
+
+                # Now fetch the actor directly from FoundryVTT using the UUID
+                print(f"[TEST] Fetching actor from FoundryVTT: {actor_uuid}")
+                try:
+                    fetched_actor = foundry_client.actors.get_actor(actor_uuid)
+                except Exception as e:
+                    pytest.fail(f"Failed to fetch actor from FoundryVTT: {e}")
+
+                print(f"[TEST] Fetched actor data: {fetched_actor}")
+
+                # Verify the fetched actor matches what was pushed
+                assert fetched_actor is not None, "Fetched actor should not be None"
+                assert "name" in fetched_actor, "Fetched actor should have 'name'"
+
+                fetched_name = fetched_actor["name"]
+                assert fetched_name == pushed_name, \
+                    f"Actor name mismatch: pushed '{pushed_name}' vs fetched '{fetched_name}'"
+
+                # Verify CR if present in both
+                if pushed_cr is not None:
+                    fetched_cr = None
+                    # CR is nested in system.details.cr for D&D 5e actors
+                    if "system" in fetched_actor:
+                        fetched_cr = fetched_actor.get("system", {}).get("details", {}).get("cr")
+
+                    if fetched_cr is not None:
+                        assert float(fetched_cr) == float(pushed_cr), \
+                            f"Actor CR mismatch: pushed {pushed_cr} vs fetched {fetched_cr}"
+                        print(f"[TEST] CR verified: {fetched_cr}")
+
+                print(f"[TEST] SUCCESS: Actor '{fetched_name}' exists in FoundryVTT with UUID {actor_uuid}")
+
+            elif response_data.get("type") == "error":
+                pytest.fail(f"Actor creation failed: {response_data.get('message')}")
+            else:
+                pytest.skip(f"Actor tool not triggered. Response: {response_data}")
