@@ -8,6 +8,7 @@ from typing import Dict, Any, Optional, List
 from .journals import JournalManager
 from .items.manager import ItemManager
 from .actors import ActorManager
+from .scenes import SceneManager
 from .icon_cache import IconCache
 
 logger = logging.getLogger(__name__)
@@ -53,6 +54,13 @@ class FoundryClient:
         )
 
         self.actors = ActorManager(
+            relay_url=self.relay_url,
+            foundry_url=self.foundry_url,
+            api_key=self.api_key,
+            client_id=self.client_id
+        )
+
+        self.scenes = SceneManager(
             relay_url=self.relay_url,
             foundry_url=self.foundry_url,
             api_key=self.api_key,
