@@ -1,7 +1,7 @@
 /**
  * WebSocket client for connecting to Tablewrite backend.
  */
-import { handleMessage, TablewriteMessage } from '../handlers';
+import { handleMessage, TablewriteMessage } from '../handlers/index.js';
 
 export class TablewriteClient {
   private ws: WebSocket | null = null;

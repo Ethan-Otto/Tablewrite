@@ -2,13 +2,13 @@
  * Message handlers for Tablewrite.
  */
 
-export { handleActorCreate } from './actor';
-export { handleJournalCreate } from './journal';
-export { handleSceneCreate } from './scene';
+export { handleActorCreate } from './actor.js';
+export { handleJournalCreate } from './journal.js';
+export { handleSceneCreate } from './scene.js';
 
-import { handleActorCreate } from './actor';
-import { handleJournalCreate } from './journal';
-import { handleSceneCreate } from './scene';
+import { handleActorCreate } from './actor.js';
+import { handleJournalCreate } from './journal.js';
+import { handleSceneCreate } from './scene.js';
 
 export type MessageType = 'actor' | 'journal' | 'scene' | 'connected' | 'pong';
 

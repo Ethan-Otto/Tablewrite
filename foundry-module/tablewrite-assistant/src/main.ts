@@ -3,8 +3,8 @@
  * Create D&D content through natural language.
  */
 
-import { registerSettings, getBackendUrl } from './settings';
-import { TablewriteClient } from './websocket/client';
+import { registerSettings, getBackendUrl } from './settings.js';
+import { TablewriteClient } from './websocket/client.js';
 
 // Module-scoped client instance
 export let client: TablewriteClient | null = null;
