@@ -1,6 +1,6 @@
 """Manage WebSocket connections from Foundry modules."""
 import uuid
-from typing import Dict
+from typing import Dict, Any
 from fastapi import WebSocket
 
 
@@ -32,3 +32,29 @@ class ConnectionManager:
             client_id: The client to disconnect
         """
         self.active_connections.pop(client_id, None)
+
+    @property
+    def connection_count(self) -> int:
+        """Return number of active connections."""
+        return len(self.active_connections)
+
+    async def broadcast(self, message: Dict[str, Any]) -> None:
+        """
+        Send message to all connected clients.
+
+        Automatically removes clients that fail to receive.
+
+        Args:
+            message: JSON-serializable message to broadcast
+        """
+        disconnected = []
+
+        for client_id, websocket in self.active_connections.items():
+            try:
+                await websocket.send_json(message)
+            except Exception:
+                disconnected.append(client_id)
+
+        # Clean up failed connections
+        for client_id in disconnected:
+            self.disconnect(client_id)

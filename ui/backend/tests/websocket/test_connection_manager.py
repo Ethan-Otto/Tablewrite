@@ -61,3 +61,110 @@ class TestConnectionManager:
 
         # Verify all connections are tracked
         assert len(manager.active_connections) == 10
+
+
+class TestConnectionManagerBroadcast:
+    """Test broadcast functionality."""
+
+    @pytest.mark.asyncio
+    async def test_broadcast_to_empty_is_noop(self):
+        """broadcast() with no connections doesn't raise."""
+        manager = ConnectionManager()
+
+        # Should not raise
+        await manager.broadcast({"type": "test"})
+
+    def test_get_connection_count(self):
+        """connection_count property returns number of active connections."""
+        manager = ConnectionManager()
+
+        assert manager.connection_count == 0
+
+        mock_ws = object()
+        manager.connect(mock_ws)
+
+        assert manager.connection_count == 1
+
+    @pytest.mark.asyncio
+    async def test_broadcast_removes_failed_connections(self):
+        """broadcast() removes connections that fail to receive (real data test)."""
+        manager = ConnectionManager()
+
+        # Create a mock WebSocket that raises on send_json
+        class FailingWebSocket:
+            async def send_json(self, data):
+                raise ConnectionError("Connection lost")
+
+        # Connect the failing WebSocket
+        failing_ws = FailingWebSocket()
+        client_id = manager.connect(failing_ws)
+
+        assert manager.connection_count == 1
+
+        # Broadcast with real message data
+        await manager.broadcast({
+            "type": "actor",
+            "data": {
+                "name": "Test Goblin",
+                "type": "npc",
+                "system": {
+                    "abilities": {
+                        "str": {"value": 10},
+                        "dex": {"value": 14}
+                    }
+                }
+            }
+        })
+
+        # Failed connection should have been removed
+        assert manager.connection_count == 0
+        assert client_id not in manager.active_connections
+
+    @pytest.mark.asyncio
+    async def test_broadcast_sends_to_successful_connections(self):
+        """broadcast() sends data to successful connections (real data test)."""
+        manager = ConnectionManager()
+
+        # Create a mock WebSocket that tracks received messages
+        received_messages = []
+
+        class SuccessfulWebSocket:
+            async def send_json(self, data):
+                received_messages.append(data)
+
+        # Connect the successful WebSocket
+        ws = SuccessfulWebSocket()
+        client_id = manager.connect(ws)
+
+        # Broadcast real actor data
+        actor_data = {
+            "type": "actor",
+            "data": {
+                "name": "Goblin Shaman",
+                "type": "npc",
+                "system": {
+                    "abilities": {
+                        "str": {"value": 8},
+                        "dex": {"value": 14},
+                        "con": {"value": 10},
+                        "int": {"value": 10},
+                        "wis": {"value": 14},
+                        "cha": {"value": 8}
+                    },
+                    "attributes": {
+                        "hp": {"value": 12, "max": 12},
+                        "ac": {"value": 12}
+                    }
+                }
+            }
+        }
+        await manager.broadcast(actor_data)
+
+        # Connection should still exist
+        assert manager.connection_count == 1
+        assert client_id in manager.active_connections
+
+        # Message should have been received
+        assert len(received_messages) == 1
+        assert received_messages[0] == actor_data
+        assert received_messages[0]["data"]["name"] == "Goblin Shaman"
