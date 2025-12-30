@@ -41,11 +41,11 @@ class TestSpellCache:
 
     @patch('foundry.actors.spell_cache.fetch_all_spells')
     def test_load(self, mock_fetch, mock_spells):
-        """Should load spells from FoundryVTT."""
+        """Should load spells from FoundryVTT via relay (legacy mode)."""
         mock_fetch.return_value = mock_spells
 
         cache = SpellCache()
-        cache.load()
+        cache.load(use_websocket=False)
 
         assert cache.loaded
         assert cache.spell_count == 3
@@ -57,7 +57,7 @@ class TestSpellCache:
         mock_fetch.return_value = mock_spells
 
         cache = SpellCache()
-        cache.load()
+        cache.load(use_websocket=False)
 
         # Exact match
         assert cache.get_spell_uuid('Fireball') == 'Compendium.dnd5e.spells.Item.ztgcdrWPshKRpFd0'
@@ -75,7 +75,7 @@ class TestSpellCache:
         mock_fetch.return_value = mock_spells
 
         cache = SpellCache()
-        cache.load()
+        cache.load(use_websocket=False)
 
         spell = cache.get_spell_data('Magic Missile')
 
@@ -98,14 +98,15 @@ class TestSpellCache:
 
     @patch('foundry.actors.spell_cache.fetch_all_spells')
     def test_load_with_credentials(self, mock_fetch, mock_spells):
-        """Should pass credentials to fetch_all_spells()."""
+        """Should pass credentials to fetch_all_spells() in legacy mode."""
         mock_fetch.return_value = mock_spells
 
         cache = SpellCache()
         cache.load(
             relay_url='https://example.com',
             api_key='test-key',
-            client_id='test-client'
+            client_id='test-client',
+            use_websocket=False
         )
 
         mock_fetch.assert_called_once_with(
@@ -113,3 +114,33 @@ class TestSpellCache:
             api_key='test-key',
             client_id='test-client'
         )
+
+    @patch('foundry.actors.spell_cache.fetch_all_spells_ws_sync')
+    def test_load_via_websocket(self, mock_ws_fetch, mock_spells):
+        """Should load spells from FoundryVTT via WebSocket (default mode)."""
+        mock_ws_fetch.return_value = mock_spells
+
+        cache = SpellCache()
+        cache.load(use_websocket=True)
+
+        assert cache.loaded
+        assert cache.spell_count == 3
+        mock_ws_fetch.assert_called_once()
+
+    @patch('foundry.actors.spell_cache.fetch_all_spells_ws_sync')
+    @patch('foundry.actors.spell_cache.fetch_all_spells')
+    def test_websocket_fallback_to_relay(self, mock_relay, mock_ws, mock_spells):
+        """Should fall back to relay if WebSocket fails and relay_url is configured."""
+        mock_ws.side_effect = RuntimeError("WebSocket connection failed")
+        mock_relay.return_value = mock_spells
+
+        cache = SpellCache()
+        cache.load(relay_url='https://example.com', use_websocket=True)
+
+        # Should have tried WebSocket first
+        mock_ws.assert_called_once()
+        # Then fallen back to relay
+        mock_relay.assert_called_once()
+        # And successfully loaded
+        assert cache.loaded
+        assert cache.spell_count == 3

@@ -4,6 +4,7 @@ import logging
 import os
 from typing import Optional, Dict
 from ..items.fetch import fetch_all_spells
+from ..items.websocket_fetch import fetch_all_spells_ws_sync
 from ..items.manager import ItemManager
 
 logger = logging.getLogger(__name__)
@@ -30,18 +31,20 @@ class SpellCache:
         self,
         relay_url: Optional[str] = None,
         api_key: Optional[str] = None,
-        client_id: Optional[str] = None
+        client_id: Optional[str] = None,
+        use_websocket: bool = True
     ) -> None:
         """
         Load all spells from FoundryVTT compendiums.
 
         Args:
-            relay_url: Relay server URL (defaults to env var)
-            api_key: API key (defaults to env var)
-            client_id: Client ID (defaults to env var)
+            relay_url: Relay server URL (defaults to env var) - DEPRECATED
+            api_key: API key (defaults to env var) - DEPRECATED
+            client_id: Client ID (defaults to env var) - DEPRECATED
+            use_websocket: If True, use WebSocket (requires running backend with Foundry connected)
 
         Raises:
-            ValueError: If required credentials are missing
+            ValueError: If required credentials are missing (relay mode only)
             RuntimeError: If API request fails
         """
         logger.info("Loading spell cache from FoundryVTT...")
@@ -55,16 +58,35 @@ class SpellCache:
         # Initialize ItemManager for lazy fetching full data
         self._item_manager = ItemManager(relay_url, foundry_url, api_key, client_id)
 
-        # Fetch all spells (uses env vars if params not provided)
-        kwargs = {}
-        if relay_url:
-            kwargs['relay_url'] = relay_url
-        if api_key:
-            kwargs['api_key'] = api_key
-        if client_id:
-            kwargs['client_id'] = client_id
+        spells = []
 
-        spells = fetch_all_spells(**kwargs)
+        if use_websocket:
+            try:
+                spells = fetch_all_spells_ws_sync()
+            except Exception as e:
+                logger.warning(f"WebSocket fetch failed: {e}")
+                if relay_url:
+                    logger.info("Falling back to relay server...")
+                    kwargs = {}
+                    if relay_url:
+                        kwargs['relay_url'] = relay_url
+                    if api_key:
+                        kwargs['api_key'] = api_key
+                    if client_id:
+                        kwargs['client_id'] = client_id
+                    spells = fetch_all_spells(**kwargs)
+                else:
+                    raise
+        else:
+            # Legacy relay-based fetch
+            kwargs = {}
+            if relay_url:
+                kwargs['relay_url'] = relay_url
+            if api_key:
+                kwargs['api_key'] = api_key
+            if client_id:
+                kwargs['client_id'] = client_id
+            spells = fetch_all_spells(**kwargs)
 
         # Build lookup dict (case-insensitive)
         for spell in spells:
@@ -73,7 +95,7 @@ class SpellCache:
                 self._spell_by_name[name] = spell
 
         self._loaded = True
-        logger.info(f"✓ Loaded {len(self._spell_by_name)} spells into cache")
+        logger.info(f"Loaded {len(self._spell_by_name)} spells into cache")
 
     def get_spell_uuid(self, spell_name: str) -> Optional[str]:
         """
