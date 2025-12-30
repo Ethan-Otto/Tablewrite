@@ -99,7 +99,12 @@ class IconCache:
         logger.info(f"  Categories: {list(self._icons_by_category.keys())}")
 
     def _load_via_websocket(self, extensions: List[str]) -> List[str]:
-        """Load icons via WebSocket."""
+        """Load icons via WebSocket.
+
+        Handles both cases:
+        - No event loop running: uses asyncio.run()
+        - Event loop already running (e.g., pytest-asyncio): uses ThreadPoolExecutor
+        """
         # Import here to avoid circular imports
         from app.websocket import list_files
 
@@ -115,7 +120,17 @@ class IconCache:
                 raise RuntimeError(f"Failed to list files: {result.error}")
             return result.files or []
 
-        return asyncio.run(fetch())
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            # No event loop running, use asyncio.run()
+            return asyncio.run(fetch())
+        else:
+            # Event loop already running, run in separate thread
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, fetch())
+                return future.result(timeout=300)
 
     def _load_via_relay(
         self,

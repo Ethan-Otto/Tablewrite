@@ -129,5 +129,21 @@ async def fetch_all_spells_ws() -> List[Dict]:
 
 
 def fetch_all_spells_ws_sync() -> List[Dict]:
-    """Synchronous wrapper for fetch_all_spells_ws."""
-    return asyncio.run(fetch_all_spells_ws())
+    """Synchronous wrapper for fetch_all_spells_ws.
+
+    Handles both cases:
+    - No event loop running: uses asyncio.run()
+    - Event loop already running (e.g., pytest-asyncio): uses run_until_complete()
+    """
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        # No event loop running, use asyncio.run()
+        return asyncio.run(fetch_all_spells_ws())
+    else:
+        # Event loop already running, create a new task
+        # This happens in pytest-asyncio or other async contexts
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(asyncio.run, fetch_all_spells_ws())
+            return future.result(timeout=300)
