@@ -69,12 +69,14 @@ uv run pytest tests/api/test_api_integration.py -v -m integration
    GeminiImageAPI=<your_gemini_api_key>
 
    # FoundryVTT Configuration (optional - for journal upload)
-   FOUNDRY_RELAY_URL=https://foundryvtt-rest-api-relay.fly.dev
    FOUNDRY_URL=http://localhost:30000
    FOUNDRY_API_KEY=<your_foundry_api_key>
    FOUNDRY_CLIENT_ID=<your_client_id>
    FOUNDRY_AUTO_UPLOAD=false
-   FOUNDRY_TARGET=local
+
+   # DEPRECATED: Relay server is no longer needed
+   # FOUNDRY_RELAY_URL=https://foundryvtt-rest-api-relay.fly.dev
+   # FOUNDRY_TARGET=local
    ```
 
 4. **Source PDFs**: Place D&D module PDFs in `data/pdfs/` (default expects `Lost_Mine_of_Phandelver.pdf`)
@@ -298,7 +300,7 @@ The system follows a four-stage pipeline (orchestrated by `scripts/full_pipeline
 The project includes full integration with FoundryVTT for uploading and exporting journal entries.
 
 **Architecture:**
-- Uses ThreeHats REST API module (relay server → WebSocket → FoundryVTT)
+- Uses direct WebSocket connection via Tablewrite Foundry module (Backend → WebSocket → FoundryVTT)
 - `src/foundry/client.py`: Base `FoundryClient` class with API configuration
 - `src/foundry/journals.py`: `JournalManager` class with all journal CRUD operations
 - `src/foundry/upload_to_foundry.py`: Batch upload script
@@ -542,23 +544,18 @@ cd foundry-module/tablewrite-assistant && npm test
 
 ### Self-Hosted Relay Server (DEPRECATED)
 
-> **Note:** The relay server has been deprecated in favor of the direct WebSocket endpoint above. See `relay-server/ARCHIVED.md` for migration details.
+> **DEPRECATED as of 2025-12-30:** The relay server has been fully replaced by the WebSocket Push Architecture above. All relay functionality (search, file listing, entity CRUD) is now available via WebSocket messages. See `relay-server/ARCHIVED.md` for the complete migration table.
 
-The project previously used a **self-hosted local relay server** for local development.
+**Migration Summary:**
+| Old (Relay) | New (WebSocket) |
+|-------------|-----------------|
+| `GET /search` | `search_items` message |
+| `GET /file-system` | `list_files` message |
+| All entity CRUD | Direct WebSocket handlers |
 
-**Quick Setup:**
-```bash
-cd relay-server && docker-compose -f docker-compose.local.yml up -d
-curl http://localhost:3010/health
-uv run python scripts/test_relay_connection.py
-```
+**Preferred Method:** Use the WebSocket endpoint (`/ws/foundry`) with the Tablewrite Foundry module. No relay server configuration needed.
 
-**Configuration:**
-- Relay URL: `http://localhost:3010` (set in `.env` as `FOUNDRY_RELAY_URL`)
-- Database: In-memory (bypasses authentication)
-- Built from source for Apple Silicon (ARM64) compatibility
-
-See `reference/RELAY_SERVER_SETUP.md` for complete documentation.
+The relay server code is preserved in `relay-server/` for reference but is no longer actively maintained.
 
 ### Scene Extraction & Artwork Generation
 

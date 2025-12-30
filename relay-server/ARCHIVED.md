@@ -1,11 +1,24 @@
 # Relay Server - ARCHIVED
 
-**This component is deprecated and no longer used.**
+**Status:** Deprecated as of 2025-12-30
 
-The relay server was previously used to bridge HTTP requests to FoundryVTT via WebSocket. It has been replaced by:
+The relay server has been fully replaced by direct WebSocket communication:
 
-1. **Direct WebSocket endpoint** in the FastAPI backend (`/ws/foundry`)
-2. **Tablewrite Foundry module** that connects directly to the backend
+| Old (Relay) | New (WebSocket) |
+|-------------|-----------------|
+| `GET /search` | `search_items` message |
+| `GET /file-system` | `list_files` message |
+| `POST /upload` | `upload_file` message (planned) |
+| All entity CRUD | Direct WebSocket handlers |
+
+## Migration Complete
+
+All functionality previously provided by the relay server is now available via WebSocket:
+- SpellCache uses `search_items` WebSocket message
+- IconCache uses `list_files` WebSocket message
+- Actor/Journal/Scene creation uses direct WebSocket push
+
+No configuration changes needed - just ensure Foundry module is connected.
 
 ## Why Archived
 
