@@ -1,11 +1,17 @@
-"""Integration tests for actor orchestration pipeline."""
+"""Integration tests for actor orchestration pipeline.
+
+These tests call the backend HTTP API which internally uses WebSocket
+to communicate with Foundry. Requires:
+- Backend running on localhost:8000
+- Foundry with Tablewrite module connected
+"""
 
 import pytest
 import os
+import httpx
 from pathlib import Path
 
-from actors.orchestrate import create_actor_from_description
-from actors.models import ActorCreationResult
+BACKEND_URL = "http://localhost:8000"
 
 
 class TestActorOrchestrationIntegration:
@@ -16,77 +22,51 @@ class TestActorOrchestrationIntegration:
     @pytest.mark.asyncio
     async def test_full_pipeline_end_to_end(self, tmp_path):
         """
-        Smoke test: End-to-end actor creation from description
+        Smoke test: End-to-end actor creation via HTTP API.
 
-        Test complete pipeline from description to FoundryVTT.
+        Calls POST /api/actors/create which runs the full pipeline:
+        1. Generate stat block with Gemini
+        2. Parse to models
+        3. Upload to Foundry via WebSocket
 
-        NOTE: This test currently expects generate_actor_description() to be implemented.
-        Since it's a stub, we skip if NotImplementedError is raised.
+        Requires backend + Foundry running.
         """
-        # Skip if API key not available
-        if not os.getenv("GeminiImageAPI") and not os.getenv("GEMINI_API_KEY"):
-            pytest.skip("Gemini API key not available")
-
-        # Skip if FoundryVTT not available (connection may fail)
-        # The test will handle FoundryVTT connection errors gracefully
-
         description = "A small goblin warrior with a rusty short sword"
         challenge_rating = 0.25
 
-        try:
-            result = await create_actor_from_description(
-                description=description,
-                challenge_rating=challenge_rating,
-                output_dir_base=str(tmp_path)
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            # First verify backend and Foundry are connected
+            try:
+                status = await client.get(f"{BACKEND_URL}/api/foundry/status")
+                status.raise_for_status()
+                if status.json().get("status") != "connected":
+                    pytest.fail("Foundry not connected to backend")
+            except httpx.ConnectError:
+                pytest.fail("Backend not running on localhost:8000")
+
+            # Create actor via HTTP API
+            response = await client.post(
+                f"{BACKEND_URL}/api/actors/create",
+                json={
+                    "description": description,
+                    "challenge_rating": challenge_rating,
+                    "output_dir_base": str(tmp_path)
+                }
             )
 
+            assert response.status_code == 200, f"Actor creation failed: {response.text}"
+
+            result = response.json()
+
             # Verify result structure
-            assert isinstance(result, ActorCreationResult)
-            assert result.description == description
-            assert result.challenge_rating == challenge_rating
+            assert result["success"] is True
+            assert result["foundry_uuid"] is not None
+            assert result["foundry_uuid"].startswith("Actor.")
+            assert result["name"] is not None
+            assert result["challenge_rating"] == challenge_rating
 
-            # Verify intermediate outputs exist
-            assert result.raw_stat_block_text
-            assert result.stat_block
-            assert result.stat_block.name
-            assert result.stat_block.armor_class > 0
-            assert result.stat_block.hit_points > 0
-            assert result.stat_block.challenge_rating == challenge_rating
-
-            assert result.parsed_actor_data
-            assert result.parsed_actor_data.name
-
-            # Verify FoundryVTT UUID
-            assert result.foundry_uuid
-            assert result.foundry_uuid.startswith("Actor.")
-
-            # Verify files were saved
-            assert result.output_dir.exists()
-            assert result.raw_text_file and result.raw_text_file.exists()
-            assert result.stat_block_file and result.stat_block_file.exists()
-            assert result.parsed_data_file and result.parsed_data_file.exists()
-            assert result.foundry_json_file and result.foundry_json_file.exists()
-
-            # Verify file contents can be read
-            assert result.raw_text_file.read_text()
-            assert result.stat_block_file.read_text()
-            assert result.parsed_data_file.read_text()
-            assert result.foundry_json_file.read_text()
-
-            print(f"✓ Integration test passed!")
-            print(f"  Actor: {result.stat_block.name}")
-            print(f"  UUID: {result.foundry_uuid}")
-            print(f"  Output: {result.output_dir}")
-
-        except NotImplementedError as e:
-            if "generate_actor_description" in str(e):
-                pytest.skip("generate_actor_description() not yet implemented")
-            else:
-                raise
-        except Exception as e:
-            # Log the error for debugging but allow test to see it
-            print(f"Integration test failed: {e}")
-            raise
+            print(f"Actor created: {result['name']}")
+            print(f"UUID: {result['foundry_uuid']}")
 
     @pytest.mark.integration
     @pytest.mark.asyncio
@@ -94,24 +74,30 @@ class TestActorOrchestrationIntegration:
         """Test that pipeline creates properly structured output directory."""
         description = "A simple test goblin"
 
-        try:
-            result = await create_actor_from_description(
-                description=description,
-                challenge_rating=0.25,
-                output_dir_base=str(tmp_path)
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            # Verify backend is running
+            try:
+                status = await client.get(f"{BACKEND_URL}/api/foundry/status")
+                status.raise_for_status()
+                if status.json().get("status") != "connected":
+                    pytest.fail("Foundry not connected to backend")
+            except httpx.ConnectError:
+                pytest.fail("Backend not running on localhost:8000")
+
+            response = await client.post(
+                f"{BACKEND_URL}/api/actors/create",
+                json={
+                    "description": description,
+                    "challenge_rating": 0.25,
+                    "output_dir_base": str(tmp_path)
+                }
             )
 
-            # Verify directory structure
-            assert result.output_dir.exists()
-            assert result.output_dir.parent.parent == tmp_path
-            assert result.output_dir.name == "actors"
+            assert response.status_code == 200
+            result = response.json()
 
-            # Verify timestamp directory exists
-            timestamp_dir = result.output_dir.parent
-            assert len(timestamp_dir.name) == 15  # YYYYMMDD_HHMMSS
-
-        except NotImplementedError as e:
-            if "generate_actor_description" in str(e):
-                pytest.skip("generate_actor_description() not yet implemented")
-            else:
-                raise
+            # Verify output directory was created
+            assert result["output_dir"] is not None
+            output_dir = Path(result["output_dir"])
+            assert output_dir.exists()
+            assert output_dir.name == "actors"
