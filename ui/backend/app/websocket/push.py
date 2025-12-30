@@ -375,3 +375,68 @@ async def search_items(
             success=False,
             error=f"Unexpected response type: {response.get('type')}"
         )
+
+
+@dataclass
+class FileListResult:
+    """Result of listing files via WebSocket."""
+    success: bool
+    files: Optional[List[str]] = None
+    error: Optional[str] = None
+
+
+async def list_files(
+    path: str,
+    source: str = "public",
+    recursive: bool = False,
+    extensions: Optional[List[str]] = None,
+    timeout: float = 60.0
+) -> FileListResult:
+    """
+    List files in a Foundry directory via WebSocket.
+
+    Args:
+        path: Directory path to browse (e.g., "icons")
+        source: File source ("data", "public", or "s3")
+        recursive: Whether to recurse into subdirectories
+        extensions: Optional list of file extensions to filter
+        timeout: Maximum seconds to wait for response
+
+    Returns:
+        FileListResult with list of file paths
+    """
+    data = {
+        "path": path,
+        "source": source,
+        "recursive": recursive
+    }
+    if extensions:
+        data["extensions"] = extensions
+
+    response = await foundry_manager.broadcast_and_wait(
+        {"type": "list_files", "data": data},
+        timeout=timeout
+    )
+
+    if response is None:
+        return FileListResult(
+            success=False,
+            error="No Foundry client connected or timeout waiting for response"
+        )
+
+    if response.get("type") == "files_list":
+        data = response.get("data", {})
+        return FileListResult(
+            success=True,
+            files=data.get("files", [])
+        )
+    elif response.get("type") == "files_error":
+        return FileListResult(
+            success=False,
+            error=response.get("error", "Unknown error")
+        )
+    else:
+        return FileListResult(
+            success=False,
+            error=f"Unexpected response type: {response.get('type')}"
+        )

@@ -6,7 +6,8 @@ from .push import (
     fetch_actor, FetchResult,
     delete_actor, DeleteResult,
     list_actors, ListResult, ActorInfo,
-    search_items, SearchResult, SearchResultItem
+    search_items, SearchResult, SearchResultItem,
+    list_files, FileListResult
 )
 
 __all__ = [
@@ -26,5 +27,7 @@ __all__ = [
     'ActorInfo',
     'search_items',
     'SearchResult',
-    'SearchResultItem'
+    'SearchResultItem',
+    'list_files',
+    'FileListResult'
 ]
