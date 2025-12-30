@@ -3,12 +3,19 @@
 import asyncio
 import logging
 import os
+import sys
 import requests
 from difflib import SequenceMatcher
 from typing import Dict, List, Optional, Tuple, Union
 from google import genai
 
 from util.gemini import generate_content_async
+
+# Add ui/backend to path for importing websocket module
+_project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_ui_backend_path = os.path.join(_project_root, "ui", "backend")
+if _ui_backend_path not in sys.path:
+    sys.path.insert(0, _ui_backend_path)
 
 logger = logging.getLogger(__name__)
 
@@ -44,23 +51,80 @@ class IconCache:
         relay_url: Optional[str] = None,
         api_key: Optional[str] = None,
         client_id: Optional[str] = None,
-        icon_extensions: Optional[List[str]] = None
+        icon_extensions: Optional[List[str]] = None,
+        use_websocket: bool = True
     ) -> None:
         """
         Load all icon files from FoundryVTT file system.
 
         Args:
-            relay_url: Relay server URL (defaults to env var)
-            api_key: API key (defaults to env var)
-            client_id: Client ID (defaults to env var)
+            relay_url: Relay server URL (defaults to env var) - DEPRECATED
+            api_key: API key (defaults to env var) - DEPRECATED
+            client_id: Client ID (defaults to env var) - DEPRECATED
             icon_extensions: List of file extensions to include (default: ['.webp', '.png', '.jpg', '.svg'])
+            use_websocket: If True, use WebSocket (requires Foundry connected)
 
         Raises:
-            ValueError: If required credentials are missing
+            ValueError: If required credentials are missing (relay mode only)
             RuntimeError: If API request fails
         """
         logger.info("Loading icon cache from FoundryVTT file system...")
 
+        icon_extensions = icon_extensions or ['.webp', '.png', '.jpg', '.svg']
+        files = []
+
+        if use_websocket:
+            try:
+                files = self._load_via_websocket(icon_extensions)
+            except Exception as e:
+                logger.warning(f"WebSocket fetch failed: {e}")
+                # Fall back to relay if configured
+                if relay_url or os.getenv("FOUNDRY_RELAY_URL"):
+                    logger.info("Falling back to relay server...")
+                    files = self._load_via_relay(relay_url, api_key, client_id, icon_extensions)
+                else:
+                    raise
+        else:
+            # Legacy relay-based fetch
+            files = self._load_via_relay(relay_url, api_key, client_id, icon_extensions)
+
+        # Process files into cache
+        for path in files:
+            if any(path.endswith(ext) for ext in icon_extensions):
+                self._all_icons.append(path)
+                self._categorize_icon(path)
+
+        self._loaded = True
+        logger.info(f"Loaded {len(self._all_icons)} icons into cache")
+        logger.info(f"  Categories: {list(self._icons_by_category.keys())}")
+
+    def _load_via_websocket(self, extensions: List[str]) -> List[str]:
+        """Load icons via WebSocket."""
+        # Import here to avoid circular imports
+        from app.websocket import list_files
+
+        async def fetch():
+            result = await list_files(
+                path="icons",
+                source="public",
+                recursive=True,
+                extensions=extensions,
+                timeout=60.0
+            )
+            if not result.success:
+                raise RuntimeError(f"Failed to list files: {result.error}")
+            return result.files or []
+
+        return asyncio.run(fetch())
+
+    def _load_via_relay(
+        self,
+        relay_url: Optional[str],
+        api_key: Optional[str],
+        client_id: Optional[str],
+        icon_extensions: List[str]
+    ) -> List[str]:
+        """Load icons via relay server (legacy)."""
         # Get credentials from env if not provided
         relay_url = relay_url or os.getenv("FOUNDRY_RELAY_URL")
         api_key = api_key or os.getenv("FOUNDRY_API_KEY")
@@ -68,8 +132,6 @@ class IconCache:
 
         if not all([relay_url, api_key, client_id]):
             raise ValueError("Missing required credentials: relay_url, api_key, client_id")
-
-        icon_extensions = icon_extensions or ['.webp', '.png', '.jpg', '.svg']
 
         # Fetch file system recursively from icons/ directory
         endpoint = f"{relay_url}/file-system"
@@ -87,19 +149,15 @@ class IconCache:
             data = response.json()
 
             # Extract icon file paths (API returns 'results' not 'files')
-            files = data.get('results', data.get('files', []))
-            for file_info in files:
+            files = []
+            results = data.get('results', data.get('files', []))
+            for file_info in results:
                 path = file_info.get('path', '')
                 # Filter by extension
                 if any(path.endswith(ext) for ext in icon_extensions):
-                    self._all_icons.append(path)
+                    files.append(path)
 
-                    # Categorize by directory structure
-                    self._categorize_icon(path)
-
-            self._loaded = True
-            logger.info(f"✓ Loaded {len(self._all_icons)} icons into cache")
-            logger.info(f"  Categories: {list(self._icons_by_category.keys())}")
+            return files
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to load icon cache: {e}")
