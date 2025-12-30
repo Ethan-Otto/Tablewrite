@@ -193,6 +193,37 @@ for actor in result.actors:
     print(f"{actor.name} ({actor.uuid})")
 ```
 
+### Additional WebSocket Operations
+
+Beyond entity creation, the WebSocket supports:
+
+**Search Items:**
+```python
+from app.websocket import search_items
+
+result = await search_items(query="fire", sub_type="spell")
+for item in result.results:
+    print(f"{item.name}: {item.uuid}")
+```
+
+**List Files:**
+```python
+from app.websocket import list_files
+
+result = await list_files(path="icons", recursive=True, extensions=[".webp", ".png"])
+for file_path in result.files:
+    print(file_path)
+```
+
+**Message Types:**
+| Type | Direction | Description |
+|------|-----------|-------------|
+| `actor` | Backend -> Foundry | Create actor |
+| `search_items` | Backend -> Foundry | Search compendiums |
+| `items_found` | Foundry -> Backend | Search results |
+| `list_files` | Backend -> Foundry | Browse file system |
+| `files_list` | Foundry -> Backend | File list results |
+
 **Foundry Module:**
 Located in `foundry-module/tablewrite-assistant/`. Handlers in `src/handlers/`:
 - `handleActorCreate`, `handleGetActor`, `handleDeleteActor`, `handleListActors`
