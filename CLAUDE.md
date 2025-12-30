@@ -774,6 +774,30 @@ AUTO_ESCALATE=false pytest                  # Disable auto-escalation on failure
 - `@pytest.mark.slow`: Slow tests (API calls, large file processing)
 - `@pytest.mark.requires_api`: Tests requiring Gemini API key
 
+### Integration Test Requirements
+
+**IMPORTANT:** Integration tests that require Foundry connection MUST FAIL (not skip) if Foundry is not connected. Use explicit assertions with clear error messages:
+
+```python
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_create_actor():
+    from foundry import FoundryClient
+
+    client = FoundryClient()
+
+    # FAIL with actionable message - never skip silently
+    assert client.is_connected, "Foundry not connected - start backend and connect Foundry module"
+
+    result = await client.actors.create({"name": "Test", "type": "npc"})
+    assert result.success, f"Failed to create actor: {result.error}"
+```
+
+**Why fail instead of skip?**
+- Skipping hides broken functionality
+- CI/CD should catch missing connections
+- Clear failure messages guide developers to fix the issue
+
 ### Key Fixtures (from `conftest.py`)
 
 - `test_pdf_path`: `Lost_Mine_of_Phandelver_test.pdf` (7 pages)
