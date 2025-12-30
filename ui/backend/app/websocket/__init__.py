@@ -5,7 +5,8 @@ from .push import (
     push_actor, push_journal, push_scene, PushResult,
     fetch_actor, FetchResult,
     delete_actor, DeleteResult,
-    list_actors, ListResult, ActorInfo
+    list_actors, ListResult, ActorInfo,
+    search_items, SearchResult, SearchResultItem
 )
 
 __all__ = [
@@ -22,5 +23,8 @@ __all__ = [
     'DeleteResult',
     'list_actors',
     'ListResult',
-    'ActorInfo'
+    'ActorInfo',
+    'search_items',
+    'SearchResult',
+    'SearchResultItem'
 ]

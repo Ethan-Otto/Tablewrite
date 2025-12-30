@@ -296,3 +296,82 @@ async def list_actors(timeout: float = 30.0) -> ListResult:
             success=False,
             error=f"Unexpected response type: {response.get('type')}"
         )
+
+
+@dataclass
+class SearchResultItem:
+    """Item from search results."""
+    uuid: str
+    id: str
+    name: str
+    type: Optional[str] = None
+    img: Optional[str] = None
+    pack: Optional[str] = None
+
+
+@dataclass
+class SearchResult:
+    """Result of searching items via WebSocket."""
+    success: bool
+    results: Optional[List[SearchResultItem]] = None
+    error: Optional[str] = None
+
+
+async def search_items(
+    query: str,
+    document_type: str = "Item",
+    sub_type: Optional[str] = None,
+    timeout: float = 30.0
+) -> SearchResult:
+    """
+    Search for items in Foundry compendiums via WebSocket.
+
+    Args:
+        query: Search query string (case-insensitive contains match)
+        document_type: Document type to search (default: "Item")
+        sub_type: Optional subtype filter (e.g., "spell", "weapon")
+        timeout: Maximum seconds to wait for response
+
+    Returns:
+        SearchResult with list of matching items
+    """
+    data = {"query": query, "documentType": document_type}
+    if sub_type:
+        data["subType"] = sub_type
+
+    response = await foundry_manager.broadcast_and_wait(
+        {"type": "search_items", "data": data},
+        timeout=timeout
+    )
+
+    if response is None:
+        return SearchResult(
+            success=False,
+            error="No Foundry client connected or timeout waiting for response"
+        )
+
+    if response.get("type") == "items_found":
+        data = response.get("data", {})
+        results_data = data.get("results", [])
+        results = [
+            SearchResultItem(
+                uuid=r["uuid"],
+                id=r["id"],
+                name=r["name"],
+                type=r.get("type"),
+                img=r.get("img"),
+                pack=r.get("pack")
+            )
+            for r in results_data
+        ]
+        return SearchResult(success=True, results=results)
+    elif response.get("type") == "search_error":
+        return SearchResult(
+            success=False,
+            error=response.get("error", "Unknown search error")
+        )
+    else:
+        return SearchResult(
+            success=False,
+            error=f"Unexpected response type: {response.get('type')}"
+        )
