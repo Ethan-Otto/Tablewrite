@@ -65,7 +65,7 @@ The relay server code is preserved in this directory for reference but is not ac
 
 ## New Architecture
 
-```
+```text
 Before (with relay server):
 Backend -> HTTP -> Relay Server -> WebSocket -> Foundry Module -> FoundryVTT
 

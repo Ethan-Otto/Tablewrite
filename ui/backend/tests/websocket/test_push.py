@@ -27,12 +27,13 @@ class TestPushToFoundry:
 
             thread = threading.Thread(target=push_thread)
             thread.start()
-            thread.join()
 
-            # Receive the push
+            # Receive the push first (before join to avoid race condition)
             data = websocket.receive_json()
             assert data["type"] == "actor"
             assert data["data"]["name"] == "Goblin"
+
+            thread.join(timeout=5.0)
 
     def test_push_journal_reaches_connected_client(self):
         """push_journal() sends journal data to connected WebSocket client."""
@@ -50,11 +51,13 @@ class TestPushToFoundry:
 
             thread = threading.Thread(target=push_thread)
             thread.start()
-            thread.join()
 
+            # Receive the push first (before join to avoid race condition)
             data = websocket.receive_json()
             assert data["type"] == "journal"
             assert data["data"]["name"] == "Chapter 1"
+
+            thread.join(timeout=5.0)
 
     def test_push_scene_reaches_connected_client(self):
         """push_scene() sends scene data to connected WebSocket client."""
@@ -72,8 +75,10 @@ class TestPushToFoundry:
 
             thread = threading.Thread(target=push_thread)
             thread.start()
-            thread.join()
 
+            # Receive the push first (before join to avoid race condition)
             data = websocket.receive_json()
             assert data["type"] == "scene"
             assert data["data"]["name"] == "Cave Entrance"
+
+            thread.join(timeout=5.0)
