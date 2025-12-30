@@ -5,12 +5,14 @@
 export { handleActorCreate, handleGetActor, handleDeleteActor, handleListActors } from './actor.js';
 export { handleJournalCreate } from './journal.js';
 export { handleSceneCreate } from './scene.js';
+export { handleSearchItems, handleGetItem } from './items.js';
 
 import { handleActorCreate, handleGetActor, handleDeleteActor, handleListActors } from './actor.js';
 import { handleJournalCreate } from './journal.js';
 import { handleSceneCreate } from './scene.js';
+import { handleSearchItems, handleGetItem } from './items.js';
 
-export type MessageType = 'actor' | 'journal' | 'scene' | 'get_actor' | 'delete_actor' | 'list_actors' | 'connected' | 'pong';
+export type MessageType = 'actor' | 'journal' | 'scene' | 'get_actor' | 'delete_actor' | 'list_actors' | 'search_items' | 'get_item' | 'connected' | 'pong';
 
 export interface TablewriteMessage {
   type: MessageType;
@@ -52,10 +54,25 @@ export interface ListResult {
   error?: string;
 }
 
+export interface SearchResultItem {
+  uuid: string;
+  id: string;
+  name: string;
+  type?: string;
+  img?: string;
+  pack?: string;
+}
+
+export interface SearchResult {
+  success: boolean;
+  results?: SearchResultItem[];
+  error?: string;
+}
+
 export interface MessageResult {
   responseType: string;
   request_id?: string;
-  data?: CreateResult | GetResult | DeleteResult | ListResult;
+  data?: CreateResult | GetResult | DeleteResult | ListResult | SearchResult;
   error?: string;
 }
 
@@ -129,6 +146,32 @@ export async function handleMessage(message: TablewriteMessage): Promise<Message
         error: result.error
       };
     }
+    case 'search_items':
+      if (message.data) {
+        const result = await handleSearchItems(message.data as {
+          query: string;
+          documentType?: string;
+          subType?: string;
+        });
+        return {
+          responseType: result.success ? 'items_found' : 'search_error',
+          request_id: message.request_id,
+          data: result,
+          error: result.error
+        };
+      }
+      break;
+    case 'get_item':
+      if (message.data?.uuid) {
+        const result = await handleGetItem(message.data.uuid as string);
+        return {
+          responseType: result.success ? 'item_data' : 'item_error',
+          request_id: message.request_id,
+          data: result,
+          error: result.error
+        };
+      }
+      break;
     case 'connected':
       console.log('[Tablewrite] Connected with client_id:', message.client_id);
       return null;  // No response needed

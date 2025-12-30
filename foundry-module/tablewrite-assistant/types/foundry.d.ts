@@ -39,10 +39,32 @@ declare global {
     notifications?: Notifications;
   }
 
+  interface CompendiumCollection {
+    get(key: string): Compendium | undefined;
+    filter(fn: (pack: Compendium) => boolean): Compendium[];
+  }
+
+  interface Compendium {
+    documentName: string;
+    metadata: { label: string; packageType: string; packageName: string };
+    index: { contents: CompendiumIndexEntry[] } | null;
+    getIndex(options?: { fields?: string[] }): Promise<{ contents: CompendiumIndexEntry[] }>;
+    getDocument(id: string): Promise<FoundryDocument | null>;
+  }
+
+  interface CompendiumIndexEntry {
+    _id: string;
+    name: string;
+    type?: string;
+    img?: string;
+    uuid: string;
+  }
+
   interface Game {
     settings: ClientSettings;
     i18n: Localization;
     actors: ActorCollection | null;
+    packs: CompendiumCollection;
   }
 
   interface ActorCollection {
