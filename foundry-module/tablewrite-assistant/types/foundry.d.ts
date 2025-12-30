@@ -104,4 +104,25 @@ declare global {
 
   // Global function to fetch any document by UUID
   function fromUuid(uuid: string): Promise<FoundryDocument | null>;
+
+  // FilePicker for browsing file system
+  interface FilePickerOptions {
+    bucket?: string;
+    source?: 'data' | 'public' | 's3';
+    target?: string;
+  }
+
+  interface BrowseResult {
+    target: string;
+    files: string[];
+    dirs: string[];
+  }
+
+  const FilePicker: {
+    browse(
+      source: 'data' | 'public' | 's3',
+      target: string,
+      options?: { extensions?: string[] }
+    ): Promise<BrowseResult>;
+  };
 }

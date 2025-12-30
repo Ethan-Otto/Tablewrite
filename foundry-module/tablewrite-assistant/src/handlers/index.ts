@@ -6,13 +6,15 @@ export { handleActorCreate, handleGetActor, handleDeleteActor, handleListActors 
 export { handleJournalCreate } from './journal.js';
 export { handleSceneCreate } from './scene.js';
 export { handleSearchItems, handleGetItem } from './items.js';
+export { handleListFiles } from './files.js';
 
 import { handleActorCreate, handleGetActor, handleDeleteActor, handleListActors } from './actor.js';
 import { handleJournalCreate } from './journal.js';
 import { handleSceneCreate } from './scene.js';
 import { handleSearchItems, handleGetItem } from './items.js';
+import { handleListFiles } from './files.js';
 
-export type MessageType = 'actor' | 'journal' | 'scene' | 'get_actor' | 'delete_actor' | 'list_actors' | 'search_items' | 'get_item' | 'connected' | 'pong';
+export type MessageType = 'actor' | 'journal' | 'scene' | 'get_actor' | 'delete_actor' | 'list_actors' | 'search_items' | 'get_item' | 'list_files' | 'connected' | 'pong';
 
 export interface TablewriteMessage {
   type: MessageType;
@@ -69,10 +71,16 @@ export interface SearchResult {
   error?: string;
 }
 
+export interface FileListResult {
+  success: boolean;
+  files?: string[];
+  error?: string;
+}
+
 export interface MessageResult {
   responseType: string;
   request_id?: string;
-  data?: CreateResult | GetResult | DeleteResult | ListResult | SearchResult;
+  data?: CreateResult | GetResult | DeleteResult | ListResult | SearchResult | FileListResult;
   error?: string;
 }
 
@@ -166,6 +174,22 @@ export async function handleMessage(message: TablewriteMessage): Promise<Message
         const result = await handleGetItem(message.data.uuid as string);
         return {
           responseType: result.success ? 'item_data' : 'item_error',
+          request_id: message.request_id,
+          data: result,
+          error: result.error
+        };
+      }
+      break;
+    case 'list_files':
+      if (message.data) {
+        const result = await handleListFiles(message.data as {
+          path: string;
+          source?: 'data' | 'public' | 's3';
+          recursive?: boolean;
+          extensions?: string[];
+        });
+        return {
+          responseType: result.success ? 'files_list' : 'files_error',
           request_id: message.request_id,
           data: result,
           error: result.error
