@@ -58,26 +58,35 @@ class SceneCreatorTool(BaseTool):
                 }
 
             # Push FULL scene data to connected Foundry clients via WebSocket
-            await push_scene({
+            # The Foundry module will call Scene.create(data) and return the UUID
+            result = await push_scene({
                 "scene": scene_data,
                 "name": name,
                 "background_image": background_image
             })
 
-            logger.info(f"Pushed scene '{name}' to Foundry via WebSocket")
+            if not result.success:
+                logger.error(f"Failed to create scene in Foundry: {result.error}")
+                return ToolResponse(
+                    type="error",
+                    message=f"Failed to create scene in Foundry: {result.error}",
+                    data=None
+                )
 
-            # Format text response
+            logger.info(f"Created scene '{name}' in Foundry with UUID {result.uuid}")
+
+            # Format text response with UUID
             bg_text = f"\n- **Background Image**: `{background_image}`" if background_image else ""
             message = (
                 f"Created scene **{name}**!\n\n"
-                f"The scene data has been pushed to FoundryVTT via WebSocket.\n"
-                f"Check your FoundryVTT Scenes tab to find the new scene.{bg_text}"
+                f"UUID: `{result.uuid}`\n"
+                f"The scene has been created in FoundryVTT.{bg_text}"
             )
 
             return ToolResponse(
                 type="text",
                 message=message,
-                data=None
+                data={"uuid": result.uuid, "name": name}
             )
 
         except Exception as e:

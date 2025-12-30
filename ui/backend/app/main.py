@@ -7,7 +7,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from app.routers import chat
 from app.config import settings
-from app.websocket import foundry_websocket_endpoint
+from app.websocket import foundry_websocket_endpoint, foundry_manager, fetch_actor, delete_actor, list_actors
 
 # Load environment variables from project root .env
 project_root = Path(__file__).parent.parent.parent.parent
@@ -87,3 +87,127 @@ async def serve_image(filename: str):
 async def websocket_foundry(websocket: WebSocket):
     """WebSocket endpoint for Foundry module connections."""
     await foundry_websocket_endpoint(websocket)
+
+
+@app.get("/api/foundry/status")
+async def foundry_status():
+    """Check Foundry WebSocket connection status."""
+    return {
+        "connected_clients": foundry_manager.connection_count,
+        "status": "connected" if foundry_manager.connection_count > 0 else "disconnected"
+    }
+
+
+@app.get("/api/foundry/actor/{uuid}")
+async def get_actor_by_uuid(uuid: str):
+    """
+    Fetch an actor from Foundry by UUID via WebSocket.
+
+    Args:
+        uuid: The actor UUID (e.g., "Actor.vKEhnoBxM7unbhAL")
+
+    Returns:
+        Actor entity data or error
+    """
+    result = await fetch_actor(uuid, timeout=10.0)
+
+    if result.success:
+        return {
+            "success": True,
+            "name": result.entity.get("name") if result.entity else None,
+            "entity": result.entity
+        }
+    else:
+        raise HTTPException(status_code=404, detail=result.error)
+
+
+@app.delete("/api/foundry/actor/{uuid}")
+async def delete_actor_by_uuid(uuid: str):
+    """
+    Delete an actor from Foundry by UUID via WebSocket.
+
+    Args:
+        uuid: The actor UUID (e.g., "Actor.vKEhnoBxM7unbhAL")
+
+    Returns:
+        Success status with deleted actor info
+    """
+    result = await delete_actor(uuid, timeout=10.0)
+
+    if result.success:
+        return {
+            "success": True,
+            "uuid": result.uuid,
+            "name": result.name,
+            "message": f"Deleted actor: {result.name}"
+        }
+    else:
+        raise HTTPException(status_code=404, detail=result.error)
+
+
+@app.get("/api/foundry/actors")
+async def get_all_actors():
+    """
+    List all world actors from Foundry (not compendium).
+
+    Returns:
+        List of actors with uuid, id, and name
+    """
+    result = await list_actors(timeout=10.0)
+
+    if result.success:
+        return {
+            "success": True,
+            "count": len(result.actors) if result.actors else 0,
+            "actors": [
+                {"uuid": a.uuid, "id": a.id, "name": a.name}
+                for a in (result.actors or [])
+            ]
+        }
+    else:
+        raise HTTPException(status_code=500, detail=result.error)
+
+
+@app.delete("/api/foundry/actors/duplicates")
+async def delete_duplicate_actors():
+    """
+    Delete all actors with duplicate names, keeping one of each.
+
+    Returns:
+        Summary of deleted actors
+    """
+    from collections import defaultdict
+
+    # Get all actors
+    result = await list_actors(timeout=10.0)
+    if not result.success:
+        raise HTTPException(status_code=500, detail=result.error)
+
+    actors = result.actors or []
+
+    # Group by name
+    by_name = defaultdict(list)
+    for actor in actors:
+        by_name[actor.name].append(actor)
+
+    # Find and delete duplicates
+    deleted = []
+    failed = []
+
+    for name, actor_list in by_name.items():
+        if len(actor_list) > 1:
+            # Keep first, delete rest
+            for actor in actor_list[1:]:
+                del_result = await delete_actor(actor.uuid, timeout=10.0)
+                if del_result.success:
+                    deleted.append({"uuid": actor.uuid, "name": actor.name})
+                else:
+                    failed.append({"uuid": actor.uuid, "name": actor.name, "error": del_result.error})
+
+    return {
+        "success": True,
+        "deleted_count": len(deleted),
+        "failed_count": len(failed),
+        "deleted": deleted,
+        "failed": failed
+    }

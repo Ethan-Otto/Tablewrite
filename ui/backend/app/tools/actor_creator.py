@@ -91,11 +91,24 @@ class ActorCreatorTool(BaseTool):
 
             # Step 5: Convert to FoundryVTT format
             logger.info("Step 5/5: Converting to FoundryVTT format...")
-            spell_cache = SpellCache()
-            spell_cache.load()
 
-            icon_cache = IconCache()
-            icon_cache.load()
+            # Try to load spell cache, but continue without it if relay server is unavailable
+            spell_cache = None
+            try:
+                spell_cache = SpellCache()
+                spell_cache.load()
+            except Exception as e:
+                logger.warning(f"SpellCache unavailable (relay server not running?): {e}")
+                logger.info("Continuing without spell resolution - Foundry module will resolve spells")
+
+            # Try to load icon cache, but continue without it if unavailable
+            icon_cache = None
+            try:
+                icon_cache = IconCache()
+                icon_cache.load()
+            except Exception as e:
+                logger.warning(f"IconCache unavailable: {e}")
+                logger.info("Continuing without custom icons")
 
             actor_json, spell_uuids = await convert_to_foundry(
                 parsed_actor,
@@ -109,28 +122,36 @@ class ActorCreatorTool(BaseTool):
             actor_name = parsed_actor.name
 
             # Push FULL actor data to connected Foundry clients via WebSocket
-            # The Foundry module will call Actor.create(data)
-            await push_actor({
+            # The Foundry module will call Actor.create(data) and return the UUID
+            result = await push_actor({
                 "actor": actor_json,
                 "spell_uuids": spell_uuids,
                 "name": actor_name,
                 "cr": actor_cr
             })
 
-            logger.info(f"Pushed actor '{actor_name}' (CR {actor_cr}) to Foundry via WebSocket")
+            if not result.success:
+                logger.error(f"Failed to create actor in Foundry: {result.error}")
+                return ToolResponse(
+                    type="error",
+                    message=f"Failed to create actor in Foundry: {result.error}",
+                    data=None
+                )
 
-            # Format text response
+            logger.info(f"Created actor '{actor_name}' (CR {actor_cr}) in Foundry with UUID {result.uuid}")
+
+            # Format text response with UUID
             cr_text = f"CR {actor_cr}"
             message = (
                 f"Created **{actor_name}** ({cr_text})!\n\n"
-                f"The actor data has been pushed to FoundryVTT via WebSocket.\n"
-                f"Check your FoundryVTT Actors tab to find the new actor."
+                f"UUID: `{result.uuid}`\n"
+                f"The actor has been created in FoundryVTT."
             )
 
             return ToolResponse(
                 type="text",
                 message=message,
-                data=None
+                data={"uuid": result.uuid, "name": actor_name, "cr": actor_cr}
             )
 
         except Exception as e:

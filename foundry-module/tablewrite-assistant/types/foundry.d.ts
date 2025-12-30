@@ -42,6 +42,11 @@ declare global {
   interface Game {
     settings: ClientSettings;
     i18n: Localization;
+    actors: ActorCollection | null;
+  }
+
+  interface ActorCollection {
+    map<T>(fn: (actor: FoundryDocument) => T): T[];
   }
 
   // Foundry globals
@@ -66,4 +71,15 @@ declare global {
   const Scene: {
     create(data: Record<string, unknown>): Promise<{ id: string; name: string } | null>;
   };
+
+  // FoundryVTT Document interface (for fetched documents)
+  interface FoundryDocument {
+    id: string;
+    name: string;
+    toObject(): Record<string, unknown>;
+    delete(): Promise<void>;
+  }
+
+  // Global function to fetch any document by UUID
+  function fromUuid(uuid: string): Promise<FoundryDocument | null>;
 }

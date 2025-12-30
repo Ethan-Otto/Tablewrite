@@ -33,19 +33,34 @@ describe('handleJournalCreate', () => {
     mockJournalEntry.create.mockResolvedValue({ id: 'journal123', name: 'Test Journal' });
   });
 
-  it('calls JournalEntry.create with the data', async () => {
+  it('calls JournalEntry.create with the journal data from message', async () => {
     const { handleJournalCreate } = await import('../../src/handlers/journal');
     const journalData = { name: 'Chapter 1', pages: [{ name: 'Page 1', type: 'text', text: { content: 'Hello' } }] };
+    // New message format wraps journal data
+    const message = { journal: journalData, name: 'Chapter 1' };
 
-    await handleJournalCreate(journalData);
+    const result = await handleJournalCreate(message);
 
     expect(mockJournalEntry.create).toHaveBeenCalledWith(journalData);
+    expect(result.success).toBe(true);
+  });
+
+  it('returns success result with uuid on success', async () => {
+    mockJournalEntry.create.mockResolvedValue({ id: 'journal456', name: 'Chapter 1' });
+    const { handleJournalCreate } = await import('../../src/handlers/journal');
+
+    const result = await handleJournalCreate({ journal: { name: 'Chapter 1' }, name: 'Chapter 1' });
+
+    expect(result.success).toBe(true);
+    expect(result.uuid).toBe('JournalEntry.journal456');
+    expect(result.id).toBe('journal456');
+    expect(result.name).toBe('Chapter 1');
   });
 
   it('shows notification on success', async () => {
     const { handleJournalCreate } = await import('../../src/handlers/journal');
 
-    await handleJournalCreate({ name: 'Chapter 1', uuid: 'JournalEntry.abc123' });
+    await handleJournalCreate({ journal: { name: 'Chapter 1' }, name: 'Chapter 1' });
 
     expect(mockNotifications.info).toHaveBeenCalled();
   });
@@ -54,7 +69,7 @@ describe('handleJournalCreate', () => {
     mockJournalEntry.create.mockResolvedValue({ id: 'journal123', name: 'Chapter 1' });
     const { handleJournalCreate } = await import('../../src/handlers/journal');
 
-    await handleJournalCreate({ name: 'Chapter 1', uuid: 'JournalEntry.abc123' });
+    await handleJournalCreate({ journal: { name: 'Chapter 1' }, name: 'Chapter 1' });
 
     expect(mockI18n.format).toHaveBeenCalledWith(
       'TABLEWRITE_ASSISTANT.CreatedJournal',
@@ -62,21 +77,25 @@ describe('handleJournalCreate', () => {
     );
   });
 
-  it('shows error notification when create fails', async () => {
+  it('returns error result when create fails', async () => {
     mockJournalEntry.create.mockRejectedValue(new Error('Permission denied'));
     const { handleJournalCreate } = await import('../../src/handlers/journal');
 
-    await handleJournalCreate({ name: 'Chapter 1' });
+    const result = await handleJournalCreate({ journal: { name: 'Chapter 1' }, name: 'Chapter 1' });
 
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Permission denied');
     expect(mockNotifications.error).toHaveBeenCalled();
   });
 
-  it('does not show success notification when create returns null', async () => {
-    mockJournalEntry.create.mockResolvedValue(null);
+  it('returns error when no journal data in message', async () => {
     const { handleJournalCreate } = await import('../../src/handlers/journal');
 
-    await handleJournalCreate({ name: 'Chapter 1' });
+    const result = await handleJournalCreate({ name: 'Chapter 1' }); // Missing 'journal' property
 
-    expect(mockNotifications.info).not.toHaveBeenCalled();
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('No journal data in message');
+    expect(mockNotifications.error).toHaveBeenCalled();
+    expect(mockJournalEntry.create).not.toHaveBeenCalled();
   });
 });

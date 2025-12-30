@@ -33,19 +33,34 @@ describe('handleActorCreate', () => {
     mockActor.create.mockResolvedValue({ id: 'actor123', name: 'Test Actor' });
   });
 
-  it('calls Actor.create with the data', async () => {
+  it('calls Actor.create with the actor data from message', async () => {
     const { handleActorCreate } = await import('../../src/handlers/actor');
     const actorData = { name: 'Goblin', type: 'npc', system: { hp: { value: 7, max: 7 } } };
+    // New message format wraps actor data
+    const message = { actor: actorData, name: 'Goblin', cr: 0.25 };
 
-    await handleActorCreate(actorData);
+    const result = await handleActorCreate(message);
 
     expect(mockActor.create).toHaveBeenCalledWith(actorData);
+    expect(result.success).toBe(true);
+  });
+
+  it('returns success result with uuid on success', async () => {
+    mockActor.create.mockResolvedValue({ id: 'actor456', name: 'Goblin' });
+    const { handleActorCreate } = await import('../../src/handlers/actor');
+
+    const result = await handleActorCreate({ actor: { name: 'Goblin', type: 'npc' }, name: 'Goblin' });
+
+    expect(result.success).toBe(true);
+    expect(result.uuid).toBe('Actor.actor456');
+    expect(result.id).toBe('actor456');
+    expect(result.name).toBe('Goblin');
   });
 
   it('shows notification on success', async () => {
     const { handleActorCreate } = await import('../../src/handlers/actor');
 
-    await handleActorCreate({ name: 'Goblin', uuid: 'Actor.abc123' });
+    await handleActorCreate({ actor: { name: 'Goblin', type: 'npc' }, name: 'Goblin' });
 
     expect(mockNotifications.info).toHaveBeenCalled();
   });
@@ -54,7 +69,7 @@ describe('handleActorCreate', () => {
     mockActor.create.mockResolvedValue({ id: 'actor123', name: 'Goblin' });
     const { handleActorCreate } = await import('../../src/handlers/actor');
 
-    await handleActorCreate({ name: 'Goblin', uuid: 'Actor.abc123' });
+    await handleActorCreate({ actor: { name: 'Goblin', type: 'npc' }, name: 'Goblin' });
 
     expect(mockI18n.format).toHaveBeenCalledWith(
       'TABLEWRITE_ASSISTANT.CreatedActor',
@@ -62,21 +77,25 @@ describe('handleActorCreate', () => {
     );
   });
 
-  it('shows error notification when create fails', async () => {
+  it('returns error result when create fails', async () => {
     mockActor.create.mockRejectedValue(new Error('Permission denied'));
     const { handleActorCreate } = await import('../../src/handlers/actor');
 
-    await handleActorCreate({ name: 'Goblin' });
+    const result = await handleActorCreate({ actor: { name: 'Goblin' }, name: 'Goblin' });
 
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Permission denied');
     expect(mockNotifications.error).toHaveBeenCalled();
   });
 
-  it('does not show success notification when create returns null', async () => {
-    mockActor.create.mockResolvedValue(null);
+  it('returns error when no actor data in message', async () => {
     const { handleActorCreate } = await import('../../src/handlers/actor');
 
-    await handleActorCreate({ name: 'Goblin' });
+    const result = await handleActorCreate({ name: 'Goblin' }); // Missing 'actor' property
 
-    expect(mockNotifications.info).not.toHaveBeenCalled();
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('No actor data in message');
+    expect(mockNotifications.error).toHaveBeenCalled();
+    expect(mockActor.create).not.toHaveBeenCalled();
   });
 });

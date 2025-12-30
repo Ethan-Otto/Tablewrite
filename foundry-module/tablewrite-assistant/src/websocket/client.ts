@@ -1,7 +1,7 @@
 /**
  * WebSocket client for connecting to Tablewrite backend.
  */
-import { handleMessage, TablewriteMessage } from '../handlers/index.js';
+import { handleMessage, TablewriteMessage, MessageResult } from '../handlers/index.js';
 
 export class TablewriteClient {
   private ws: WebSocket | null = null;
@@ -76,6 +76,29 @@ export class TablewriteClient {
   }
 
   /**
+   * Send a message to the backend.
+   */
+  private send(message: Record<string, unknown>): void {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(message));
+    } else {
+      console.error('[Tablewrite] Cannot send message, WebSocket not connected');
+    }
+  }
+
+  /**
+   * Send a response back to the backend.
+   */
+  private sendResponse(result: MessageResult): void {
+    this.send({
+      type: result.responseType,
+      request_id: result.request_id,
+      data: result.data,
+      error: result.error
+    });
+  }
+
+  /**
    * Handle incoming WebSocket message.
    */
   private async handleMessage(data: string): Promise<void> {
@@ -83,7 +106,13 @@ export class TablewriteClient {
       const message: TablewriteMessage = JSON.parse(data);
       console.log('[Tablewrite] Received:', message.type);
 
-      await handleMessage(message);
+      const result = await handleMessage(message);
+
+      // If there's a result and a request_id, send response back
+      if (result && message.request_id) {
+        console.log('[Tablewrite] Sending response:', result.responseType);
+        this.sendResponse(result);
+      }
     } catch (e) {
       console.error('[Tablewrite] Failed to parse message:', e);
     }

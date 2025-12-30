@@ -1,6 +1,7 @@
 """Manage WebSocket connections from Foundry modules."""
+import asyncio
 import uuid
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from fastapi import WebSocket
 
 
@@ -9,6 +10,8 @@ class ConnectionManager:
 
     def __init__(self):
         self.active_connections: Dict[str, WebSocket] = {}
+        # Track pending requests waiting for responses
+        self._pending_requests: Dict[str, asyncio.Future] = {}
 
     def connect(self, websocket: WebSocket) -> str:
         """
@@ -58,3 +61,61 @@ class ConnectionManager:
         # Clean up failed connections
         for client_id in disconnected:
             self.disconnect(client_id)
+
+    async def broadcast_and_wait(
+        self,
+        message: Dict[str, Any],
+        timeout: float = 30.0
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Broadcast a message and wait for a response from any client.
+
+        Args:
+            message: JSON-serializable message to broadcast
+            timeout: Maximum seconds to wait for response
+
+        Returns:
+            Response data from Foundry module, or None if timeout/no clients
+        """
+        if not self.active_connections:
+            return None
+
+        # Generate unique request ID
+        request_id = str(uuid.uuid4())
+        message["request_id"] = request_id
+
+        # Create a future to wait for the response
+        loop = asyncio.get_event_loop()
+        future: asyncio.Future = loop.create_future()
+        self._pending_requests[request_id] = future
+
+        try:
+            # Broadcast the message
+            await self.broadcast(message)
+
+            # Wait for response with timeout
+            try:
+                response = await asyncio.wait_for(future, timeout=timeout)
+                return response
+            except asyncio.TimeoutError:
+                return None
+        finally:
+            # Clean up pending request
+            self._pending_requests.pop(request_id, None)
+
+    def handle_response(self, request_id: str, response_data: Dict[str, Any]) -> bool:
+        """
+        Handle a response from a Foundry client.
+
+        Args:
+            request_id: The request ID this is responding to
+            response_data: The response data
+
+        Returns:
+            True if a pending request was found and resolved
+        """
+        future = self._pending_requests.get(request_id)
+        if future and not future.done():
+            future.set_result(response_data)
+            return True
+        return False

@@ -2,49 +2,142 @@
  * Message handlers for Tablewrite.
  */
 
-export { handleActorCreate } from './actor.js';
+export { handleActorCreate, handleGetActor, handleDeleteActor, handleListActors } from './actor.js';
 export { handleJournalCreate } from './journal.js';
 export { handleSceneCreate } from './scene.js';
 
-import { handleActorCreate } from './actor.js';
+import { handleActorCreate, handleGetActor, handleDeleteActor, handleListActors } from './actor.js';
 import { handleJournalCreate } from './journal.js';
 import { handleSceneCreate } from './scene.js';
 
-export type MessageType = 'actor' | 'journal' | 'scene' | 'connected' | 'pong';
+export type MessageType = 'actor' | 'journal' | 'scene' | 'get_actor' | 'delete_actor' | 'list_actors' | 'connected' | 'pong';
 
 export interface TablewriteMessage {
   type: MessageType;
   data?: Record<string, unknown>;
   client_id?: string;
+  request_id?: string;
+}
+
+export interface CreateResult {
+  success: boolean;
+  id?: string;
+  uuid?: string;
+  name?: string;
+  error?: string;
+}
+
+export interface GetResult {
+  success: boolean;
+  entity?: Record<string, unknown>;
+  error?: string;
+}
+
+export interface DeleteResult {
+  success: boolean;
+  uuid?: string;
+  name?: string;
+  error?: string;
+}
+
+export interface ActorInfo {
+  uuid: string;
+  id: string;
+  name: string;
+}
+
+export interface ListResult {
+  success: boolean;
+  actors?: ActorInfo[];
+  error?: string;
+}
+
+export interface MessageResult {
+  responseType: string;
+  request_id?: string;
+  data?: CreateResult | GetResult | DeleteResult | ListResult;
+  error?: string;
 }
 
 /**
  * Route a message to the appropriate handler.
+ * Returns a result that should be sent back to the backend.
  */
-export async function handleMessage(message: TablewriteMessage): Promise<void> {
+export async function handleMessage(message: TablewriteMessage): Promise<MessageResult | null> {
   switch (message.type) {
     case 'actor':
       if (message.data) {
-        await handleActorCreate(message.data);
+        const result = await handleActorCreate(message.data);
+        return {
+          responseType: result.success ? 'actor_created' : 'actor_error',
+          request_id: message.request_id,
+          data: result.success ? result : undefined,
+          error: result.error
+        };
       }
       break;
     case 'journal':
       if (message.data) {
-        await handleJournalCreate(message.data);
+        const result = await handleJournalCreate(message.data);
+        return {
+          responseType: result.success ? 'journal_created' : 'journal_error',
+          request_id: message.request_id,
+          data: result.success ? result : undefined,
+          error: result.error
+        };
       }
       break;
     case 'scene':
       if (message.data) {
-        await handleSceneCreate(message.data);
+        const result = await handleSceneCreate(message.data);
+        return {
+          responseType: result.success ? 'scene_created' : 'scene_error',
+          request_id: message.request_id,
+          data: result.success ? result : undefined,
+          error: result.error
+        };
       }
       break;
+    case 'get_actor':
+      if (message.data?.uuid) {
+        const result = await handleGetActor(message.data.uuid as string);
+        return {
+          responseType: result.success ? 'actor_data' : 'actor_error',
+          request_id: message.request_id,
+          data: result,
+          error: result.error
+        };
+      }
+      break;
+    case 'delete_actor':
+      if (message.data?.uuid) {
+        const result = await handleDeleteActor(message.data.uuid as string);
+        return {
+          responseType: result.success ? 'actor_deleted' : 'actor_error',
+          request_id: message.request_id,
+          data: result,
+          error: result.error
+        };
+      }
+      break;
+    case 'list_actors': {
+      const result = await handleListActors();
+      return {
+        responseType: result.success ? 'actors_list' : 'actor_error',
+        request_id: message.request_id,
+        data: result,
+        error: result.error
+      };
+    }
     case 'connected':
       console.log('[Tablewrite] Connected with client_id:', message.client_id);
-      break;
+      return null;  // No response needed
     case 'pong':
       // Heartbeat response, no action needed
-      break;
+      return null;
     default:
       console.warn('[Tablewrite] Unknown message type:', message.type);
+      return null;
   }
+  return null;
 }

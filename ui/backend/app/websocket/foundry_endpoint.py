@@ -8,6 +8,23 @@ logger = logging.getLogger(__name__)
 # Global connection manager instance
 foundry_manager = ConnectionManager()
 
+# Response message types from Foundry module
+RESPONSE_TYPES = {
+    # Creation responses
+    "actor_created",
+    "journal_created",
+    "scene_created",
+    "actor_error",
+    "journal_error",
+    "scene_error",
+    # Fetch responses
+    "actor_data",
+    # Delete responses
+    "actor_deleted",
+    # List responses
+    "actors_list",
+}
+
 
 async def foundry_websocket_endpoint(websocket: WebSocket):
     """
@@ -16,7 +33,8 @@ async def foundry_websocket_endpoint(websocket: WebSocket):
     Protocol:
     - On connect: sends {"type": "connected", "client_id": "..."}
     - Client can send {"type": "ping"} -> receives {"type": "pong"}
-    - Server pushes content: {"type": "actor|journal|scene", "data": {...}}
+    - Server pushes content: {"type": "actor|journal|scene", "data": {...}, "request_id": "..."}
+    - Client responds: {"type": "actor_created|journal_created|scene_created", "request_id": "...", "data": {...}}
     """
     await websocket.accept()
     client_id = foundry_manager.connect(websocket)
@@ -33,9 +51,22 @@ async def foundry_websocket_endpoint(websocket: WebSocket):
         # Handle incoming messages
         while True:
             data = await websocket.receive_json()
+            msg_type = data.get("type")
 
-            if data.get("type") == "ping":
+            if msg_type == "ping":
                 await websocket.send_json({"type": "pong"})
+
+            elif msg_type in RESPONSE_TYPES:
+                # This is a response to a request we sent
+                request_id = data.get("request_id")
+                if request_id:
+                    handled = foundry_manager.handle_response(request_id, data)
+                    if handled:
+                        logger.debug(f"Handled response for request {request_id}")
+                    else:
+                        logger.warning(f"No pending request for {request_id}")
+                else:
+                    logger.warning(f"Response missing request_id: {data}")
 
     except WebSocketDisconnect:
         logger.info(f"Foundry client disconnected: {client_id}")

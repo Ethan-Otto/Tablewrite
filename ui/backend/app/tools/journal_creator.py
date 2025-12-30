@@ -57,24 +57,33 @@ class JournalCreatorTool(BaseTool):
             }
 
             # Push FULL journal data to connected Foundry clients via WebSocket
-            await push_journal({
+            # The Foundry module will call JournalEntry.create(data) and return the UUID
+            result = await push_journal({
                 "journal": journal_data,
                 "name": title
             })
 
-            logger.info(f"Pushed journal '{title}' to Foundry via WebSocket")
+            if not result.success:
+                logger.error(f"Failed to create journal in Foundry: {result.error}")
+                return ToolResponse(
+                    type="error",
+                    message=f"Failed to create journal in Foundry: {result.error}",
+                    data=None
+                )
 
-            # Format text response
+            logger.info(f"Created journal '{title}' in Foundry with UUID {result.uuid}")
+
+            # Format text response with UUID
             message = (
                 f"Created journal entry **{title}**!\n\n"
-                f"The journal data has been pushed to FoundryVTT via WebSocket.\n"
-                f"Check your FoundryVTT Journal Entries to find the new entry."
+                f"UUID: `{result.uuid}`\n"
+                f"The journal has been created in FoundryVTT."
             )
 
             return ToolResponse(
                 type="text",
                 message=message,
-                data=None
+                data={"uuid": result.uuid, "name": title}
             )
 
         except Exception as e:
