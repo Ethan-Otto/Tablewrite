@@ -1,25 +1,13 @@
-"""Scene creation tool for FoundryVTT."""
-import sys
-from pathlib import Path
-from dotenv import load_dotenv
+"""Scene creation tool using WebSocket-only (no relay server)."""
+import logging
 from .base import BaseTool, ToolSchema, ToolResponse
+from app.websocket import push_scene
 
-# Add project paths for foundry module imports
-project_root = Path(__file__).parent.parent.parent.parent.parent
-sys.path.insert(0, str(project_root))  # For "from src.xxx" imports
-sys.path.insert(0, str(project_root / "src"))  # For "from xxx" imports
-
-# Load environment variables from project root before imports
-env_path = project_root / ".env"
-if env_path.exists():
-    load_dotenv(env_path)
-
-from foundry.client import FoundryClient  # noqa: E402
-from app.websocket import push_scene  # noqa: E402
+logger = logging.getLogger(__name__)
 
 
 class SceneCreatorTool(BaseTool):
-    """Tool for creating simple scenes in FoundryVTT."""
+    """Tool for creating simple scenes in FoundryVTT via WebSocket."""
 
     @property
     def name(self) -> str:
@@ -50,38 +38,40 @@ class SceneCreatorTool(BaseTool):
         )
 
     async def execute(self, name: str, background_image: str = None) -> ToolResponse:
-        """Execute scene creation."""
+        """Execute scene creation via WebSocket (no relay server)."""
         try:
-            # Initialize Foundry client
-            client = FoundryClient()
-
-            # Create scene in FoundryVTT
-            import asyncio
-            loop = asyncio.get_event_loop()
-
-            # Run synchronous Foundry API call in thread pool (non-blocking)
-            result = await loop.run_in_executor(
-                None,
-                lambda: client.scenes.create_scene(
-                    name=name,
-                    background_image=background_image
-                )
-            )
-
-            scene_uuid = result.get("uuid")
-
-            # Push to connected Foundry clients
-            await push_scene({
+            # Prepare FULL scene data for FoundryVTT
+            # The Foundry module will call Scene.create(data)
+            scene_data = {
                 "name": name,
-                "uuid": scene_uuid,
+                "width": 3000,
+                "height": 2000,
+                "grid": {
+                    "size": 100
+                }
+            }
+
+            # Add background image if provided
+            if background_image:
+                scene_data["background"] = {
+                    "src": background_image
+                }
+
+            # Push FULL scene data to connected Foundry clients via WebSocket
+            await push_scene({
+                "scene": scene_data,
+                "name": name,
                 "background_image": background_image
             })
+
+            logger.info(f"Pushed scene '{name}' to Foundry via WebSocket")
 
             # Format text response
             bg_text = f"\n- **Background Image**: `{background_image}`" if background_image else ""
             message = (
                 f"Created scene **{name}**!\n\n"
-                f"- **FoundryVTT UUID**: `{scene_uuid}`{bg_text}"
+                f"The scene data has been pushed to FoundryVTT via WebSocket.\n"
+                f"Check your FoundryVTT Scenes tab to find the new scene.{bg_text}"
             )
 
             return ToolResponse(
@@ -90,23 +80,10 @@ class SceneCreatorTool(BaseTool):
                 data=None
             )
 
-        except ValueError as e:
-            # Missing environment variables
-            return ToolResponse(
-                type="error",
-                message=f"FoundryVTT configuration error: {str(e)}",
-                data=None
-            )
-        except RuntimeError as e:
-            # API call failed
+        except Exception as e:
+            logger.error(f"Scene creation failed: {e}")
             return ToolResponse(
                 type="error",
                 message=f"Failed to create scene: {str(e)}",
-                data=None
-            )
-        except Exception as e:
-            return ToolResponse(
-                type="error",
-                message=f"Unexpected error creating scene: {str(e)}",
                 data=None
             )

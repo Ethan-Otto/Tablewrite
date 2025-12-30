@@ -5,7 +5,7 @@ import threading
 import asyncio
 import queue
 from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 from app.main import app
 
 
@@ -13,27 +13,48 @@ class TestActorCreatorPush:
     """Test actor creator pushes to Foundry (real WebSocket)."""
 
     def test_actor_creator_pushes_to_websocket(self):
-        """Actor creator pushes result to connected WebSocket client."""
+        """Actor creator pushes full actor data to connected WebSocket client."""
         from app.tools.actor_creator import ActorCreatorTool
 
-        # Mock only the external API call, not the WebSocket
-        mock_result = MagicMock()
-        mock_result.foundry_uuid = "Actor.abc123"
-        mock_result.name = "Test Goblin"
-        mock_result.challenge_rating = 0.25
-        mock_result.output_dir = "/output"
+        # Mock the actor generation pipeline
+        mock_parsed_actor = MagicMock()
+        mock_parsed_actor.name = "Test Goblin"
+        mock_parsed_actor.challenge_rating = 0.25
+        mock_parsed_actor.model_copy = MagicMock(return_value=mock_parsed_actor)
+
+        mock_actor_json = {
+            "name": "Test Goblin",
+            "type": "npc",
+            "system": {
+                "details": {"cr": 0.25},
+                "abilities": {"str": {"value": 10}}
+            },
+            "items": []
+        }
+        mock_spell_uuids = []
 
         client = TestClient(app)
-
-        # Use a queue to communicate between threads
         result_queue = queue.Queue()
 
         with client.websocket_connect("/ws/foundry") as websocket:
             welcome = websocket.receive_json()  # Consume welcome
             assert welcome["type"] == "connected"
 
-            # Execute tool in thread (mocking only the Gemini API call)
-            with patch('app.tools.actor_creator.create_actor', return_value=mock_result):
+            # Mock all the pipeline steps
+            with patch('app.tools.actor_creator.generate_actor_description', new_callable=AsyncMock) as mock_gen, \
+                 patch('app.tools.actor_creator.parse_raw_text_to_statblock', new_callable=AsyncMock) as mock_parse, \
+                 patch('app.tools.actor_creator.parse_stat_block_parallel', new_callable=AsyncMock) as mock_detail, \
+                 patch('app.tools.actor_creator.generate_actor_biography', new_callable=AsyncMock) as mock_bio, \
+                 patch('app.tools.actor_creator.convert_to_foundry', new_callable=AsyncMock) as mock_convert, \
+                 patch('app.tools.actor_creator.SpellCache') as mock_spell_cache, \
+                 patch('app.tools.actor_creator.IconCache') as mock_icon_cache:
+
+                mock_gen.return_value = "Test Goblin stat block text"
+                mock_parse.return_value = MagicMock()
+                mock_detail.return_value = mock_parsed_actor
+                mock_bio.return_value = "A fierce goblin warrior."
+                mock_convert.return_value = (mock_actor_json, mock_spell_uuids)
+
                 tool = ActorCreatorTool()
 
                 def execute_thread():
@@ -60,13 +81,16 @@ class TestActorCreatorPush:
             except queue.Empty:
                 pytest.fail("No result from tool execution")
 
-            # Verify WebSocket received the push
-            # The push happens during tool execution, so message should be ready
+            # Verify WebSocket received the push with FULL actor data
             try:
                 data = websocket.receive_json()
                 assert data["type"] == "actor"
                 assert data["data"]["name"] == "Test Goblin"
-                assert data["data"]["uuid"] == "Actor.abc123"
+                assert data["data"]["cr"] == 0.25
+                # Now we push full actor data, not just name/uuid
+                assert "actor" in data["data"]
+                assert data["data"]["actor"]["name"] == "Test Goblin"
+                assert data["data"]["actor"]["type"] == "npc"
             except Exception as e:
                 pytest.fail(f"WebSocket did not receive actor push: {e}")
 
@@ -86,12 +110,12 @@ class TestActorCreatorPushIntegration:
 
         This test:
         - Uses REAL Gemini API to generate actor stats
-        - Uses REAL FoundryVTT connection to create the actor
+        - Pushes FULL actor data via WebSocket (no relay server)
         - Verifies the WebSocket push reaches connected clients
 
         Warning: This test costs money (Gemini API calls) and requires:
         - GeminiImageAPI environment variable
-        - FoundryVTT running with valid credentials
+        - FoundryVTT NOT required (we only test WebSocket push, not Foundry creation)
         """
         from app.tools.actor_creator import ActorCreatorTool
 
@@ -131,15 +155,17 @@ class TestActorCreatorPushIntegration:
             except queue.Empty:
                 pytest.fail("No result from tool execution")
 
-            # Verify WebSocket received the push with real data
+            # Verify WebSocket received the push with FULL actor data
             try:
                 data = websocket.receive_json()
                 assert data["type"] == "actor"
                 assert "name" in data["data"]
-                assert "uuid" in data["data"]
                 assert "cr" in data["data"]
-                # Real actor should have a valid UUID format
-                assert data["data"]["uuid"].startswith("Actor.")
-                print(f"[INTEGRATION] Created actor: {data['data']['name']} (CR {data['data']['cr']})")
+                # Now we push full actor data for Foundry module to create
+                assert "actor" in data["data"]
+                assert data["data"]["actor"]["type"] == "npc"
+                assert "items" in data["data"]["actor"]
+                assert "spell_uuids" in data["data"]
+                print(f"[INTEGRATION] Pushed actor: {data['data']['name']} (CR {data['data']['cr']})")
             except Exception as e:
                 pytest.fail(f"WebSocket did not receive actor push: {e}")
