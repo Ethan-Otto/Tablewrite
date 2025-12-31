@@ -121,69 +121,75 @@ class TestSearchItemsIntegration:
         assert data["connected_clients"] > 0
 
     @pytest.mark.asyncio
-    async def test_search_items_via_websocket(self):
+    async def test_search_items_via_http_api(self):
         """
-        Search for spells via WebSocket.
+        Search for spells via HTTP API (which calls WebSocket internally).
 
         Requires: Backend running + Foundry with Tablewrite module connected.
         """
-        # First check connection
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # First check connection
             status = await client.get(f"{BACKEND_URL}/api/foundry/status")
             if status.json()["status"] != "connected":
                 pytest.skip("Foundry not connected")
 
-        # Search for spells starting with "fire"
-        result = await search_items(query="fire", sub_type="spell", timeout=30.0)
+            # Search for spells starting with "fire" via HTTP API
+            response = await client.get(
+                f"{BACKEND_URL}/api/foundry/search",
+                params={"query": "fire", "sub_type": "spell"}
+            )
 
-        assert result.success, f"Search failed: {result.error}"
-        assert result.results is not None
-        assert len(result.results) > 0, "Expected at least one spell matching 'fire'"
+        assert response.status_code == 200, f"Search failed: {response.text}"
+        data = response.json()
+        assert data["success"] is True
+        assert data["results"] is not None
+        assert len(data["results"]) > 0, "Expected at least one spell matching 'fire'"
 
         # Verify result structure
-        first = result.results[0]
-        assert first.uuid is not None, "Result missing uuid"
-        assert first.name is not None, "Result missing name"
-        assert "fire" in first.name.lower(), f"Expected 'fire' in name, got: {first.name}"
+        first = data["results"][0]
+        assert first["uuid"] is not None, "Result missing uuid"
+        assert first["name"] is not None, "Result missing name"
+        assert "fire" in first["name"].lower(), f"Expected 'fire' in name, got: {first['name']}"
 
-        print(f"\n[INTEGRATION] Found {len(result.results)} spells matching 'fire':")
-        for item in result.results[:5]:  # Print first 5
-            print(f"  - {item.name} ({item.uuid})")
+        print(f"\n[INTEGRATION] Found {len(data['results'])} spells matching 'fire':")
+        for item in data["results"][:5]:  # Print first 5
+            print(f"  - {item['name']} ({item['uuid']})")
 
     @pytest.mark.asyncio
     async def test_search_items_with_document_type(self):
         """
-        Search with document type filter.
+        Search with document type filter via HTTP API.
 
         Requires: Backend running + Foundry with Tablewrite module connected.
         """
-        # First check connection
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # First check connection
             status = await client.get(f"{BACKEND_URL}/api/foundry/status")
             if status.json()["status"] != "connected":
                 pytest.skip("Foundry not connected")
 
-        # Search for weapons
-        result = await search_items(
-            query="sword",
-            document_type="Item",
-            sub_type="weapon",
-            timeout=30.0
-        )
+            # Search for weapons via HTTP API
+            response = await client.get(
+                f"{BACKEND_URL}/api/foundry/search",
+                params={"query": "sword", "document_type": "Item", "sub_type": "weapon"}
+            )
 
-        if not result.success:
-            print(f"\n[INTEGRATION] Search failed: {result.error}")
-            # May fail if no weapons compendium - skip gracefully
-            pytest.skip(f"Search failed: {result.error}")
+        if response.status_code != 200:
+            print(f"\n[INTEGRATION] Search failed: {response.text}")
+            pytest.skip(f"Search failed: {response.text}")
 
-        if result.results and len(result.results) > 0:
-            first = result.results[0]
-            print(f"\n[INTEGRATION] Found {len(result.results)} weapons matching 'sword':")
-            for item in result.results[:3]:
-                print(f"  - {item.name} (type: {item.type})")
+        data = response.json()
+        if not data.get("success"):
+            pytest.skip(f"Search failed: {data.get('error')}")
 
-            assert first.uuid is not None
-            assert first.name is not None
+        if data["results"] and len(data["results"]) > 0:
+            first = data["results"][0]
+            print(f"\n[INTEGRATION] Found {len(data['results'])} weapons matching 'sword':")
+            for item in data["results"][:3]:
+                print(f"  - {item['name']} (type: {item['type']})")
+
+            assert first["uuid"] is not None
+            assert first["name"] is not None
         else:
             print("\n[INTEGRATION] No weapons found matching 'sword'")
             # This is valid - may not have weapons compendium
@@ -191,27 +197,34 @@ class TestSearchItemsIntegration:
     @pytest.mark.asyncio
     async def test_search_items_empty_query(self):
         """
-        Search with empty query returns items.
+        Search with empty query returns items via HTTP API.
 
         Requires: Backend running + Foundry with Tablewrite module connected.
         """
-        # First check connection
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # First check connection
             status = await client.get(f"{BACKEND_URL}/api/foundry/status")
             if status.json()["status"] != "connected":
                 pytest.skip("Foundry not connected")
 
-        # Search with empty query but specific type
-        result = await search_items(query="", sub_type="spell", timeout=30.0)
+            # Search with empty query but specific type via HTTP API
+            response = await client.get(
+                f"{BACKEND_URL}/api/foundry/search",
+                params={"query": "", "sub_type": "spell"}
+            )
 
-        if not result.success:
-            print(f"\n[INTEGRATION] Search failed: {result.error}")
-            pytest.skip(f"Search failed: {result.error}")
+        if response.status_code != 200:
+            print(f"\n[INTEGRATION] Search failed: {response.text}")
+            pytest.skip(f"Search failed: {response.text}")
+
+        data = response.json()
+        if not data.get("success"):
+            pytest.skip(f"Search failed: {data.get('error')}")
 
         # Should return some spells (or none if compendium is empty)
-        if result.results:
-            print(f"\n[INTEGRATION] Found {len(result.results)} spells with empty query")
-            assert len(result.results) <= 200, "Expected at most 200 results (server limit)"
+        if data["results"]:
+            print(f"\n[INTEGRATION] Found {len(data['results'])} spells with empty query")
+            assert len(data["results"]) <= 200, "Expected at most 200 results (server limit)"
 
 
 class TestListFilesUnit:
@@ -297,68 +310,71 @@ class TestListFilesIntegration:
     @pytest.mark.asyncio
     async def test_list_files_icons_directory(self):
         """
-        List files in the icons directory.
+        List files in the icons directory via HTTP API.
 
         Requires: Backend running + Foundry with Tablewrite module connected.
         """
-        # First check connection
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            # First check connection
             status = await client.get(f"{BACKEND_URL}/api/foundry/status")
             if status.json()["status"] != "connected":
                 pytest.skip("Foundry not connected")
 
-        # List files in icons directory (should exist in most Foundry installations)
-        result = await list_files(
-            path="icons",
-            source="public",
-            recursive=False,
-            timeout=60.0
-        )
+            # List files in icons directory via HTTP API
+            response = await client.get(
+                f"{BACKEND_URL}/api/foundry/files",
+                params={"path": "icons", "source": "public", "recursive": "false"}
+            )
 
-        if not result.success:
-            print(f"\n[INTEGRATION] List files failed: {result.error}")
-            pytest.skip(f"List files failed: {result.error}")
+        if response.status_code != 200:
+            print(f"\n[INTEGRATION] List files failed: {response.text}")
+            pytest.skip(f"List files failed: {response.text}")
 
-        assert result.files is not None
-        print(f"\n[INTEGRATION] Found {len(result.files)} files in icons/")
+        data = response.json()
+        if not data.get("success"):
+            pytest.skip(f"List files failed: {data.get('error')}")
+
+        assert data["files"] is not None
+        print(f"\n[INTEGRATION] Found {len(data['files'])} files in icons/")
 
         # May or may not have files depending on Foundry setup
-        if result.files:
-            for f in result.files[:5]:
+        if data["files"]:
+            for f in data["files"][:5]:
                 print(f"  - {f}")
 
     @pytest.mark.asyncio
     async def test_list_files_with_extensions(self):
         """
-        List files filtered by extension.
+        List files filtered by extension via HTTP API.
 
         Requires: Backend running + Foundry with Tablewrite module connected.
         """
-        # First check connection
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            # First check connection
             status = await client.get(f"{BACKEND_URL}/api/foundry/status")
             if status.json()["status"] != "connected":
                 pytest.skip("Foundry not connected")
 
-        # List only webp files
-        result = await list_files(
-            path="icons",
-            source="public",
-            recursive=True,
-            extensions=[".webp", ".png"],
-            timeout=60.0
-        )
+            # List only webp/png files via HTTP API
+            response = await client.get(
+                f"{BACKEND_URL}/api/foundry/files",
+                params={"path": "icons", "source": "public", "recursive": "true", "extensions": ".webp,.png"}
+            )
 
-        if not result.success:
-            print(f"\n[INTEGRATION] List files failed: {result.error}")
-            pytest.skip(f"List files failed: {result.error}")
+        if response.status_code != 200:
+            print(f"\n[INTEGRATION] List files failed: {response.text}")
+            pytest.skip(f"List files failed: {response.text}")
 
-        assert result.files is not None
-        print(f"\n[INTEGRATION] Found {len(result.files)} .webp/.png files in icons/")
+        data = response.json()
+        if not data.get("success"):
+            pytest.skip(f"List files failed: {data.get('error')}")
+
+        assert data["files"] is not None
+        print(f"\n[INTEGRATION] Found {len(data['files'])} .webp/.png files in icons/")
 
         # Verify extension filter worked
-        if result.files:
-            for f in result.files[:5]:
+        if data["files"]:
+            for f in data["files"][:5]:
                 assert f.endswith(".webp") or f.endswith(".png"), \
                     f"Expected .webp or .png file, got: {f}"
                 print(f"  - {f}")

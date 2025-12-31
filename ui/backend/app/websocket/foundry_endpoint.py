@@ -23,6 +23,14 @@ RESPONSE_TYPES = {
     "actor_deleted",
     # List responses
     "actors_list",
+    # Search responses
+    "items_found",
+    "search_error",
+    "item_data",
+    "item_error",
+    # File listing responses
+    "files_list",
+    "files_error",
 }
 
 

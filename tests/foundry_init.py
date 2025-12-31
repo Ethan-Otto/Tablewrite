@@ -193,15 +193,19 @@ def wait_for_foundry_connection(timeout: int = FOUNDRY_CONNECTION_TIMEOUT) -> bo
     return False
 
 
-def ensure_foundry_ready() -> dict:
+def ensure_foundry_ready(force_refresh: bool = False) -> dict:
     """
     Main initialization function. Ensures Foundry is ready for testing.
 
     Steps:
     1. Check if backend is running, start if not
     2. Check if Foundry is connected
-    3. If not connected: open/refresh Chrome with Foundry URL
+    3. If not connected OR force_refresh: open/refresh Chrome with Foundry URL
     4. Wait for Foundry module to connect
+
+    Args:
+        force_refresh: If True, always refresh Foundry even if already connected.
+                       Useful when module code has been updated.
 
     Returns:
         Dict with status info:
@@ -211,7 +215,7 @@ def ensure_foundry_ready() -> dict:
         - error: str or None
     """
     print("\n" + "=" * 60)
-    print("FOUNDRY INITIALIZATION")
+    print("FOUNDRY INITIALIZATION" + (" (FORCE REFRESH)" if force_refresh else ""))
     print("=" * 60)
 
     result = {
@@ -238,7 +242,7 @@ def ensure_foundry_ready() -> dict:
     print("\n[2/3] Checking Foundry connection...")
     is_connected, client_count = check_foundry_connected()
 
-    if is_connected:
+    if is_connected and not force_refresh:
         print(f"  Foundry already connected ({client_count} clients)")
         result["foundry_connected"] = True
         print("\n" + "=" * 60)
@@ -246,8 +250,11 @@ def ensure_foundry_ready() -> dict:
         print("=" * 60 + "\n")
         return result
 
-    # Step 3: Not connected - open/refresh Chrome
-    print("\n[3/3] Foundry not connected. Opening Chrome...")
+    # Step 3: Not connected OR force_refresh - open/refresh Chrome
+    if force_refresh and is_connected:
+        print(f"\n[3/3] Force refreshing Foundry ({client_count} clients connected)...")
+    else:
+        print("\n[3/3] Foundry not connected. Opening Chrome...")
 
     # Try to refresh existing tab first, or open new one
     refresh_chrome_foundry()
@@ -266,8 +273,17 @@ def ensure_foundry_ready() -> dict:
 
 
 if __name__ == "__main__":
-    # Manual testing
-    result = ensure_foundry_ready()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Initialize Foundry for testing")
+    parser.add_argument(
+        "--force-refresh", "-f",
+        action="store_true",
+        help="Force refresh Foundry even if already connected (reloads module code)"
+    )
+    args = parser.parse_args()
+
+    result = ensure_foundry_ready(force_refresh=args.force_refresh)
     print(f"\nResult: {result}")
 
     if result["error"]:
