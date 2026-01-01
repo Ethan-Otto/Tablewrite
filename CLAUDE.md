@@ -298,11 +298,32 @@ The system follows a four-stage pipeline (orchestrated by `scripts/full_pipeline
 The project includes full integration with FoundryVTT for uploading and exporting journal entries.
 
 **Architecture:**
+
+The codebase separates pure conversion logic from network operations:
+
+```
+src/foundry_converters/      # Pure conversion logic (no network calls)
+├── actors/                  # ParsedActorData → FoundryVTT actor JSON
+│   ├── converter.py         # convert_to_foundry()
+│   ├── models.py            # ParsedActorData, Attack, Trait, etc.
+│   └── parser.py            # StatBlock → ParsedActorData (uses Gemini)
+└── journals/                # XML → Journal HTML
+    └── converter.py         # convert_xml_to_journal_data()
+
+src/foundry/                 # Network operations (HTTP client layer)
+├── client.py                # FoundryClient - calls backend HTTP API
+├── journals.py              # JournalManager - journal CRUD
+├── actors/                  # ActorManager, SpellCache
+└── items/                   # ItemManager, fetch operations
+
+ui/backend/                  # WebSocket connection to Foundry
+├── app/routers/             # REST API endpoints
+└── app/websocket/           # WebSocket to Foundry module
+```
+
 - Uses direct WebSocket connection via Tablewrite Foundry module (Backend → WebSocket → FoundryVTT)
-- `src/foundry/client.py`: Base `FoundryClient` class with API configuration
-- `src/foundry/journals.py`: `JournalManager` class with all journal CRUD operations
-- `src/foundry/upload_to_foundry.py`: Batch upload script
-- `src/foundry/export_from_foundry.py`: Export journals as HTML or JSON
+- `src/foundry/client.py`: `FoundryClient` class wraps HTTP calls to backend
+- `ui/backend/`: Primary interface for all Foundry I/O
 - `scripts/full_pipeline.py`: Complete workflow orchestration
 
 **Key Features:**
@@ -421,13 +442,13 @@ uuid = cache.get_spell_uuid("Fireball")
 
 **Converter API:**
 ```python
-from foundry.actors.converter import convert_to_foundry
+from foundry_converters.actors.converter import convert_to_foundry
 from foundry.actors.spell_cache import SpellCache
 
 spell_cache = SpellCache()
 spell_cache.load()
 
-actor_json, spell_uuids = convert_to_foundry(parsed_actor, spell_cache=spell_cache)
+actor_json, spell_uuids = await convert_to_foundry(parsed_actor, spell_cache=spell_cache)
 actor_uuid = client.actors.create_actor(actor_json, spell_uuids=spell_uuids)
 ```
 
@@ -440,7 +461,8 @@ actor_uuid = client.actors.create_actor(actor_json, spell_uuids=spell_uuids)
 
 **Key Modules:**
 - `src/actors/`: models, parse/extract stat blocks/npcs, process_actors
-- `src/foundry/actors/`: models, spell_cache, converter, manager
+- `src/foundry_converters/actors/`: models, converter, parser (pure conversion)
+- `src/foundry/actors/`: spell_cache, manager (network operations)
 
 **Utility Scripts:**
 ```bash
@@ -781,16 +803,20 @@ tests/
 ├── conftest.py              # Shared fixtures
 ├── test_main.py             # End-to-end pipeline tests
 ├── pdf_processing/          # Tests for src/pdf_processing/
-│   ├── test_split_pdf.py
-│   ├── test_pdf_to_xml.py
-│   ├── test_get_toc.py
-│   └── test_xml_to_html.py
-├── foundry/                 # Tests for src/foundry/
-│   ├── test_client.py
-│   ├── test_upload_script.py
-│   └── actors/              # Tests for src/foundry/actors/
-│       ├── test_models.py
+├── foundry_converters/      # Tests for src/foundry_converters/ (pure conversion)
+│   ├── actors/
+│   │   ├── test_converter.py
+│   │   ├── test_models.py
+│   │   └── test_parser.py
+│   └── journals/
+│       └── test_converter.py
+├── foundry/                 # Tests for src/foundry/ (network operations)
+│   ├── test_client.py       # Unit tests with mocks
+│   ├── test_journals.py
+│   ├── test_actors.py
+│   └── actors/
 │       ├── test_spell_cache.py
+│       ├── test_parser.py   # Integration tests (Gemini API)
 │       └── fixtures/        # Test data (goblin_parsed.json, mage_parsed.json)
 └── output/test_runs/        # Persistent test output (NOT auto-cleaned)
 ```
