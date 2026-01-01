@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pathlib import Path
 from dotenv import load_dotenv
-from app.routers import actors, chat, health
+from app.routers import actors, chat, health, journals
 from app.config import settings
 from app.websocket import foundry_websocket_endpoint
 
@@ -38,6 +38,7 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(chat.router)
 app.include_router(actors.router)
+app.include_router(journals.router)
 
 
 @app.get("/api/images/{filename}")
@@ -74,74 +75,6 @@ async def serve_image(filename: str):
 async def websocket_foundry(websocket: WebSocket):
     """WebSocket endpoint for Foundry module connections."""
     await foundry_websocket_endpoint(websocket)
-
-
-# --- Journal WebSocket Endpoints ---
-
-@app.post("/api/foundry/journal")
-async def create_journal_entry(request: dict):
-    """
-    Create a journal entry in Foundry via WebSocket.
-
-    Args:
-        request: Journal data with 'name' and 'pages' or 'content'
-
-    Returns:
-        Created journal UUID and name
-    """
-    from app.websocket import push_journal
-
-    # Build journal data for Foundry
-    journal_data = {
-        "journal": {
-            "name": request.get("name", "Untitled Journal"),
-            "pages": request.get("pages", [
-                {
-                    "name": "Content",
-                    "type": "text",
-                    "text": {"content": request.get("content", "")}
-                }
-            ])
-        }
-    }
-
-    result = await push_journal(journal_data, timeout=30.0)
-
-    if result.success:
-        return {
-            "success": True,
-            "uuid": result.uuid,
-            "id": result.id,
-            "name": result.name
-        }
-    else:
-        raise HTTPException(status_code=500, detail=result.error)
-
-
-@app.delete("/api/foundry/journal/{uuid}")
-async def delete_journal_by_uuid(uuid: str):
-    """
-    Delete a journal entry from Foundry by UUID via WebSocket.
-
-    Args:
-        uuid: The journal UUID (e.g., "JournalEntry.abc123")
-
-    Returns:
-        Success status with deleted journal info
-    """
-    from app.websocket import delete_journal
-
-    result = await delete_journal(uuid, timeout=10.0)
-
-    if result.success:
-        return {
-            "success": True,
-            "uuid": result.uuid,
-            "name": result.name,
-            "message": f"Deleted journal: {result.name}"
-        }
-    else:
-        raise HTTPException(status_code=404, detail=result.error)
 
 
 @app.get("/api/foundry/search")
