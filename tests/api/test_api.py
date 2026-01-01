@@ -1,4 +1,4 @@
-"""Tests for public API facade."""
+"""Tests for public API facade (HTTP client)."""
 import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -7,7 +7,10 @@ from api import (
     ActorCreationResult,
     MapExtractionResult,
     JournalCreationResult,
-    create_actor
+    create_actor,
+    extract_maps,
+    process_pdf_to_journal,
+    BACKEND_URL,
 )
 
 
@@ -45,6 +48,19 @@ def test_actor_creation_result_instantiation():
     assert result.challenge_rating == 1.0
 
 
+def test_actor_creation_result_with_optional_fields():
+    """Test ActorCreationResult can be created with optional fields as None."""
+    result = ActorCreationResult(
+        foundry_uuid="Actor.abc123",
+        name="Goblin Warrior",
+        challenge_rating=1.0,
+    )
+
+    assert result.foundry_uuid == "Actor.abc123"
+    assert result.output_dir is None
+    assert result.timestamp is None
+
+
 def test_map_extraction_result_instantiation():
     """Test MapExtractionResult can be created."""
     result = MapExtractionResult(
@@ -72,179 +88,140 @@ def test_journal_creation_result_instantiation():
     assert result.chapter_count == 5
 
 
-@patch('api.orchestrate_create_actor_from_description_sync')
-def test_create_actor_happy_path(mock_create):
-    """Test create_actor wraps orchestrate correctly."""
-    # Mock the orchestrate function
-    from actors.models import ActorCreationResult as OrchestrateResult
-
-    mock_result = OrchestrateResult(
-        description="A fierce goblin",
-        challenge_rating=1.0,
-        raw_stat_block_text="RAW TEXT",
-        stat_block=Mock(),
-        parsed_actor_data=Mock(name="Goblin Warrior"),
-        foundry_uuid="Actor.abc123",
-        output_dir=Path("output/runs/test"),
-        raw_text_file=Path("output/runs/test/01.txt"),
-        stat_block_file=Path("output/runs/test/02.json"),
-        parsed_data_file=Path("output/runs/test/03.json"),
-        foundry_json_file=Path("output/runs/test/04.json"),
-        timestamp="2025-11-05T12:00:00",
-        model_used="gemini-2.0-flash"
-    )
-    mock_create.return_value = mock_result
+@patch('api.requests.post')
+def test_create_actor_happy_path(mock_post):
+    """Test create_actor makes correct HTTP request."""
+    # Mock successful response
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "success": True,
+        "foundry_uuid": "Actor.abc123",
+        "name": "Goblin Warrior",
+        "challenge_rating": 1.0,
+        "output_dir": "output/runs/test",
+        "timestamp": "2025-11-05T12:00:00"
+    }
+    mock_response.raise_for_status = Mock()
+    mock_post.return_value = mock_response
 
     # Call our API function
     result = create_actor("A fierce goblin", challenge_rating=1.0)
 
-    # Verify it called orchestrate with correct args
-    mock_create.assert_called_once_with(
-        description="A fierce goblin",
-        challenge_rating=1.0
+    # Verify it called requests.post with correct args
+    mock_post.assert_called_once_with(
+        f"{BACKEND_URL}/api/actors/create",
+        json={
+            "description": "A fierce goblin",
+            "challenge_rating": 1.0
+        },
+        timeout=120
     )
 
     # Verify result is our simplified dataclass
     assert isinstance(result, ActorCreationResult)
     assert result.foundry_uuid == "Actor.abc123"
+    assert result.name == "Goblin Warrior"
     assert result.challenge_rating == 1.0
     assert result.output_dir == Path("output/runs/test")
 
 
-@patch('api.orchestrate_create_actor_from_description_sync')
-def test_create_actor_error_handling(mock_create):
-    """Test create_actor wraps exceptions as APIError."""
-    mock_create.side_effect = ValueError("Gemini API error")
+@patch('api.requests.post')
+def test_create_actor_default_challenge_rating(mock_post):
+    """Test create_actor uses default CR when None provided."""
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "success": True,
+        "foundry_uuid": "Actor.abc123",
+        "name": "Goblin",
+        "challenge_rating": 1.0,
+    }
+    mock_response.raise_for_status = Mock()
+    mock_post.return_value = mock_response
+
+    result = create_actor("A goblin")
+
+    # Should default to 1.0
+    call_args = mock_post.call_args
+    assert call_args[1]["json"]["challenge_rating"] == 1.0
+
+
+@patch('api.requests.post')
+def test_create_actor_http_error(mock_post):
+    """Test create_actor wraps HTTP errors as APIError."""
+    import requests
+    mock_post.side_effect = requests.exceptions.ConnectionError("Backend not running")
 
     with pytest.raises(APIError, match="Failed to create actor"):
         create_actor("broken description")
 
-    # Verify original exception is preserved
+
+@patch('api.requests.post')
+def test_create_actor_api_failure_response(mock_post):
+    """Test create_actor handles API failure response."""
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "success": False,
+        "detail": "Gemini API error"
+    }
+    mock_response.raise_for_status = Mock()
+    mock_post.return_value = mock_response
+
+    with pytest.raises(APIError, match="Actor creation failed"):
+        create_actor("broken description")
+
+
+@patch('api.requests.post')
+def test_create_actor_preserves_cause(mock_post):
+    """Test create_actor preserves original exception as cause."""
+    import requests
+    original = requests.exceptions.Timeout("Request timed out")
+    mock_post.side_effect = original
+
     try:
         create_actor("broken description")
     except APIError as e:
-        assert isinstance(e.__cause__, ValueError)
-        assert str(e.__cause__) == "Gemini API error"
+        assert isinstance(e.__cause__, requests.exceptions.Timeout)
+        assert str(e.__cause__) == "Request timed out"
 
 
-@patch('api.extract_maps_from_pdf')
-def test_extract_maps_happy_path(mock_extract):
-    """Test extract_maps wraps map extraction correctly."""
-    from pdf_processing.image_asset_processing.models import MapMetadata
+def test_extract_maps_not_implemented():
+    """Test extract_maps raises APIError with helpful message."""
+    with pytest.raises(APIError) as exc_info:
+        extract_maps("test.pdf", chapter="Chapter 1")
 
-    # Mock extraction results
-    mock_maps = [
-        MapMetadata(
-            name="Cave Entrance",
-            page_num=1,
-            type="battle_map",
-            source="extracted",
-            chapter="Chapter 1"
-        ),
-        MapMetadata(
-            name="Goblin Hideout",
-            page_num=2,
-            type="battle_map",
-            source="segmented",
-            chapter="Chapter 1"
-        )
-    ]
-    mock_extract.return_value = mock_maps
-
-    # Import after patching
-    from api import extract_maps
-
-    # Call API function
-    result = extract_maps("test.pdf", chapter="Chapter 1")
-
-    # Verify extraction was called
-    mock_extract.assert_called_once()
-
-    # Verify result
-    assert isinstance(result, MapExtractionResult)
-    assert result.total_maps == 2
-    assert len(result.maps) == 2
-    assert result.maps[0]["name"] == "Cave Entrance"
+    assert "not yet available via HTTP API" in str(exc_info.value)
+    assert "extract_maps_from_pdf" in str(exc_info.value)
 
 
-@patch('api.extract_maps_from_pdf')
-def test_extract_maps_error_handling(mock_extract):
-    """Test extract_maps wraps exceptions."""
-    mock_extract.side_effect = FileNotFoundError("PDF not found")
+def test_process_pdf_to_journal_not_implemented():
+    """Test process_pdf_to_journal raises APIError with helpful message."""
+    with pytest.raises(APIError) as exc_info:
+        process_pdf_to_journal("test.pdf", "Test Journal")
 
-    # Import after patching
-    from api import extract_maps
-
-    with pytest.raises(APIError, match="Failed to extract maps"):
-        extract_maps("missing.pdf")
+    assert "not yet available via HTTP API" in str(exc_info.value)
+    assert "full_pipeline.py" in str(exc_info.value)
 
 
-@patch('api.run_pdf_to_xml')
-@patch('api.upload_xml_to_foundry')
-def test_process_pdf_to_journal_happy_path(mock_upload, mock_pdf_to_xml):
-    """Test process_pdf_to_journal wraps pipeline correctly."""
-    from api import process_pdf_to_journal
-
-    # Mock PDF to XML with a mock Path that has glob method
-    mock_run_dir = Mock(spec=Path)
-    mock_run_dir.glob.return_value = [
-        Path("output/runs/20251105_120000/documents/chapter1.xml"),
-        Path("output/runs/20251105_120000/documents/chapter2.xml"),
-        Path("output/runs/20251105_120000/documents/chapter3.xml")
-    ]
-    mock_pdf_to_xml.return_value = mock_run_dir
-
-    # Mock upload
-    mock_upload.return_value = "JournalEntry.xyz789"
-
-    # Call API function
-    result = process_pdf_to_journal(
-        "test.pdf",
-        "Test Journal",
-        skip_upload=False
-    )
-
-    # Verify calls
-    mock_pdf_to_xml.assert_called_once()
-    mock_upload.assert_called_once_with(mock_run_dir, "Test Journal")
-
-    # Verify result
-    assert isinstance(result, JournalCreationResult)
-    assert result.journal_uuid == "JournalEntry.xyz789"
-    assert result.journal_name == "Test Journal"
-    assert result.chapter_count == 3
+def test_backend_url_default():
+    """Test BACKEND_URL has sensible default."""
+    assert BACKEND_URL == "http://localhost:8000"
 
 
-@patch('api.run_pdf_to_xml')
-def test_process_pdf_to_journal_skip_upload(mock_pdf_to_xml):
-    """Test process_pdf_to_journal with skip_upload=True."""
-    from api import process_pdf_to_journal
+@patch.dict('os.environ', {'BACKEND_URL': 'http://custom:9000'})
+def test_backend_url_from_env():
+    """Test BACKEND_URL can be overridden by environment."""
+    # Need to reload the module to pick up new env var
+    import importlib
+    import api
+    importlib.reload(api)
 
-    # Mock run_dir with glob method
-    mock_run_dir = Mock(spec=Path)
-    mock_run_dir.glob.return_value = [
-        Path("output/runs/20251105_120000/documents/chapter1.xml")
-    ]
-    mock_pdf_to_xml.return_value = mock_run_dir
+    assert api.BACKEND_URL == "http://custom:9000"
 
-    result = process_pdf_to_journal(
-        "test.pdf",
-        "Test Journal",
-        skip_upload=True
-    )
-
-    # Should have empty UUID when upload is skipped
-    assert result.journal_uuid == ""
-    assert result.output_dir == mock_run_dir
-    assert result.chapter_count == 1
-
-
-@patch('api.run_pdf_to_xml')
-def test_process_pdf_to_journal_error_handling(mock_pdf_to_xml):
-    """Test process_pdf_to_journal error handling."""
-    from api import process_pdf_to_journal
-
-    mock_pdf_to_xml.side_effect = RuntimeError("PDF processing failed")
-
-    with pytest.raises(APIError, match="Failed to process PDF"):
-        process_pdf_to_journal("broken.pdf", "Test")
+    # Reload again to restore default for other tests
+    import os
+    if 'BACKEND_URL' in os.environ:
+        del os.environ['BACKEND_URL']
+    importlib.reload(api)

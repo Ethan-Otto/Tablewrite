@@ -1,8 +1,8 @@
-"""Integration tests for public API (require real API keys)."""
+"""Integration tests for public API (require real API keys + backend running)."""
 import pytest
 import httpx
 from pathlib import Path
-from api import extract_maps, process_pdf_to_journal, APIError
+from api import create_actor, extract_maps, process_pdf_to_journal, APIError
 
 
 @pytest.mark.smoke
@@ -13,9 +13,9 @@ async def test_create_actor_integration(check_api_key, ensure_foundry_connected)
     """Smoke test: End-to-end actor creation via HTTP API.
 
     Uses the backend HTTP endpoint (which uses WebSocket internally).
-    The standalone public API (api.create_actor) is deprecated as it requires
-    the relay server which has been removed.
+    Tests both the httpx direct call and the api.create_actor wrapper.
     """
+    # Test using httpx directly (baseline)
     async with httpx.AsyncClient() as client:
         response = await client.post(
             "http://localhost:8000/api/actors/create",
@@ -43,34 +43,39 @@ async def test_create_actor_integration(check_api_key, ensure_foundry_connected)
         assert (output_dir / "04_foundry_actor.json").exists(), f"Missing file in {output_dir}"
 
 
-@pytest.mark.smoke
 @pytest.mark.integration
 @pytest.mark.slow
-def test_extract_maps_integration(test_pdf_path, check_api_key):
-    """Smoke test: Map extraction from PDF via public API
+def test_create_actor_via_thin_client(check_api_key, ensure_foundry_connected):
+    """Test api.create_actor thin HTTP client wrapper.
 
-    Test extract_maps with real PDF."""
-    result = extract_maps(str(test_pdf_path))
+    Requires backend running at http://localhost:8000.
+    """
+    result = create_actor(
+        description="A cunning kobold trap-maker",
+        challenge_rating=0.5
+    )
 
-    # May not have maps, but should complete without error
-    assert isinstance(result.total_maps, int)
-    assert result.total_maps >= 0
-    assert len(result.maps) == result.total_maps
+    # Verify result structure
+    assert result.foundry_uuid.startswith("Actor.")
+    assert len(result.name) > 0
+    assert result.challenge_rating == 0.5
 
 
 @pytest.mark.integration
-@pytest.mark.slow
-def test_process_pdf_to_journal_integration(test_pdf_path, check_api_key):
-    """Test process_pdf_to_journal with real PDF (skip upload)."""
-    # NOTE: This test is expected to fail with NotImplementedError
-    # because run_pdf_to_xml() is not yet implemented
+def test_extract_maps_not_available():
+    """Test extract_maps raises helpful error (not yet implemented)."""
     with pytest.raises(APIError) as exc_info:
-        result = process_pdf_to_journal(
-            str(test_pdf_path),
-            "Integration Test Journal",
-            skip_upload=True  # Don't actually upload in tests
-        )
+        extract_maps("test.pdf")
 
-    # Verify the underlying error is NotImplementedError
-    assert exc_info.value.__cause__ is not None
-    assert isinstance(exc_info.value.__cause__, NotImplementedError)
+    assert "not yet available via HTTP API" in str(exc_info.value)
+    assert "extract_maps_from_pdf" in str(exc_info.value)
+
+
+@pytest.mark.integration
+def test_process_pdf_to_journal_not_available():
+    """Test process_pdf_to_journal raises helpful error (not yet implemented)."""
+    with pytest.raises(APIError) as exc_info:
+        process_pdf_to_journal("test.pdf", "Test Journal")
+
+    assert "not yet available via HTTP API" in str(exc_info.value)
+    assert "full_pipeline.py" in str(exc_info.value)
