@@ -13,8 +13,8 @@ from actors.generate_actor_file import generate_actor_description
 from actors.generate_actor_biography import generate_actor_biography
 from actors.statblock_parser import parse_raw_text_to_statblock
 from actors.models import ActorCreationResult
-from foundry.actors.parser import parse_stat_block_parallel
-from foundry.actors.converter import convert_to_foundry
+from foundry_converters.actors.parser import parse_stat_block_parallel
+from foundry_converters.actors.converter import convert_to_foundry
 from foundry.actors.spell_cache import SpellCache
 from foundry.icon_cache import IconCache
 from foundry.client import FoundryClient
