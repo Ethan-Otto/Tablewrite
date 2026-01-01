@@ -4,11 +4,11 @@ import pytest
 from dotenv import load_dotenv
 from pathlib import Path
 
-from foundry.actors.models import (
+from foundry_converters.actors.models import (
     ParsedActorData, Attack, Trait, DamageFormula,
     Multiattack, InnateSpellcasting, InnateSpell, AttackSave
 )
-from foundry.actors.converter import convert_to_foundry
+from foundry_converters.actors.converter import convert_to_foundry
 from foundry.client import FoundryClient
 from foundry.actors.spell_cache import SpellCache
 

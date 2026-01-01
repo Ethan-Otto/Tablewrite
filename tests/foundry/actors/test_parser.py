@@ -5,11 +5,11 @@ import asyncio
 from unittest.mock import Mock, AsyncMock, patch
 
 from actors.models import StatBlock
-from foundry.actors.models import (
+from foundry_converters.actors.models import (
     ParsedActorData, Attack, Trait, Multiattack,
     InnateSpellcasting, InnateSpell, DamageFormula, AttackSave
 )
-from foundry.actors.parser import (
+from foundry_converters.actors.parser import (
     parse_single_action_async,
     parse_single_trait_async,
     parse_innate_spellcasting_async,
