@@ -2,7 +2,8 @@
 import pytest
 import httpx
 from pathlib import Path
-from api import create_actor, extract_maps, process_pdf_to_journal, APIError
+import api
+from api import create_actor, extract_maps, process_pdf_to_journal
 
 
 @pytest.mark.smoke
@@ -64,7 +65,8 @@ def test_create_actor_via_thin_client(check_api_key, ensure_foundry_connected):
 @pytest.mark.integration
 def test_extract_maps_not_available():
     """Test extract_maps raises helpful error (not yet implemented)."""
-    with pytest.raises(APIError) as exc_info:
+    # Use api.APIError to avoid class identity issues from module reloads
+    with pytest.raises(api.APIError) as exc_info:
         extract_maps("test.pdf")
 
     assert "not yet available via HTTP API" in str(exc_info.value)
@@ -74,7 +76,8 @@ def test_extract_maps_not_available():
 @pytest.mark.integration
 def test_process_pdf_to_journal_not_available():
     """Test process_pdf_to_journal raises helpful error (not yet implemented)."""
-    with pytest.raises(APIError) as exc_info:
+    # Use api.APIError to avoid class identity issues from module reloads
+    with pytest.raises(api.APIError) as exc_info:
         process_pdf_to_journal("test.pdf", "Test Journal")
 
     assert "not yet available via HTTP API" in str(exc_info.value)
