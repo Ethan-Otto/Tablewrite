@@ -20,8 +20,8 @@ if env_path.exists():
 from actors.generate_actor_file import generate_actor_description  # noqa: E402
 from actors.generate_actor_biography import generate_actor_biography  # noqa: E402
 from actors.statblock_parser import parse_raw_text_to_statblock  # noqa: E402
-from foundry.actors.parser import parse_stat_block_parallel  # noqa: E402
-from foundry.actors.converter import convert_to_foundry  # noqa: E402
+from foundry_converters.actors.parser import parse_stat_block_parallel  # noqa: E402
+from foundry_converters.actors.converter import convert_to_foundry  # noqa: E402
 from foundry.actors.spell_cache import SpellCache  # noqa: E402
 from foundry.icon_cache import IconCache  # noqa: E402
 from app.websocket import push_actor  # noqa: E402
