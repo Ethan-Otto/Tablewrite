@@ -874,6 +874,7 @@ async def test_create_actor():
 2. **Use fixtures**: Import from `conftest.py`
 3. **Mark appropriately**: Use `@pytest.mark.integration` for API calls
 4. **Test real behavior**: Integration tests make REAL Gemini API calls (not mocked)
+5. **REQUIRED: Integration test for every feature**: Every new feature MUST have an integration test that covers its full functionality with real data. Unit tests with mocks are not sufficient - the integration test must exercise the actual API/service.
 
 **Integration Test Warning:** Tests marked `@pytest.mark.integration` consume API quota and cost money. Run unit tests only for fast feedback: `uv run pytest -m "not integration and not slow"`
 
