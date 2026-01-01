@@ -398,7 +398,7 @@ uv run python scripts/full_pipeline.py --skip-actors
 uv run python scripts/full_pipeline.py --actors-only --run-dir output/runs/20241023_143022
 ```
 
-**Data Models** (see `src/actors/models.py` and `src/foundry/actors/models.py`):
+**Data Models** (see `src/actors/models.py` and `src/foundry_converters/actors/models.py`):
 ```python
 # Basic D&D stat block
 class StatBlock(BaseModel):
