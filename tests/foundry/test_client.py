@@ -113,7 +113,7 @@ class TestFoundryIntegration:
             response = httpx.get(f"{self.BACKEND_URL}/api/foundry/status", timeout=5.0)
             if response.json().get("status") != "connected":
                 pytest.fail("Foundry not connected to backend via WebSocket")
-        except Exception as e:
+        except (httpx.ConnectError, httpx.TimeoutException) as e:
             pytest.fail(f"Failed to check Foundry status: {e}")
 
         return True

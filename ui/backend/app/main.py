@@ -584,4 +584,4 @@ async def create_actor_endpoint(request: CreateActorRequest):
             "output_dir": str(result.output_dir) if result.output_dir else None
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

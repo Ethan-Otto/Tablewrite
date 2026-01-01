@@ -324,8 +324,9 @@ async def list_actors(timeout: float = 30.0) -> ListResult:
         data = response.get("data", {})
         actors_data = data.get("actors", [])
         actors = [
-            ActorInfo(uuid=a["uuid"], id=a["id"], name=a["name"])
+            ActorInfo(uuid=a.get("uuid", ""), id=a.get("id", ""), name=a.get("name", ""))
             for a in actors_data
+            if a.get("uuid") and a.get("id") and a.get("name")
         ]
         return ListResult(success=True, actors=actors)
     elif response.get("type") == "actor_error":
@@ -398,14 +399,15 @@ async def search_items(
         results_data = data.get("results", [])
         results = [
             SearchResultItem(
-                uuid=r["uuid"],
-                id=r["id"],
-                name=r["name"],
+                uuid=r.get("uuid", ""),
+                id=r.get("id", ""),
+                name=r.get("name", ""),
                 type=r.get("type"),
                 img=r.get("img"),
                 pack=r.get("pack")
             )
             for r in results_data
+            if r.get("uuid") and r.get("id") and r.get("name")
         ]
         return SearchResult(success=True, results=results)
     elif response.get("type") == "search_error":

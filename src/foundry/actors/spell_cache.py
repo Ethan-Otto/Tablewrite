@@ -44,7 +44,7 @@ class SpellCache:
         except Exception as e:
             # No relay fallback - fail fast and loud
             error_msg = f"SpellCache WebSocket fetch failed: {e}"
-            logger.error(error_msg)
+            logger.exception(error_msg)
             raise RuntimeError(error_msg) from e
 
         self._populate_from_spells(spells)

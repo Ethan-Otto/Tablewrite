@@ -13,7 +13,7 @@ from util.gemini import generate_content_async
 logger = logging.getLogger(__name__)
 
 # Backend URL for WebSocket-based file listing
-BACKEND_URL = "http://localhost:8000"
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 
 class IconCache:

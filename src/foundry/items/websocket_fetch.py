@@ -1,6 +1,7 @@
 """Fetch items from FoundryVTT via HTTP API (calls backend WebSocket internally)."""
 
 import logging
+import os
 import httpx
 from typing import Dict, List, Optional
 from string import ascii_lowercase
@@ -8,7 +9,7 @@ from string import ascii_lowercase
 logger = logging.getLogger(__name__)
 
 # Backend URL - can be overridden via environment variable
-BACKEND_URL = "http://localhost:8000"
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 
 async def search_items_http(
