@@ -29,11 +29,19 @@ def pytest_addoption(parser):
 
 def pytest_configure(config):
     """Configure test run based on flags"""
+    is_ci = os.getenv("CI", "").lower() == "true"
+
     if config.getoption("--full"):
         # Only clear default marker if no explicit -m flag was provided
         # Check if markexpr is the default from pytest.ini
         if config.option.markexpr == "(not integration and not slow) or smoke":
             config.option.markexpr = ""  # Run all tests
+
+    # In CI, exclude integration, slow, and requires_foundry tests
+    if is_ci and config.option.markexpr == "(not integration and not slow) or smoke":
+        # Override to exclude Foundry-dependent tests in CI
+        config.option.markexpr = "not integration and not slow and not requires_foundry"
+        print(f"\n[CI] Running with marker expression: {config.option.markexpr}")
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
@@ -104,14 +112,17 @@ def ensure_foundry_connected(request):
         yield _foundry_init_result
         return
 
-    # Check skip conditions
+    # Check skip conditions - including CI environment
+    is_ci = os.getenv("CI", "").lower() == "true"
     skip_init = (
         request.config.getoption("--skip-foundry-init", default=False)
         or os.getenv("SKIP_FOUNDRY_INIT", "").lower() == "true"
+        or is_ci  # Always skip in CI - no Foundry available
     )
 
     if skip_init:
-        print("\nSkipping Foundry initialization (--skip-foundry-init or SKIP_FOUNDRY_INIT)")
+        reason = "CI environment" if is_ci else "--skip-foundry-init or SKIP_FOUNDRY_INIT"
+        print(f"\nSkipping Foundry initialization ({reason})")
         _foundry_init_done = True
         yield None
         return
