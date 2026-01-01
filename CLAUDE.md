@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **NOTE:** Keep this file under 900 lines. Condense or move detailed docs to separate files if needed.
+
 ## Project Overview
 
 This is a D&D module converter that transforms official Dungeons & Dragons PDFs into structured XML assets for post-processing into FoundryVTT content. The pipeline uses Google's Gemini 2.5 Pro model for AI-powered document analysis and extraction.
@@ -68,15 +70,11 @@ uv run pytest tests/api/test_api_integration.py -v -m integration
    # Gemini API
    GeminiImageAPI=<your_gemini_api_key>
 
-   # FoundryVTT Configuration (optional - for journal upload)
+   # FoundryVTT Configuration (for WebSocket communication)
    FOUNDRY_URL=http://localhost:30000
    FOUNDRY_API_KEY=<your_foundry_api_key>
    FOUNDRY_CLIENT_ID=<your_client_id>
    FOUNDRY_AUTO_UPLOAD=false
-
-   # DEPRECATED: Relay server is no longer needed
-   # FOUNDRY_RELAY_URL=https://foundryvtt-rest-api-relay.fly.dev
-   # FOUNDRY_TARGET=local
    ```
 
 4. **Source PDFs**: Place D&D module PDFs in `data/pdfs/` (default expects `Lost_Mine_of_Phandelver.pdf`)
@@ -486,76 +484,119 @@ results = create_actors_batch_sync(["dragon", "goblin"], challenge_ratings=[2.0,
 
 **Output**: `output/runs/<timestamp>/actors/` with `01_raw_stat_block.txt`, `02_stat_block.json`, `03_parsed_actor_data.json`, `04_foundry_actor.json`
 
-### WebSocket Push Architecture
+### Backend API & WebSocket Architecture
 
-The backend includes a WebSocket endpoint for pushing content directly to connected Foundry clients, eliminating the need for the relay server.
+The backend provides both REST API endpoints and WebSocket communication for FoundryVTT integration.
 
-**Endpoint:** `/ws/foundry`
+**Backend Location:** `ui/backend/`
+
+**Quick Start:**
+```bash
+cd ui/backend && uvicorn app.main:app --reload --port 8000
+```
+
+#### REST API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/foundry/status` | GET | Check WebSocket connection status |
+| `/api/foundry/actor` | POST | Create actor from FoundryVTT JSON |
+| `/api/foundry/actor/{uuid}` | GET | Fetch actor by UUID |
+| `/api/foundry/actor/{uuid}` | DELETE | Delete actor by UUID |
+| `/api/foundry/actor/{uuid}/items` | POST | Add compendium items to actor (give) |
+| `/api/foundry/actors` | GET | List all world actors |
+| `/api/foundry/journal` | POST | Create journal entry |
+| `/api/foundry/journal/{uuid}` | DELETE | Delete journal entry |
+| `/api/foundry/search` | GET | Search compendiums |
+| `/api/foundry/compendium` | GET | List all compendium items |
+| `/api/foundry/files` | GET | List files in Foundry |
+| `/api/actors/create` | POST | Create actor from description (AI pipeline) |
+
+**Example Usage:**
+```python
+import requests
+
+# Create actor
+response = requests.post("http://localhost:8000/api/foundry/actor", json={
+    "actor": {"name": "Goblin", "type": "npc", ...}
+})
+
+# Give items to actor (add spells from compendium)
+response = requests.post(f"http://localhost:8000/api/foundry/actor/{uuid}/items", json={
+    "item_uuids": ["Compendium.dnd5e.spells.Item.fireball", ...]
+})
+```
+
+#### WebSocket Endpoint
+
+**Endpoint:** `WS /ws/foundry`
 
 **Protocol:**
 - **Connect:** Client receives `{"type": "connected", "client_id": "..."}`
 - **Ping/Pong:** Send `{"type": "ping"}` -> Receive `{"type": "pong"}`
-- **Push Messages:** Server sends `{"type": "actor|journal|scene", "data": {...}}`
+- **Request/Response:** Include `request_id` for correlation
 
-**Usage:**
+**Message Types:**
+| Type | Direction | Description |
+|------|-----------|-------------|
+| `actor` | Backend → Foundry | Create actor |
+| `get_actor` | Backend → Foundry | Fetch actor |
+| `delete_actor` | Backend → Foundry | Delete actor |
+| `list_actors` | Backend → Foundry | List world actors |
+| `give_items` | Backend → Foundry | Add compendium items to actor |
+| `journal` | Backend → Foundry | Create journal |
+| `search_items` | Backend → Foundry | Search compendiums |
+| `list_compendium_items` | Backend → Foundry | List all items of type |
+| `list_files` | Backend → Foundry | Browse file system |
+
+**Python Usage (from backend):**
 ```python
-from app.websocket import push_actor, push_journal, push_scene
+from app.websocket import push_actor, give_items, fetch_actor, list_actors
 
-# Push actor to all connected Foundry clients
-await push_actor({"name": "Goblin", "type": "npc", "uuid": "Actor.abc123"})
+# Create actor
+result = await push_actor({"name": "Goblin", "type": "npc", ...})
+# result.uuid = "Actor.abc123"
 
-# Push journal entry
-await push_journal({"name": "Chapter 1", "pages": [...]})
+# Add spells to actor
+result = await give_items(
+    actor_uuid="Actor.abc123",
+    item_uuids=["Compendium.dnd5e.spells.Item.fireball"]
+)
+# result.items_added = 1
 
-# Push scene
-await push_scene({"name": "Cave Entrance", "walls": [...]})
+# Fetch actor data
+result = await fetch_actor("Actor.abc123")
+# result.entity = {...}
 ```
 
-**Foundry Module:**
+#### Foundry Module
 
 The `foundry-module/tablewrite-assistant/` directory contains the FoundryVTT module that:
 1. Connects to backend WebSocket on startup
-2. Receives push notifications for new content
-3. Automatically calls `Actor.create()`, `JournalEntry.create()`, `Scene.create()`
+2. Receives messages and executes Foundry API calls
+3. Handles: `Actor.create()`, `JournalEntry.create()`, `Scene.create()`, `createEmbeddedDocuments()`
 4. Shows notifications when content is created
 
-**Quick Start:**
-```bash
-# Start backend with docker-compose
-docker-compose -f docker-compose.tablewrite.yml up -d
+**Installation:**
+1. Copy `foundry-module/tablewrite-assistant/` to your Foundry `Data/modules/` directory
+2. Enable "Tablewrite Assistant" module in Foundry
+3. Configure backend URL in module settings (default: `http://localhost:8000`)
 
-# Or run directly
-cd ui/backend && uvicorn app.main:app --reload --port 8000
-
-# Install Foundry module:
-# 1. Copy foundry-module/tablewrite-assistant/ to your Foundry Data/modules/ directory
-# 2. Enable "Tablewrite Assistant" module in Foundry
-# 3. Configure backend URL in module settings (default: http://localhost:8000)
-```
+**Module Handlers:** (`src/handlers/`)
+- `actor.ts`: handleActorCreate, handleGetActor, handleDeleteActor, handleListActors, handleGiveItems
+- `journal.ts`: handleJournalCreate, handleJournalDelete
+- `scene.ts`: handleSceneCreate
+- `items.ts`: handleSearchItems, handleGetItem, handleListCompendiumItems
+- `files.ts`: handleListFiles
 
 **Testing:**
 ```bash
-# Backend WebSocket tests
-cd ui/backend && uv run pytest tests/websocket/ -v
+# Backend tests
+cd ui/backend && uv run pytest -v
 
-# Module unit tests
-cd foundry-module/tablewrite-assistant && npm test
+# Module build
+cd foundry-module/tablewrite-assistant && npm run build
 ```
-
-### Self-Hosted Relay Server (DEPRECATED)
-
-> **DEPRECATED as of 2025-12-30:** The relay server has been fully replaced by the WebSocket Push Architecture above. All relay functionality (search, file listing, entity CRUD) is now available via WebSocket messages. See `relay-server/ARCHIVED.md` for the complete migration table.
-
-**Migration Summary:**
-| Old (Relay) | New (WebSocket) |
-|-------------|-----------------|
-| `GET /search` | `search_items` message |
-| `GET /file-system` | `list_files` message |
-| All entity CRUD | Direct WebSocket handlers |
-
-**Preferred Method:** Use the WebSocket endpoint (`/ws/foundry`) with the Tablewrite Foundry module. No relay server configuration needed.
-
-The relay server code is preserved in `relay-server/` for reference but is no longer actively maintained.
 
 ### Scene Extraction & Artwork Generation
 
@@ -758,13 +799,35 @@ tests/
 
 ```bash
 pytest                                      # Smoke tests only (<2 min) - DEFAULT
-pytest --full                               # Full suite (~35 min)
+pytest --full                               # Full suite (~50 min)
 pytest -m "not integration and not slow"    # Unit tests only
 pytest -m integration                       # Integration tests (cost money)
 AUTO_ESCALATE=false pytest                  # Disable auto-escalation on failure
 ```
 
 **Smoke tests** cover: PDF Processing, Actor Creation, FoundryVTT Integration, XMLDocument Parsing, Image Asset Processing, Public API
+
+### REQUIRED: Full Test Suite Before PR
+
+**The full test suite (`pytest --full`) MUST pass before creating a PR.**
+
+This is non-negotiable. The default `pytest` command only runs smoke tests (~338 tests, ~2 min). The full suite (~420 tests, ~50 min) includes critical integration tests that verify:
+- Real FoundryVTT WebSocket communication
+- Real Gemini API calls
+- End-to-end actor creation pipeline
+- Map extraction with real PDFs
+
+```bash
+# Before creating any PR, run:
+uv run pytest --full -x  # -x stops on first failure
+
+# Requirements:
+# 1. Backend running: cd ui/backend && uvicorn app.main:app --reload
+# 2. FoundryVTT running with Tablewrite module connected
+# 3. Valid .env with API keys
+```
+
+**If integration tests fail, fix them before PR. Never skip or ignore failures.**
 
 ### Test Markers
 
@@ -827,27 +890,10 @@ async def test_create_actor():
 - Avoid unnecessary complexity - use straightforward solutions
 - Clear is better than compact - favor explicit, readable code
 
-**From AGENTS.md:**
-- **Style**: PEP 8 with 4-space indentation, snake_case names, UPPER_SNAKE_CASE for constants
-- **Module Naming**: `verb_noun.py` pattern (e.g., `split_pdf.py`, `get_toc.py`)
-- **Strings**: Prefer f-strings
-- **Validation**: Early validation of external resources
-- **Helpers**: Keep helpers near call sites, confine I/O to small adapters
-- **Docstrings**: Concise module-level docstrings for entry points
+**Style:** PEP 8, 4-space indentation, snake_case, f-strings, `verb_noun.py` module naming
 
 ## Commit Style
 
-Based on git history:
-- Short, imperative mood summaries ("added requirements.txt", "updated", "fixes")
+- Short, imperative mood summaries
 - Group related changes
-- Mention impacted scripts
-
-## Future Development Notes
-
-- README mentions long-term goal: map XML to FoundryVTT module manifests
-- Need to normalize XML schema before building Foundry exporter
-- Consider adding pytest suites under `tests/` directory
-- Mock Gemini calls for offline testing
-- Use fixtures from `xml_examples/` or trimmed pages
-- "whenever creating a new worktree cp the .env file
-- If there is a failure, report with big red X, especially if you plan on showing greencheck marks
+- When creating new worktree, copy the `.env` file

@@ -103,7 +103,8 @@ async def create_actor_from_description(
     output_dir_base: str = "output/runs",
     spell_cache: Optional[SpellCache] = None,
     icon_cache: Optional[IconCache] = None,
-    foundry_client: Optional[FoundryClient] = None
+    foundry_client: Optional[FoundryClient] = None,
+    actor_upload_fn=None
 ) -> ActorCreationResult:
     """
     Create a complete D&D 5e actor in FoundryVTT from a natural language description.
@@ -126,6 +127,9 @@ async def create_actor_from_description(
         output_dir_base: Base directory for output (default: "output/runs")
         spell_cache: Optional pre-loaded SpellCache (will create if None)
         foundry_client: Optional FoundryClient (will create if None)
+        actor_upload_fn: Optional async function(actor_data: dict) -> str that uploads
+                        actor and returns UUID. Used to bypass FoundryClient when
+                        running inside FastAPI (avoids HTTP self-requests).
 
     Returns:
         ActorCreationResult with all intermediate outputs and final FoundryVTT UUID
@@ -218,13 +222,19 @@ async def create_actor_from_description(
 
         # Step 6: Upload to FoundryVTT
         logger.info("Step 6/6: Uploading to FoundryVTT...")
-        if foundry_client is None:
-            foundry_client = FoundryClient()
 
-        actor_uuid = foundry_client.actors.create_actor(
-            actor_data=actor_json,
-            spell_uuids=spell_uuids
-        )
+        if actor_upload_fn is not None:
+            # Use provided upload function (e.g., WebSocket-based from FastAPI)
+            actor_uuid = await actor_upload_fn(actor_json, spell_uuids)
+        else:
+            # Use FoundryClient (backend HTTP API, for standalone scripts)
+            if foundry_client is None:
+                foundry_client = FoundryClient()
+
+            actor_uuid = foundry_client.actors.create_actor(
+                actor_data=actor_json,
+                spell_uuids=spell_uuids
+            )
 
         logger.info(f"✓ Actor created successfully: {actor_uuid}")
         logger.info(f"  Output directory: {output_dir}")

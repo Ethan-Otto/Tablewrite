@@ -1,4 +1,4 @@
-"""Tests for FoundryVTT Actor manager."""
+"""Tests for FoundryVTT Actor manager (via WebSocket backend)."""
 
 import pytest
 from unittest.mock import Mock, patch
@@ -11,19 +11,17 @@ class TestActorManagerSearch:
 
     def test_search_all_compendiums_found(self):
         """Test searching for actor returns UUID when found."""
-        manager = ActorManager(
-            relay_url="http://test",
-            foundry_url="http://test",
-            api_key="test",
-            client_id="test"
-        )
+        manager = ActorManager(backend_url="http://localhost:8000")
 
         # Mock search response
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = [
-            {"uuid": "Actor.abc123", "name": "Goblin", "type": "npc"}
-        ]
+        mock_response.json.return_value = {
+            "success": True,
+            "results": [
+                {"uuid": "Actor.abc123", "name": "Goblin", "type": "npc"}
+            ]
+        }
 
         with patch('requests.get', return_value=mock_response):
             uuid = manager.search_all_compendiums("Goblin")
@@ -32,16 +30,11 @@ class TestActorManagerSearch:
 
     def test_search_all_compendiums_not_found(self):
         """Test searching for actor returns None when not found."""
-        manager = ActorManager(
-            relay_url="http://test",
-            foundry_url="http://test",
-            api_key="test",
-            client_id="test"
-        )
+        manager = ActorManager(backend_url="http://localhost:8000")
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = []
+        mock_response.json.return_value = {"success": True, "results": []}
 
         with patch('requests.get', return_value=mock_response):
             uuid = manager.search_all_compendiums("Nonexistent")
@@ -50,12 +43,7 @@ class TestActorManagerSearch:
 
     def test_search_handles_network_error(self):
         """Test search handles network errors gracefully."""
-        manager = ActorManager(
-            relay_url="http://test",
-            foundry_url="http://test",
-            api_key="test",
-            client_id="test"
-        )
+        manager = ActorManager(backend_url="http://localhost:8000")
 
         with patch('requests.get', side_effect=Exception("Network error")):
             uuid = manager.search_all_compendiums("Goblin")
@@ -67,16 +55,11 @@ class TestActorManagerSearch:
 class TestActorManagerCreate:
     """Test actor creation operations."""
 
-    def test_create_creature_actor(self):
-        """Test creating a creature actor from stat block."""
+    def test_create_creature_actor_raises_not_implemented(self):
+        """Test creating a creature actor raises NotImplementedError."""
         from src.actors.models import StatBlock
 
-        manager = ActorManager(
-            relay_url="http://test",
-            foundry_url="http://test",
-            api_key="test",
-            client_id="test"
-        )
+        manager = ActorManager(backend_url="http://localhost:8000")
 
         stat_block = StatBlock(
             name="Goblin",
@@ -89,37 +72,14 @@ class TestActorManagerCreate:
             abilities={"STR": 8, "DEX": 14, "CON": 10, "INT": 10, "WIS": 8, "CHA": 8}
         )
 
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "entity": {"_id": "abc123"},
-            "uuid": "Actor.abc123"
-        }
+        with pytest.raises(NotImplementedError, match="Raw actor creation via WebSocket backend not yet implemented"):
+            manager.create_creature_actor(stat_block)
 
-        with patch('requests.post', return_value=mock_response) as mock_post:
-            uuid = manager.create_creature_actor(stat_block)
-
-        assert uuid == "Actor.abc123"
-
-        # Verify request payload
-        call_args = mock_post.call_args
-        payload = call_args[1]["json"]
-        assert payload["entityType"] == "Actor"
-        assert payload["data"]["name"] == "Goblin"
-        assert payload["data"]["type"] == "npc"
-        assert payload["data"]["system"]["attributes"]["ac"]["value"] == 15
-        assert payload["data"]["system"]["attributes"]["hp"]["value"] == 7
-
-    def test_create_npc_actor_with_stat_block_link(self):
-        """Test creating NPC actor with link to creature stat block."""
+    def test_create_npc_actor_raises_not_implemented(self):
+        """Test creating NPC actor raises NotImplementedError."""
         from src.actors.models import NPC
 
-        manager = ActorManager(
-            relay_url="http://test",
-            foundry_url="http://test",
-            api_key="test",
-            client_id="test"
-        )
+        manager = ActorManager(backend_url="http://localhost:8000")
 
         npc = NPC(
             name="Klarg",
@@ -129,56 +89,148 @@ class TestActorManagerCreate:
             location="Cragmaw Hideout"
         )
 
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "entity": {"_id": "xyz789"},
-            "uuid": "Actor.xyz789"
-        }
+        with pytest.raises(NotImplementedError, match="Raw NPC creation via WebSocket backend not yet implemented"):
+            manager.create_npc_actor(npc, stat_block_uuid="Actor.boss123")
 
-        with patch('requests.post', return_value=mock_response) as mock_post:
-            uuid = manager.create_npc_actor(npc, stat_block_uuid="Actor.boss123")
-
-        assert uuid == "Actor.xyz789"
-
-        # Verify biography includes stat block link
-        payload = mock_post.call_args[1]["json"]
-        bio = payload["data"]["system"]["details"]["biography"]["value"]
-        assert "Klarg" in bio
-        assert "Leader of the Cragmaw goblins" in bio
-        assert "@UUID[Actor.boss123]" in bio
-
-    def test_create_npc_actor_without_stat_block(self):
-        """Test creating NPC actor when stat block not found."""
-        from src.actors.models import NPC
-
-        manager = ActorManager(
-            relay_url="http://test",
-            foundry_url="http://test",
-            api_key="test",
-            client_id="test"
-        )
-
-        npc = NPC(
-            name="Mysterious Stranger",
-            creature_stat_block_name="Unknown",
-            description="A hooded figure",
-            plot_relevance="Provides quest information"
-        )
+    @patch('requests.post')
+    def test_create_actor_success(self, mock_post):
+        """Test creating an actor with raw actor data."""
+        manager = ActorManager(backend_url="http://localhost:8000")
 
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "entity": {"_id": "mystery123"},
-            "uuid": "Actor.mystery123"
+            "success": True,
+            "uuid": "Actor.abc123",
+            "id": "abc123",
+            "name": "Goblin"
+        }
+        mock_post.return_value = mock_response
+
+        actor_data = {
+            "name": "Goblin",
+            "type": "npc",
+            "system": {"attributes": {"ac": {"value": 15}}}
         }
 
-        with patch('requests.post', return_value=mock_response) as mock_post:
-            uuid = manager.create_npc_actor(npc, stat_block_uuid=None)
+        uuid = manager.create_actor(actor_data)
 
-        assert uuid == "Actor.mystery123"
+        assert uuid == "Actor.abc123"
+        mock_post.assert_called_once()
 
-        # Verify no stat block link in biography
-        payload = mock_post.call_args[1]["json"]
-        bio = payload["data"]["system"]["details"]["biography"]["value"]
-        assert "@UUID" not in bio
+    @patch('requests.post')
+    def test_create_actor_with_spells_calls_give(self, mock_post, caplog):
+        """Test creating an actor with spell UUIDs calls add_compendium_items."""
+        import logging
+
+        manager = ActorManager(backend_url="http://localhost:8000")
+
+        # Mock both POST calls: create actor and give items
+        create_response = Mock()
+        create_response.status_code = 200
+        create_response.json.return_value = {
+            "success": True,
+            "uuid": "Actor.mage123",
+            "id": "mage123",
+            "name": "Mage"
+        }
+
+        give_response = Mock()
+        give_response.status_code = 200
+        give_response.json.return_value = {
+            "success": True,
+            "actor_uuid": "Actor.mage123",
+            "items_added": 2
+        }
+
+        # First call is create, second call is give
+        mock_post.side_effect = [create_response, give_response]
+
+        actor_data = {"name": "Mage", "type": "npc"}
+        spell_uuids = [
+            "Compendium.dnd5e.spells.Item.fireball",
+            "Compendium.dnd5e.spells.Item.magicmissile"
+        ]
+
+        with caplog.at_level(logging.INFO):
+            uuid = manager.create_actor(actor_data, spell_uuids=spell_uuids)
+
+        assert uuid == "Actor.mage123"
+
+        # Verify both calls were made: create actor and give items
+        assert mock_post.call_count == 2
+
+        # Verify the give items call
+        give_call = mock_post.call_args_list[1]
+        assert "Actor.mage123/items" in give_call[0][0]  # URL contains actor UUID
+
+        # Verify info logged about adding spells
+        assert "Added 2 spells to Mage" in caplog.text
+
+
+@pytest.mark.unit
+class TestActorManagerGet:
+    """Test actor retrieval operations."""
+
+    @patch('requests.get')
+    def test_get_actor_success(self, mock_get):
+        """Test getting an actor by UUID."""
+        manager = ActorManager(backend_url="http://localhost:8000")
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "success": True,
+            "entity": {
+                "name": "Goblin",
+                "type": "npc",
+                "uuid": "Actor.abc123"
+            }
+        }
+        mock_get.return_value = mock_response
+
+        result = manager.get_actor("Actor.abc123")
+
+        assert result["name"] == "Goblin"
+        mock_get.assert_called_once()
+
+    @patch('requests.get')
+    def test_get_all_actors(self, mock_get):
+        """Test getting all actors."""
+        manager = ActorManager(backend_url="http://localhost:8000")
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "success": True,
+            "actors": [
+                {"name": "Goblin", "uuid": "Actor.abc123"},
+                {"name": "Orc", "uuid": "Actor.xyz789"}
+            ]
+        }
+        mock_get.return_value = mock_response
+
+        result = manager.get_all_actors()
+
+        assert len(result) == 2
+        assert result[0]["name"] == "Goblin"
+
+
+@pytest.mark.unit
+class TestActorManagerDelete:
+    """Test actor deletion operations."""
+
+    @patch('requests.delete')
+    def test_delete_actor_success(self, mock_delete):
+        """Test deleting an actor."""
+        manager = ActorManager(backend_url="http://localhost:8000")
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"success": True}
+        mock_delete.return_value = mock_response
+
+        result = manager.delete_actor("Actor.abc123")
+
+        assert result["success"] is True
+        mock_delete.assert_called_once()

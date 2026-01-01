@@ -61,8 +61,9 @@ async def push_actor(actor_data: Dict[str, Any], timeout: float = 30.0) -> PushR
     Returns:
         PushResult with UUID if successful, error if failed
     """
+    # Wrap actor data as expected by Foundry handler: {actor: {...}}
     response = await foundry_manager.broadcast_and_wait(
-        {"type": "actor", "data": actor_data},
+        {"type": "actor", "data": {"actor": actor_data}},
         timeout=timeout
     )
 
@@ -129,6 +130,47 @@ async def push_journal(journal_data: Dict[str, Any], timeout: float = 30.0) -> P
         )
     else:
         return PushResult(
+            success=False,
+            error=f"Unexpected response type: {response.get('type')}"
+        )
+
+
+async def delete_journal(uuid: str, timeout: float = 10.0) -> DeleteResult:
+    """
+    Delete a journal entry from Foundry via WebSocket.
+
+    Args:
+        uuid: The journal UUID (e.g., "JournalEntry.abc123")
+        timeout: Maximum seconds to wait for response
+
+    Returns:
+        DeleteResult with success status
+    """
+    response = await foundry_manager.broadcast_and_wait(
+        {"type": "delete_journal", "data": {"uuid": uuid}},
+        timeout=timeout
+    )
+
+    if response is None:
+        return DeleteResult(
+            success=False,
+            error="No Foundry client connected or timeout waiting for response"
+        )
+
+    if response.get("type") == "journal_deleted":
+        data = response.get("data", {})
+        return DeleteResult(
+            success=True,
+            uuid=data.get("uuid"),
+            name=data.get("name")
+        )
+    elif response.get("type") == "journal_error":
+        return DeleteResult(
+            success=False,
+            error=response.get("error", "Unknown error from Foundry")
+        )
+    else:
+        return DeleteResult(
             success=False,
             error=f"Unexpected response type: {response.get('type')}"
         )
@@ -307,6 +349,7 @@ class SearchResultItem:
     type: Optional[str] = None
     img: Optional[str] = None
     pack: Optional[str] = None
+    system: Optional[Dict[str, Any]] = None  # For spell level, school, etc.
 
 
 @dataclass
@@ -383,6 +426,142 @@ class FileListResult:
     success: bool
     files: Optional[List[str]] = None
     error: Optional[str] = None
+
+
+@dataclass
+class CompendiumListResult:
+    """Result of listing compendium items via WebSocket."""
+    success: bool
+    results: Optional[List[SearchResultItem]] = None
+    error: Optional[str] = None
+
+
+async def list_compendium_items(
+    document_type: str = "Item",
+    sub_type: Optional[str] = None,
+    timeout: float = 60.0
+) -> CompendiumListResult:
+    """
+    List ALL items of a specific type from Foundry compendiums.
+
+    Much more efficient than multiple search queries - fetches everything in one request.
+
+    Args:
+        document_type: Document type to list (default: "Item")
+        sub_type: Optional subtype filter (e.g., "spell", "weapon")
+        timeout: Maximum seconds to wait for response
+
+    Returns:
+        CompendiumListResult with list of all matching items
+    """
+    data = {"documentType": document_type}
+    if sub_type:
+        data["subType"] = sub_type
+
+    response = await foundry_manager.broadcast_and_wait(
+        {"type": "list_compendium_items", "data": data},
+        timeout=timeout
+    )
+
+    if response is None:
+        return CompendiumListResult(
+            success=False,
+            error="No Foundry client connected or timeout waiting for response"
+        )
+
+    if response.get("type") == "compendium_items_list":
+        data = response.get("data", {})
+        results_data = data.get("results", [])
+        results = [
+            SearchResultItem(
+                uuid=r["uuid"],
+                id=r["id"],
+                name=r["name"],
+                type=r.get("type"),
+                img=r.get("img"),
+                pack=r.get("pack"),
+                system=r.get("system")  # Include spell level, school, etc.
+            )
+            for r in results_data
+        ]
+        return CompendiumListResult(success=True, results=results)
+    elif response.get("type") == "compendium_items_error":
+        return CompendiumListResult(
+            success=False,
+            error=response.get("error", "Unknown error")
+        )
+    else:
+        return CompendiumListResult(
+            success=False,
+            error=f"Unexpected response type: {response.get('type')}"
+        )
+
+
+@dataclass
+class GiveItemsResult:
+    """Result of giving items to an actor."""
+    success: bool
+    actor_uuid: Optional[str] = None
+    items_added: Optional[int] = None
+    errors: Optional[List[str]] = None
+    error: Optional[str] = None
+
+
+async def give_items(
+    actor_uuid: str,
+    item_uuids: List[str],
+    timeout: float = 30.0
+) -> GiveItemsResult:
+    """
+    Give compendium items to an actor via WebSocket.
+
+    Fetches items from compendiums by UUID and adds them to the actor
+    using createEmbeddedDocuments.
+
+    Args:
+        actor_uuid: The actor UUID (e.g., "Actor.abc123")
+        item_uuids: List of compendium item UUIDs to add
+        timeout: Maximum seconds to wait for response
+
+    Returns:
+        GiveItemsResult with items_added count if successful
+    """
+    if not item_uuids:
+        return GiveItemsResult(
+            success=True,
+            actor_uuid=actor_uuid,
+            items_added=0
+        )
+
+    response = await foundry_manager.broadcast_and_wait(
+        {"type": "give_items", "data": {"actor_uuid": actor_uuid, "item_uuids": item_uuids}},
+        timeout=timeout
+    )
+
+    if response is None:
+        return GiveItemsResult(
+            success=False,
+            error="No Foundry client connected or timeout waiting for response"
+        )
+
+    if response.get("type") == "items_given":
+        data = response.get("data", {})
+        return GiveItemsResult(
+            success=True,
+            actor_uuid=data.get("actor_uuid"),
+            items_added=data.get("items_added"),
+            errors=data.get("errors")
+        )
+    elif response.get("type") == "give_error":
+        return GiveItemsResult(
+            success=False,
+            error=response.get("error", "Unknown error from Foundry")
+        )
+    else:
+        return GiveItemsResult(
+            success=False,
+            error=f"Unexpected response type: {response.get('type')}"
+        )
 
 
 async def list_files(

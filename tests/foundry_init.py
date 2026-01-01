@@ -3,12 +3,20 @@ Foundry initialization script for pytest.
 
 Ensures backend is running and Foundry is connected before tests.
 If not connected, starts backend and opens Foundry in Chrome.
+
+Key features:
+- Kills stuck backend processes before starting new ones
+- Health checks with retries (not just port checks)
+- Stores PID for cleanup
+- Auto-restarts if backend becomes unresponsive
 """
 
 import os
+import signal
 import subprocess
 import time
 from pathlib import Path
+from typing import Optional, List
 
 import httpx
 
@@ -18,15 +26,61 @@ BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 FOUNDRY_URL = os.getenv("FOUNDRY_URL", "http://localhost:30000")
 BACKEND_STARTUP_TIMEOUT = 30  # seconds
 FOUNDRY_CONNECTION_TIMEOUT = 60  # seconds to wait for Foundry module connection
+HEALTH_CHECK_TIMEOUT = 3.0  # seconds per health check request
+HEALTH_CHECK_RETRIES = 3  # number of retries for health checks
 
 
-def check_backend_health() -> bool:
-    """Check if backend is running and healthy."""
+def find_backend_pids() -> List[int]:
+    """Find PIDs of any running uvicorn backend processes on port 8000."""
+    pids = []
     try:
-        response = httpx.get(f"{BACKEND_URL}/health", timeout=5.0)
-        return response.status_code == 200
-    except (httpx.ConnectError, httpx.TimeoutException):
-        return False
+        result = subprocess.run(
+            ["lsof", "-t", "-i", ":8000"],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            pids = [int(pid) for pid in result.stdout.strip().split('\n') if pid]
+    except (subprocess.TimeoutExpired, ValueError, FileNotFoundError):
+        pass
+    return pids
+
+
+def kill_stuck_backends() -> int:
+    """Kill any stuck backend processes on port 8000. Returns count killed."""
+    pids = find_backend_pids()
+    killed = 0
+    for pid in pids:
+        try:
+            os.kill(pid, signal.SIGKILL)
+            killed += 1
+            print(f"  Killed stuck process PID {pid}")
+        except (ProcessLookupError, PermissionError):
+            pass
+    if killed:
+        time.sleep(1)  # Give OS time to release port
+    return killed
+
+
+def check_backend_health(retries: int = HEALTH_CHECK_RETRIES) -> bool:
+    """
+    Check if backend is running and responsive.
+
+    Uses retries to handle transient failures.
+    """
+    for attempt in range(retries):
+        try:
+            response = httpx.get(
+                f"{BACKEND_URL}/health",
+                timeout=HEALTH_CHECK_TIMEOUT
+            )
+            if response.status_code == 200:
+                return True
+        except (httpx.ConnectError, httpx.TimeoutException, httpx.ReadTimeout):
+            if attempt < retries - 1:
+                time.sleep(0.5)
+    return False
 
 
 def check_foundry_connected() -> tuple[bool, int]:
@@ -48,16 +102,29 @@ def check_foundry_connected() -> tuple[bool, int]:
         return False, 0
 
 
-def start_backend() -> subprocess.Popen | None:
+def start_backend(kill_existing: bool = True) -> subprocess.Popen | None:
     """
     Start the backend server in the background.
 
+    Args:
+        kill_existing: If True, kill any stuck processes on port 8000 first
+
     Returns:
-        Popen process or None if already running
+        Popen process or None if already running (and healthy)
     """
+    # First check if backend is already running AND responsive
     if check_backend_health():
-        print(f"  Backend already running at {BACKEND_URL}")
+        print(f"  Backend already running and healthy at {BACKEND_URL}")
         return None
+
+    # Kill stuck processes if requested
+    if kill_existing:
+        pids = find_backend_pids()
+        if pids:
+            print(f"  Found {len(pids)} process(es) on port 8000 but not responding")
+            killed = kill_stuck_backends()
+            if killed:
+                print(f"  Killed {killed} stuck process(es)")
 
     print(f"  Starting backend at {BACKEND_URL}...")
 
@@ -65,23 +132,36 @@ def start_backend() -> subprocess.Popen | None:
     project_root = Path(__file__).parent.parent
     backend_dir = project_root / "ui" / "backend"
 
-    # Start uvicorn in background
-    process = subprocess.Popen(
-        ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"],
-        cwd=backend_dir,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    # Start uvicorn in background with output captured for debugging
+    log_file = project_root / "tests" / "output" / "backend.log"
+    log_file.parent.mkdir(parents=True, exist_ok=True)
 
-    # Wait for backend to be ready
+    with open(log_file, "w") as log:
+        process = subprocess.Popen(
+            ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"],
+            cwd=backend_dir,
+            stdout=log,
+            stderr=subprocess.STDOUT,
+        )
+
+    # Wait for backend to be ready with progress indication
     start_time = time.time()
+    last_dot = start_time
     while time.time() - start_time < BACKEND_STARTUP_TIMEOUT:
-        if check_backend_health():
-            print(f"  Backend started successfully (PID: {process.pid})")
+        if check_backend_health(retries=1):
+            print(f"\n  Backend started successfully (PID: {process.pid})")
+            print(f"  Log file: {log_file}")
             return process
+
+        # Print dots to show progress
+        if time.time() - last_dot >= 2:
+            print(".", end="", flush=True)
+            last_dot = time.time()
+
         time.sleep(0.5)
 
-    print(f"  WARNING: Backend did not start within {BACKEND_STARTUP_TIMEOUT}s")
+    print(f"\n  WARNING: Backend did not start within {BACKEND_STARTUP_TIMEOUT}s")
+    print(f"  Check log file for errors: {log_file}")
     process.terminate()
     return None
 
@@ -272,6 +352,37 @@ def ensure_foundry_ready(force_refresh: bool = False) -> dict:
     return result
 
 
+def verify_backend_responsive() -> bool:
+    """
+    Quick health check to verify backend is still responsive.
+
+    Use this mid-test to check if backend has become stuck.
+    If unresponsive, will attempt to restart.
+
+    Returns:
+        True if backend is responsive, False if restart failed
+    """
+    if check_backend_health():
+        return True
+
+    print("\n  ⚠️  Backend became unresponsive, attempting restart...")
+    process = start_backend(kill_existing=True)
+
+    if process or check_backend_health():
+        # Need to reconnect Foundry after restart
+        print("  Backend restarted, waiting for Foundry reconnection...")
+        wait_for_foundry_connection(timeout=30)
+        return check_backend_health()
+
+    return False
+
+
+def get_backend_pid() -> Optional[int]:
+    """Get the PID of the running backend, if any."""
+    pids = find_backend_pids()
+    return pids[0] if pids else None
+
+
 if __name__ == "__main__":
     import argparse
 
@@ -281,7 +392,19 @@ if __name__ == "__main__":
         action="store_true",
         help="Force refresh Foundry even if already connected (reloads module code)"
     )
+    parser.add_argument(
+        "--kill-stuck",
+        action="store_true",
+        help="Kill any stuck backend processes before starting"
+    )
     args = parser.parse_args()
+
+    if args.kill_stuck:
+        killed = kill_stuck_backends()
+        if killed:
+            print(f"Killed {killed} stuck process(es)")
+        else:
+            print("No stuck processes found")
 
     result = ensure_foundry_ready(force_refresh=args.force_refresh)
     print(f"\nResult: {result}")
@@ -290,4 +413,7 @@ if __name__ == "__main__":
         print(f"\nFailed: {result['error']}")
         exit(1)
     else:
-        print("\nSuccess! Foundry is ready for testing.")
+        pid = get_backend_pid()
+        print(f"\nSuccess! Foundry is ready for testing.")
+        if pid:
+            print(f"Backend PID: {pid}")

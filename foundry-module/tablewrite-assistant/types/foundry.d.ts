@@ -100,6 +100,7 @@ declare global {
     name: string;
     toObject(): Record<string, unknown>;
     delete(): Promise<void>;
+    createEmbeddedDocuments(type: string, data: Record<string, unknown>[]): Promise<unknown[]>;
   }
 
   // Global function to fetch any document by UUID

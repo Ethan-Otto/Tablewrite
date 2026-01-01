@@ -4,10 +4,12 @@ from .foundry_endpoint import foundry_websocket_endpoint, foundry_manager
 from .push import (
     push_actor, push_journal, push_scene, PushResult,
     fetch_actor, FetchResult,
-    delete_actor, DeleteResult,
+    delete_actor, delete_journal, DeleteResult,
     list_actors, ListResult, ActorInfo,
     search_items, SearchResult, SearchResultItem,
-    list_files, FileListResult
+    list_compendium_items, CompendiumListResult,
+    list_files, FileListResult,
+    give_items, GiveItemsResult
 )
 
 __all__ = [
@@ -21,6 +23,7 @@ __all__ = [
     'fetch_actor',
     'FetchResult',
     'delete_actor',
+    'delete_journal',
     'DeleteResult',
     'list_actors',
     'ListResult',
@@ -28,6 +31,10 @@ __all__ = [
     'search_items',
     'SearchResult',
     'SearchResultItem',
+    'list_compendium_items',
+    'CompendiumListResult',
     'list_files',
-    'FileListResult'
+    'FileListResult',
+    'give_items',
+    'GiveItemsResult'
 ]

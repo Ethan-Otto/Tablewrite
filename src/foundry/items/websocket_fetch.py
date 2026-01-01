@@ -138,14 +138,57 @@ async def fetch_items_by_type_ws(
 
 
 async def fetch_all_spells_ws() -> List[Dict]:
-    """Fetch all spells via HTTP API."""
+    """Fetch all spells via HTTP API (legacy - uses multiple searches)."""
     return await fetch_items_by_type_ws('spell')
 
 
-def fetch_all_spells_ws_sync() -> List[Dict]:
-    """Synchronous wrapper for fetch_all_spells_ws.
+async def fetch_compendium_items(
+    document_type: str = "Item",
+    sub_type: Optional[str] = None,
+    timeout: float = 60.0
+) -> List[Dict]:
+    """
+    Fetch ALL items of a specific type from compendiums in one request.
 
-    Uses httpx sync client for simpler thread handling.
+    Much more efficient than multiple search queries.
+
+    Args:
+        document_type: Document type to list (default: "Item")
+        sub_type: Optional subtype filter (e.g., "spell", "weapon")
+        timeout: Request timeout in seconds
+
+    Returns:
+        List of item dicts with name, uuid, and other metadata
+    """
+    params = {"document_type": document_type}
+    if sub_type:
+        params["sub_type"] = sub_type
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"{BACKEND_URL}/api/foundry/compendium",
+            params=params,
+            timeout=timeout
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        if data.get("success"):
+            logger.info(f"Fetched {data.get('count', 0)} {sub_type or 'items'} from compendiums")
+            return data.get("results", [])
+        else:
+            raise RuntimeError(f"Failed to list compendium items: {data}")
+
+
+async def fetch_all_spells_efficient() -> List[Dict]:
+    """Fetch all spells via efficient compendium list (single request)."""
+    return await fetch_compendium_items(document_type="Item", sub_type="spell")
+
+
+def fetch_all_spells_ws_sync() -> List[Dict]:
+    """Synchronous wrapper for fetch_all_spells_efficient.
+
+    Uses the efficient single-request method.
     """
     import asyncio
 
@@ -153,10 +196,10 @@ def fetch_all_spells_ws_sync() -> List[Dict]:
         loop = asyncio.get_running_loop()
     except RuntimeError:
         # No event loop running, use asyncio.run()
-        return asyncio.run(fetch_all_spells_ws())
+        return asyncio.run(fetch_all_spells_efficient())
     else:
         # Event loop already running, run in separate thread
         import concurrent.futures
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            future = executor.submit(asyncio.run, fetch_all_spells_ws())
-            return future.result(timeout=300)
+            future = executor.submit(asyncio.run, fetch_all_spells_efficient())
+            return future.result(timeout=120)

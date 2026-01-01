@@ -1,10 +1,11 @@
 /**
- * Handle journal creation messages from backend.
+ * Handle journal messages from backend.
  *
- * Message format: {journal: {...}, name: string}
+ * Message format for create: {journal: {...}, name: string}
+ * Message format for delete: {uuid: "JournalEntry.xyz"}
  */
 
-import type { CreateResult } from './index.js';
+import type { CreateResult, DeleteResult } from './index.js';
 
 export async function handleJournalCreate(data: Record<string, unknown>): Promise<CreateResult> {
   try {
@@ -40,6 +41,34 @@ export async function handleJournalCreate(data: Record<string, unknown>): Promis
   } catch (error) {
     console.error('[Tablewrite] Failed to create journal:', error);
     ui.notifications?.error(`Failed to create journal: ${error}`);
+    return {
+      success: false,
+      error: String(error)
+    };
+  }
+}
+
+export async function handleJournalDelete(uuid: string): Promise<DeleteResult> {
+  try {
+    const journal = await fromUuid(uuid);
+    if (!journal) {
+      return { success: false, error: `Journal not found: ${uuid}` };
+    }
+
+    const name = (journal as { name?: string }).name;
+    await journal.delete();
+
+    const message = game.i18n.format('TABLEWRITE_ASSISTANT.DeletedJournal', { name });
+    ui.notifications?.info(message);
+    console.log('[Tablewrite] Deleted journal:', name, uuid);
+
+    return {
+      success: true,
+      uuid: uuid,
+      name: name ?? undefined
+    };
+  } catch (error) {
+    console.error('[Tablewrite] Failed to delete journal:', error);
     return {
       success: false,
       error: String(error)

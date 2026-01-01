@@ -2,19 +2,19 @@
  * Message handlers for Tablewrite.
  */
 
-export { handleActorCreate, handleGetActor, handleDeleteActor, handleListActors } from './actor.js';
-export { handleJournalCreate } from './journal.js';
+export { handleActorCreate, handleGetActor, handleDeleteActor, handleListActors, handleGiveItems } from './actor.js';
+export { handleJournalCreate, handleJournalDelete } from './journal.js';
 export { handleSceneCreate } from './scene.js';
-export { handleSearchItems, handleGetItem } from './items.js';
+export { handleSearchItems, handleGetItem, handleListCompendiumItems } from './items.js';
 export { handleListFiles } from './files.js';
 
-import { handleActorCreate, handleGetActor, handleDeleteActor, handleListActors } from './actor.js';
-import { handleJournalCreate } from './journal.js';
+import { handleActorCreate, handleGetActor, handleDeleteActor, handleListActors, handleGiveItems } from './actor.js';
+import { handleJournalCreate, handleJournalDelete } from './journal.js';
 import { handleSceneCreate } from './scene.js';
-import { handleSearchItems, handleGetItem } from './items.js';
+import { handleSearchItems, handleGetItem, handleListCompendiumItems } from './items.js';
 import { handleListFiles } from './files.js';
 
-export type MessageType = 'actor' | 'journal' | 'scene' | 'get_actor' | 'delete_actor' | 'list_actors' | 'search_items' | 'get_item' | 'list_files' | 'connected' | 'pong';
+export type MessageType = 'actor' | 'journal' | 'delete_journal' | 'scene' | 'get_actor' | 'delete_actor' | 'list_actors' | 'give_items' | 'search_items' | 'get_item' | 'list_compendium_items' | 'list_files' | 'connected' | 'pong';
 
 export interface TablewriteMessage {
   type: MessageType;
@@ -56,6 +56,14 @@ export interface ListResult {
   error?: string;
 }
 
+export interface GiveResult {
+  success: boolean;
+  actor_uuid?: string;
+  items_added?: number;
+  errors?: string[];
+  error?: string;
+}
+
 export interface SearchResultItem {
   uuid: string;
   id: string;
@@ -63,6 +71,10 @@ export interface SearchResultItem {
   type?: string;
   img?: string;
   pack?: string;
+  system?: {
+    level?: number;
+    school?: string;
+  };
 }
 
 export interface SearchResult {
@@ -80,7 +92,7 @@ export interface FileListResult {
 export interface MessageResult {
   responseType: string;
   request_id?: string;
-  data?: CreateResult | GetResult | DeleteResult | ListResult | SearchResult | FileListResult;
+  data?: CreateResult | GetResult | DeleteResult | ListResult | GiveResult | SearchResult | FileListResult;
   error?: string;
 }
 
@@ -108,6 +120,17 @@ export async function handleMessage(message: TablewriteMessage): Promise<Message
           responseType: result.success ? 'journal_created' : 'journal_error',
           request_id: message.request_id,
           data: result.success ? result : undefined,
+          error: result.error
+        };
+      }
+      break;
+    case 'delete_journal':
+      if (message.data?.uuid) {
+        const result = await handleJournalDelete(message.data.uuid as string);
+        return {
+          responseType: result.success ? 'journal_deleted' : 'journal_error',
+          request_id: message.request_id,
+          data: result,
           error: result.error
         };
       }
@@ -154,6 +177,20 @@ export async function handleMessage(message: TablewriteMessage): Promise<Message
         error: result.error
       };
     }
+    case 'give_items':
+      if (message.data) {
+        const result = await handleGiveItems(message.data as {
+          actor_uuid: string;
+          item_uuids: string[];
+        });
+        return {
+          responseType: result.success ? 'items_given' : 'give_error',
+          request_id: message.request_id,
+          data: result,
+          error: result.error
+        };
+      }
+      break;
     case 'search_items':
       if (message.data) {
         const result = await handleSearchItems(message.data as {
@@ -180,6 +217,18 @@ export async function handleMessage(message: TablewriteMessage): Promise<Message
         };
       }
       break;
+    case 'list_compendium_items': {
+      const result = await handleListCompendiumItems(message.data as {
+        documentType?: string;
+        subType?: string;
+      } || {});
+      return {
+        responseType: result.success ? 'compendium_items_list' : 'compendium_items_error',
+        request_id: message.request_id,
+        data: result,
+        error: result.error
+      };
+    }
     case 'list_files':
       if (message.data) {
         const result = await handleListFiles(message.data as {

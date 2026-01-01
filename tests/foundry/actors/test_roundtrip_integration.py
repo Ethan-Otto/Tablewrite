@@ -20,9 +20,9 @@ class TestActorRoundTrip:
     Integration tests for complete actor upload/download cycle.
 
     These tests require:
-    - FoundryVTT running locally
-    - REST API relay server running
-    - Valid API credentials in .env
+    - FoundryVTT running locally with Tablewrite module enabled
+    - Backend server running at localhost:8000
+    - Foundry connected to backend via WebSocket
     """
 
     @pytest.fixture

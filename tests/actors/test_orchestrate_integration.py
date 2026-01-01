@@ -20,6 +20,7 @@ class TestActorOrchestrationIntegration:
     @pytest.mark.smoke
     @pytest.mark.integration
     @pytest.mark.asyncio
+    @pytest.mark.order("last")
     async def test_full_pipeline_end_to_end(self, tmp_path):
         """
         Smoke test: End-to-end actor creation via HTTP API.

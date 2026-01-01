@@ -6,7 +6,7 @@
  * Message format for delete: {uuid: string}
  */
 
-import type { CreateResult, GetResult, DeleteResult, ListResult } from './index.js';
+import type { CreateResult, GetResult, DeleteResult, ListResult, GiveResult } from './index.js';
 
 export async function handleActorCreate(data: Record<string, unknown>): Promise<CreateResult> {
   try {
@@ -147,6 +147,91 @@ export async function handleListActors(): Promise<ListResult> {
     };
   } catch (error) {
     console.error('[Tablewrite] Failed to list actors:', error);
+    return {
+      success: false,
+      error: String(error)
+    };
+  }
+}
+
+/**
+ * Handle give items request - add compendium items to an actor.
+ *
+ * This fetches items from compendiums by UUID and adds them to the actor.
+ * Used for adding spells to NPCs after actor creation.
+ *
+ * Message format: {actor_uuid: string, item_uuids: string[]}
+ */
+export async function handleGiveItems(data: {
+  actor_uuid: string;
+  item_uuids: string[];
+}): Promise<GiveResult> {
+  try {
+    const { actor_uuid, item_uuids } = data;
+
+    if (!actor_uuid || !item_uuids || item_uuids.length === 0) {
+      return {
+        success: false,
+        error: 'Missing actor_uuid or item_uuids'
+      };
+    }
+
+    // Get the actor
+    const actor = await fromUuid(actor_uuid) as FoundryDocument | null;
+    if (!actor) {
+      return {
+        success: false,
+        error: `Actor not found: ${actor_uuid}`
+      };
+    }
+
+    // Fetch all items from compendiums
+    const itemsToAdd: Record<string, unknown>[] = [];
+    const errors: string[] = [];
+
+    for (const itemUuid of item_uuids) {
+      try {
+        const item = await fromUuid(itemUuid);
+        if (item) {
+          // Convert to plain object for embedding
+          const itemData = item.toObject();
+          // Remove _id so Foundry generates a new one
+          delete itemData._id;
+          itemsToAdd.push(itemData);
+        } else {
+          errors.push(`Item not found: ${itemUuid}`);
+        }
+      } catch (e) {
+        errors.push(`Failed to fetch ${itemUuid}: ${e}`);
+      }
+    }
+
+    if (itemsToAdd.length === 0) {
+      return {
+        success: false,
+        error: `No items could be fetched. Errors: ${errors.join(', ')}`
+      };
+    }
+
+    // Add items to actor
+    const created = await actor.createEmbeddedDocuments('Item', itemsToAdd);
+    const addedCount = created?.length ?? 0;
+
+    console.log(`[Tablewrite] Added ${addedCount} items to actor ${actor.name}`);
+    if (errors.length > 0) {
+      console.warn('[Tablewrite] Some items failed:', errors);
+    }
+
+    ui.notifications?.info(`Added ${addedCount} items to ${actor.name}`);
+
+    return {
+      success: true,
+      actor_uuid: actor_uuid,
+      items_added: addedCount,
+      errors: errors.length > 0 ? errors : undefined
+    };
+  } catch (error) {
+    console.error('[Tablewrite] Failed to give items:', error);
     return {
       success: false,
       error: String(error)

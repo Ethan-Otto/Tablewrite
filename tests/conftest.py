@@ -293,21 +293,14 @@ def check_api_key():
 
 @pytest.fixture(scope="session")
 def check_foundry_credentials():
-    """Check if FoundryVTT API credentials are available."""
+    """Check if FoundryVTT backend connection is available."""
     from dotenv import load_dotenv
     load_dotenv(PROJECT_ROOT / ".env")
 
-    relay_url = os.getenv("FOUNDRY_RELAY_URL")
-    api_key = os.getenv("FOUNDRY_API_KEY")
-    client_id = os.getenv("FOUNDRY_CLIENT_ID")
-
-    if not all([relay_url, api_key, client_id]):
-        pytest.skip("FoundryVTT credentials not found. Set FOUNDRY_RELAY_URL, FOUNDRY_API_KEY, and FOUNDRY_CLIENT_ID in .env file.")
+    backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
 
     return {
-        "relay_url": relay_url,
-        "api_key": api_key,
-        "client_id": client_id
+        "backend_url": backend_url
     }
 
 

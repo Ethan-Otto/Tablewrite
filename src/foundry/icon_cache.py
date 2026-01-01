@@ -3,21 +3,17 @@
 import asyncio
 import logging
 import os
-import sys
-import requests
+import httpx
 from difflib import SequenceMatcher
 from typing import Dict, List, Optional, Tuple, Union
 from google import genai
 
 from util.gemini import generate_content_async
 
-# Add ui/backend to path for importing websocket module
-_project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-_ui_backend_path = os.path.join(_project_root, "ui", "backend")
-if _ui_backend_path not in sys.path:
-    sys.path.insert(0, _ui_backend_path)
-
 logger = logging.getLogger(__name__)
+
+# Backend URL for WebSocket-based file listing
+BACKEND_URL = "http://localhost:8000"
 
 
 class IconCache:
@@ -28,6 +24,10 @@ class IconCache:
         cache = IconCache()
         cache.load()  # Fetch all icons from FoundryVTT
         icon_path = cache.get_icon("Scimitar", category="weapon")
+
+    Alternative (for FastAPI context - avoids self-deadlock):
+        cache = IconCache()
+        cache.load_from_data(file_paths)  # Load from pre-fetched data
     """
 
     def __init__(self):
@@ -48,47 +48,59 @@ class IconCache:
 
     def load(
         self,
-        relay_url: Optional[str] = None,
-        api_key: Optional[str] = None,
-        client_id: Optional[str] = None,
-        icon_extensions: Optional[List[str]] = None,
-        use_websocket: bool = True
+        icon_extensions: Optional[List[str]] = None
     ) -> None:
         """
-        Load all icon files from FoundryVTT file system.
+        Load all icon files from FoundryVTT file system via WebSocket.
+
+        Requires:
+            - Backend running on localhost:8000
+            - Foundry connected via WebSocket
 
         Args:
-            relay_url: Relay server URL (defaults to env var) - DEPRECATED
-            api_key: API key (defaults to env var) - DEPRECATED
-            client_id: Client ID (defaults to env var) - DEPRECATED
             icon_extensions: List of file extensions to include (default: ['.webp', '.png', '.jpg', '.svg'])
-            use_websocket: If True, use WebSocket (requires Foundry connected)
 
         Raises:
-            ValueError: If required credentials are missing (relay mode only)
-            RuntimeError: If API request fails
+            RuntimeError: If WebSocket fetch fails (no fallback to relay)
         """
-        logger.info("Loading icon cache from FoundryVTT file system...")
+        logger.info("Loading icon cache from FoundryVTT via WebSocket...")
 
         icon_extensions = icon_extensions or ['.webp', '.png', '.jpg', '.svg']
-        files = []
 
-        if use_websocket:
-            try:
-                files = self._load_via_websocket(icon_extensions)
-            except Exception as e:
-                logger.warning(f"WebSocket fetch failed: {e}")
-                # Fall back to relay if configured
-                if relay_url or os.getenv("FOUNDRY_RELAY_URL"):
-                    logger.info("Falling back to relay server...")
-                    files = self._load_via_relay(relay_url, api_key, client_id, icon_extensions)
-                else:
-                    raise
-        else:
-            # Legacy relay-based fetch
-            files = self._load_via_relay(relay_url, api_key, client_id, icon_extensions)
+        try:
+            files = self._load_via_websocket(icon_extensions)
+        except Exception as e:
+            # No relay fallback - fail fast and loud
+            error_msg = f"IconCache WebSocket fetch failed: {e}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg) from e
 
-        # Process files into cache
+        self._populate_from_files(files, icon_extensions)
+
+    def load_from_data(
+        self,
+        files: List[str],
+        icon_extensions: Optional[List[str]] = None
+    ) -> None:
+        """
+        Load icons from pre-fetched file list.
+
+        Use this when running inside FastAPI to avoid self-deadlock
+        (the server can't make HTTP requests to itself).
+
+        Args:
+            files: List of file paths from FoundryVTT
+            icon_extensions: List of file extensions to include (default: ['.webp', '.png', '.jpg', '.svg'])
+        """
+        icon_extensions = icon_extensions or ['.webp', '.png', '.jpg', '.svg']
+        logger.info(f"Loading icon cache from pre-fetched data ({len(files)} files)...")
+        self._populate_from_files(files, icon_extensions)
+
+    def _populate_from_files(self, files: List[str], icon_extensions: List[str]) -> None:
+        """Build icon cache from file list."""
+        self._all_icons.clear()
+        self._icons_by_category.clear()
+
         for path in files:
             if any(path.endswith(ext) for ext in icon_extensions):
                 self._all_icons.append(path)
@@ -99,26 +111,31 @@ class IconCache:
         logger.info(f"  Categories: {list(self._icons_by_category.keys())}")
 
     def _load_via_websocket(self, extensions: List[str]) -> List[str]:
-        """Load icons via WebSocket.
+        """Load icons via HTTP API (which internally uses WebSocket).
 
-        Handles both cases:
-        - No event loop running: uses asyncio.run()
-        - Event loop already running (e.g., pytest-asyncio): uses ThreadPoolExecutor
+        Uses the backend's /api/foundry/files endpoint instead of importing
+        the websocket module directly, ensuring we go through the running
+        backend process that has the actual WebSocket connection.
         """
-        # Import here to avoid circular imports
-        from app.websocket import list_files
-
         async def fetch():
-            result = await list_files(
-                path="icons",
-                source="public",
-                recursive=True,
-                extensions=extensions,
-                timeout=60.0
-            )
-            if not result.success:
-                raise RuntimeError(f"Failed to list files: {result.error}")
-            return result.files or []
+            params = {
+                "path": "icons",
+                "source": "public",
+                "recursive": "true",
+                "extensions": ",".join(extensions)
+            }
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"{BACKEND_URL}/api/foundry/files",
+                    params=params,
+                    timeout=120.0
+                )
+                response.raise_for_status()
+                data = response.json()
+
+                if not data.get("success"):
+                    raise RuntimeError(f"Failed to list files: {data}")
+                return data.get("files", [])
 
         try:
             asyncio.get_running_loop()
@@ -131,52 +148,6 @@ class IconCache:
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(asyncio.run, fetch())
                 return future.result(timeout=300)
-
-    def _load_via_relay(
-        self,
-        relay_url: Optional[str],
-        api_key: Optional[str],
-        client_id: Optional[str],
-        icon_extensions: List[str]
-    ) -> List[str]:
-        """Load icons via relay server (legacy)."""
-        # Get credentials from env if not provided
-        relay_url = relay_url or os.getenv("FOUNDRY_RELAY_URL")
-        api_key = api_key or os.getenv("FOUNDRY_API_KEY")
-        client_id = client_id or os.getenv("FOUNDRY_CLIENT_ID")
-
-        if not all([relay_url, api_key, client_id]):
-            raise ValueError("Missing required credentials: relay_url, api_key, client_id")
-
-        # Fetch file system recursively from icons/ directory
-        endpoint = f"{relay_url}/file-system"
-        headers = {"x-api-key": api_key}
-        params = {
-            "clientId": client_id,
-            "path": "icons",
-            "recursive": "true",
-            "source": "public"  # Public source includes core icons + modules
-        }
-
-        try:
-            response = requests.get(endpoint, headers=headers, params=params, timeout=60)
-            response.raise_for_status()
-            data = response.json()
-
-            # Extract icon file paths (API returns 'results' not 'files')
-            files = []
-            results = data.get('results', data.get('files', []))
-            for file_info in results:
-                path = file_info.get('path', '')
-                # Filter by extension
-                if any(path.endswith(ext) for ext in icon_extensions):
-                    files.append(path)
-
-            return files
-
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to load icon cache: {e}")
-            raise RuntimeError(f"Failed to load icon cache: {e}") from e
 
     def _categorize_icon(self, path: str) -> None:
         """

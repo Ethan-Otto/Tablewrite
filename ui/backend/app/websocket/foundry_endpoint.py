@@ -21,6 +21,7 @@ RESPONSE_TYPES = {
     "actor_data",
     # Delete responses
     "actor_deleted",
+    "journal_deleted",
     # List responses
     "actors_list",
     # Search responses
@@ -28,6 +29,9 @@ RESPONSE_TYPES = {
     "search_error",
     "item_data",
     "item_error",
+    # Compendium list responses (efficient bulk fetch)
+    "compendium_items_list",
+    "compendium_items_error",
     # File listing responses
     "files_list",
     "files_error",

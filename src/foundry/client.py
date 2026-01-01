@@ -1,4 +1,4 @@
-"""FoundryVTT REST API client."""
+"""FoundryVTT API client via WebSocket backend."""
 
 import os
 import logging
@@ -13,63 +13,35 @@ from .icon_cache import IconCache
 
 logger = logging.getLogger(__name__)
 
+# Default backend URL - the FastAPI server that handles WebSocket communication
+DEFAULT_BACKEND_URL = "http://localhost:8000"
+
 
 class FoundryClient:
-    """Client for interacting with FoundryVTT via REST API."""
+    """Client for interacting with FoundryVTT via WebSocket backend.
 
-    def __init__(self):
+    All operations go through the FastAPI backend which communicates with
+    FoundryVTT via WebSocket. The relay server is no longer used.
+    """
+
+    def __init__(self, backend_url: Optional[str] = None):
         """
         Initialize FoundryVTT API client.
 
-        Raises:
-            ValueError: If required environment variables are not set
+        Args:
+            backend_url: URL of the FastAPI backend (default: http://localhost:8000)
+                        Can also be set via BACKEND_URL environment variable.
         """
-        self.relay_url = os.getenv("FOUNDRY_RELAY_URL")
-        self.foundry_url = os.getenv("FOUNDRY_URL")
-        self.api_key = os.getenv("FOUNDRY_API_KEY")
-        self.client_id = os.getenv("FOUNDRY_CLIENT_ID")
+        self.backend_url = backend_url or os.getenv("BACKEND_URL", DEFAULT_BACKEND_URL)
 
-        if not self.relay_url:
-            raise ValueError("FOUNDRY_RELAY_URL not set in environment")
-        if not self.foundry_url:
-            raise ValueError("FOUNDRY_URL not set in environment")
-        if not self.api_key:
-            raise ValueError("FOUNDRY_API_KEY not set in environment")
-        if not self.client_id:
-            raise ValueError("FOUNDRY_CLIENT_ID not set in environment")
-
-        # Initialize managers
-        self.journals = JournalManager(
-            relay_url=self.relay_url,
-            foundry_url=self.foundry_url,
-            api_key=self.api_key,
-            client_id=self.client_id
-        )
-
-        self.items = ItemManager(
-            relay_url=self.relay_url,
-            foundry_url=self.foundry_url,
-            api_key=self.api_key,
-            client_id=self.client_id
-        )
-
-        self.actors = ActorManager(
-            relay_url=self.relay_url,
-            foundry_url=self.foundry_url,
-            api_key=self.api_key,
-            client_id=self.client_id
-        )
-
-        self.scenes = SceneManager(
-            relay_url=self.relay_url,
-            foundry_url=self.foundry_url,
-            api_key=self.api_key,
-            client_id=self.client_id
-        )
-
+        # Initialize managers - all use backend HTTP API
+        self.journals = JournalManager(backend_url=self.backend_url)
+        self.items = ItemManager(backend_url=self.backend_url)
+        self.actors = ActorManager(backend_url=self.backend_url)
+        self.scenes = SceneManager(backend_url=self.backend_url)
         self.icons = IconCache()
 
-        logger.info(f"Initialized FoundryClient at {self.foundry_url}")
+        logger.info(f"Initialized FoundryClient with backend at {self.backend_url}")
 
     # Journal operations (delegated to JournalManager)
 
@@ -133,179 +105,85 @@ class FoundryClient:
         """Get an item by UUID."""
         return self.items.get_item(item_uuid)
 
-    # File operations
+    # File operations (require backend endpoints - not yet implemented)
 
     def upload_file(self, local_path: str, target_path: str, overwrite: bool = True) -> Dict[str, Any]:
         """
         Upload a file to FoundryVTT.
+
+        NOTE: This functionality requires a backend endpoint that is not yet implemented.
 
         Args:
             local_path: Path to local file
             target_path: Target path in FoundryVTT (e.g., "worlds/my-world/assets/image.png")
             overwrite: Whether to overwrite existing files (default: True)
 
-        Returns:
-            Upload response dict
-
         Raises:
-            RuntimeError: If upload fails
+            NotImplementedError: Backend file upload endpoint not yet implemented
         """
-        from pathlib import Path
-        import mimetypes
-
-        endpoint = f"{self.relay_url}/upload"
-
-        # Split target_path into directory path and filename
-        path_obj = Path(target_path)
-        directory = str(path_obj.parent)
-        filename = path_obj.name
-
-        # Detect MIME type
-        mime_type, _ = mimetypes.guess_type(filename)
-        if not mime_type:
-            mime_type = "application/octet-stream"
-
-        # API expects x-api-key header, binary data in body, and separate path/filename parameters
-        headers = {
-            "x-api-key": self.api_key,
-            "Content-Type": "application/octet-stream"
-        }
-
-        params = {
-            "clientId": self.client_id,
-            "path": directory,
-            "filename": filename,
-            "mimeType": mime_type,
-            "overwrite": str(overwrite).lower()
-        }
-
-        logger.debug(f"Uploading {local_path} → {target_path}")
-
-        # Read file as binary data for request body
-        try:
-            with open(local_path, 'rb') as f:
-                file_data = f.read()
-        except IOError as e:
-            logger.error(f"Failed to read local file '{local_path}': {e}")
-            raise RuntimeError(f"Failed to read file: {e}") from e
-
-        try:
-            response = requests.post(endpoint, headers=headers, params=params, data=file_data, timeout=60)
-            response.raise_for_status()
-            result = response.json()
-            logger.debug(f"Upload successful: {filename}")
-            return result
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to upload file '{filename}': {e}")
-            raise RuntimeError(f"Failed to upload file: {e}") from e
+        raise NotImplementedError(
+            "File upload via WebSocket backend not yet implemented. "
+            "Add POST /api/foundry/upload endpoint to backend."
+        )
 
     def download_file(self, target_path: str, local_path: str) -> None:
         """
         Download a file from FoundryVTT.
 
+        NOTE: This functionality requires a backend endpoint that is not yet implemented.
+
         Args:
-            target_path: Full path to file in FoundryVTT (e.g., "worlds/my-world/assets/image.png")
+            target_path: Full path to file in FoundryVTT
             local_path: Local path to save downloaded file
 
         Raises:
-            RuntimeError: If download fails
+            NotImplementedError: Backend file download endpoint not yet implemented
         """
-        from pathlib import Path
+        raise NotImplementedError(
+            "File download via WebSocket backend not yet implemented. "
+            "Add GET /api/foundry/download endpoint to backend."
+        )
 
-        endpoint = f"{self.relay_url}/download"
+    def is_connected(self) -> bool:
+        """
+        Check if the backend is connected to FoundryVTT via WebSocket.
 
-        headers = {
-            "x-api-key": self.api_key
-        }
-
-        # Download endpoint expects full file path in "path" parameter (no separate filename)
-        params = {
-            "clientId": self.client_id,
-            "path": target_path
-        }
-
-        logger.debug(f"Downloading {target_path} → {local_path}")
+        Returns:
+            True if backend is running and connected to Foundry, False otherwise
+        """
+        endpoint = f"{self.backend_url}/api/foundry/status"
 
         try:
-            response = requests.get(endpoint, headers=headers, params=params, timeout=60)
+            response = requests.get(endpoint, timeout=5)
             response.raise_for_status()
-
-            # Write binary response to file
-            with open(local_path, 'wb') as f:
-                f.write(response.content)
-
-            logger.debug(f"Download successful: {target_path}")
-
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to download file '{target_path}': {e}")
-            raise RuntimeError(f"Failed to download file: {e}") from e
-        except IOError as e:
-            logger.error(f"Failed to write to local file '{local_path}': {e}")
-            raise RuntimeError(f"Failed to write file: {e}") from e
+            data = response.json()
+            return data.get("connected_clients", 0) > 0
+        except requests.exceptions.RequestException:
+            return False
 
     def is_world_active(self) -> bool:
         """
-        Check if any world is currently running in FoundryVTT.
+        Check if FoundryVTT is active and connected.
 
-        This works regardless of whether the world was launched via browser
-        or headless API session. Makes a lightweight search API call to verify
-        the server can respond.
+        Uses the backend status endpoint to verify connection.
 
         Returns:
-            True if a world is active and responding, False otherwise
+            True if backend is connected to Foundry, False otherwise
         """
-        endpoint = f"{self.relay_url}/search"
-
-        headers = {
-            "x-api-key": self.api_key
-        }
-
-        params = {
-            "clientId": self.client_id,
-            "query": "",
-            "filter": "Item"
-        }
-
-        try:
-            response = requests.get(endpoint, headers=headers, params=params, timeout=5)
-            response.raise_for_status()
-            # If we get a successful response, a world is active
-            return True
-        except requests.exceptions.RequestException:
-            # Any error means no world is active or server isn't responding
-            return False
+        return self.is_connected()
 
     def get_active_sessions(self) -> List[Dict[str, Any]]:
         """
-        Get currently active headless FoundryVTT sessions.
+        Get currently active sessions.
 
-        Note: This only returns headless API sessions, not browser sessions.
-        Use is_world_active() to check if any world is running.
-
-        Returns:
-            List of active session dictionaries with keys:
-                - id: Session ID
-                - clientId: Client ID
-                - lastActivity: Timestamp of last activity
-                - idleMinutes: Minutes since last activity
+        NOTE: This functionality is not available via WebSocket backend.
 
         Raises:
-            RuntimeError: If API call fails
+            NotImplementedError: Session management not available via WebSocket
         """
-        endpoint = f"{self.relay_url}/session"
-
-        headers = {
-            "x-api-key": self.api_key
-        }
-
-        try:
-            response = requests.get(endpoint, headers=headers, timeout=10)
-            response.raise_for_status()
-            data = response.json()
-            return data.get('activeSessions', [])
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to get active sessions: {e}")
-            raise RuntimeError(f"Failed to get active sessions: {e}") from e
+        raise NotImplementedError(
+            "Session management not available via WebSocket backend."
+        )
 
     # Actor operations (delegated to ActorManager)
 

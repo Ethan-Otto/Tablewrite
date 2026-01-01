@@ -1,46 +1,49 @@
 """Test suite for FoundryVTT icon cache."""
 
 import pytest
+from unittest.mock import patch, MagicMock
 from foundry.icon_cache import IconCache
 
 
-def test_icon_cache_initialization():
-    """Test IconCache initializes with empty state."""
-    cache = IconCache()
+class TestIconCache:
+    """Tests for IconCache class."""
 
-    assert not cache.loaded
-    assert cache.icon_count == 0
-
-
-@pytest.mark.integration
-def test_icon_cache_load():
-    """Test loading icons from FoundryVTT file system."""
-    import os
-    from unittest.mock import patch, MagicMock
-
-    # Mock file system API response
-    mock_response = MagicMock()
-    mock_response.json.return_value = {
-        "success": True,
-        "files": [
-            {"name": "sword-steel.webp", "path": "icons/weapons/swords/sword-steel.webp", "type": "file"},
-            {"name": "fireball.webp", "path": "icons/magic/fire/fireball.webp", "type": "file"},
-            {"name": "plate-armor.webp", "path": "icons/equipment/chest/plate-armor.webp", "type": "file"}
+    @pytest.fixture
+    def mock_icon_files(self):
+        """Sample icon file paths from FoundryVTT."""
+        return [
+            "icons/weapons/swords/sword-steel.webp",
+            "icons/magic/fire/fireball.webp",
+            "icons/equipment/chest/plate-armor.webp"
         ]
-    }
-    mock_response.raise_for_status = MagicMock()
 
-    with patch('requests.get', return_value=mock_response):
+    def test_init(self):
+        """Should create empty cache."""
         cache = IconCache()
-        cache.load(
-            relay_url="http://test",
-            api_key="test_key",
-            client_id="test_client"
-        )
+
+        assert not cache.loaded
+        assert cache.icon_count == 0
+
+    @patch.object(IconCache, '_load_via_websocket')
+    def test_load(self, mock_ws_load, mock_icon_files):
+        """Should load icons from FoundryVTT via WebSocket."""
+        mock_ws_load.return_value = mock_icon_files
+
+        cache = IconCache()
+        cache.load()
 
         assert cache.loaded
         assert cache.icon_count == 3
         assert "icons/weapons/swords/sword-steel.webp" in cache._all_icons
+        mock_ws_load.assert_called_once()
+
+    @patch.object(IconCache, '_load_via_websocket')
+    def test_load_hierarchical_categorization(self, mock_ws_load, mock_icon_files):
+        """Should categorize icons by full directory hierarchy."""
+        mock_ws_load.return_value = mock_icon_files
+
+        cache = IconCache()
+        cache.load()
 
         # Test hierarchical categorization
         assert "weapons" in cache._icons_by_category
@@ -55,6 +58,30 @@ def test_icon_cache_load():
         assert "icons/weapons/swords/sword-steel.webp" in cache._icons_by_category["weapons/swords"]
         assert "icons/magic/fire/fireball.webp" in cache._icons_by_category["magic"]
         assert "icons/magic/fire/fireball.webp" in cache._icons_by_category["magic/fire"]
+
+    @patch.object(IconCache, '_load_via_websocket')
+    def test_get_icon_before_load(self, mock_ws_load):
+        """Should return None if called before load()."""
+        cache = IconCache()
+
+        # Should log warning and return None
+        assert cache.get_icon("sword") is None
+
+        # Should not have called fetch
+        mock_ws_load.assert_not_called()
+
+    @patch.object(IconCache, '_load_via_websocket')
+    def test_load_failure_raises_runtime_error(self, mock_ws_load):
+        """Should raise RuntimeError if WebSocket fetch fails (no fallback)."""
+        mock_ws_load.side_effect = ConnectionError("Backend not running")
+
+        cache = IconCache()
+
+        with pytest.raises(RuntimeError, match="IconCache WebSocket fetch failed"):
+            cache.load()
+
+        # Cache should not be marked as loaded
+        assert not cache.loaded
 
 
 def test_categorize_icon_preserves_all_hierarchy_levels():

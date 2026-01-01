@@ -138,17 +138,9 @@ class TestInnateSpellcastingConversion:
     @pytest.mark.integration
     @pytest.mark.requires_foundry
     @pytest.mark.asyncio
-    async def test_looks_up_spell_uuids_from_cache(self):
+    async def test_looks_up_spell_uuids_from_cache(self, require_foundry):
         """Should use SpellCache to get proper spell UUIDs."""
         from foundry.actors.spell_cache import SpellCache
-        from dotenv import load_dotenv
-        import os
-
-        load_dotenv()
-
-        # Skip if FoundryVTT not available
-        if not os.getenv("FOUNDRY_RELAY_URL"):
-            pytest.skip("FoundryVTT not configured")
 
         spell_cache = SpellCache()
         spell_cache.load()
