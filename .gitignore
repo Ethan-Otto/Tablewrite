@@ -42,6 +42,12 @@ Lost_Mine_of_Phandelver_Part1.xml
 temp_chunk_*.pdf
 dev_output/
 
+# Root clutter
+repomix-output.xml
+tree.txt
+parallel.env
+test_output.log
+
 # Pytest outputs
 test-results.xml
 .pytest_cache/
