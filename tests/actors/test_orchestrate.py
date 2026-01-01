@@ -16,7 +16,7 @@ from actors.orchestrate import (
     create_actors_batch_sync
 )
 from actors.models import StatBlock, ActorCreationResult
-from foundry.actors.models import ParsedActorData
+from foundry_converters.actors.models import ParsedActorData
 
 
 class TestCreateOutputDirectory:
