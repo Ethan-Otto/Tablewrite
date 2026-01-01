@@ -8,9 +8,17 @@ import sys
 import pytest
 from pathlib import Path
 
+from tests.foundry_init import ensure_foundry_ready as _ensure_foundry_ready
+
 
 def pytest_addoption(parser):
-    """Add --full flag to run entire test suite"""
+    """Add custom command line options."""
+    parser.addoption(
+        "--skip-foundry-init",
+        action="store_true",
+        default=False,
+        help="Skip Foundry initialization (useful for unit tests only)"
+    )
     parser.addoption(
         "--full",
         action="store_true",
@@ -21,11 +29,19 @@ def pytest_addoption(parser):
 
 def pytest_configure(config):
     """Configure test run based on flags"""
+    is_ci = os.getenv("CI", "").lower() == "true"
+
     if config.getoption("--full"):
         # Only clear default marker if no explicit -m flag was provided
         # Check if markexpr is the default from pytest.ini
         if config.option.markexpr == "(not integration and not slow) or smoke":
             config.option.markexpr = ""  # Run all tests
+
+    # In CI, exclude integration, slow, and requires_foundry tests
+    if is_ci and config.option.markexpr == "(not integration and not slow) or smoke":
+        # Override to exclude Foundry-dependent tests in CI
+        config.option.markexpr = "not integration and not slow and not requires_foundry"
+        print(f"\n[CI] Running with marker expression: {config.option.markexpr}")
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
@@ -65,6 +81,133 @@ def pytest_sessionfinish(session, exitstatus):
 
             # Re-run pytest with full suite
             sys.exit(pytest.main(["--full"] + sys.argv[1:]))
+
+
+# Store the initialization result at module level to avoid re-running
+_foundry_init_result = None
+_foundry_init_done = False
+
+
+@pytest.fixture(scope="session", autouse=True)
+def ensure_foundry_connected(request):
+    """
+    Session-scoped fixture that ensures Foundry is connected before tests run.
+
+    Runs automatically for smoke and full test runs. Skipped when:
+    - --skip-foundry-init flag is passed
+    - Running only unit tests (no smoke/integration markers)
+    - SKIP_FOUNDRY_INIT environment variable is set
+
+    If Foundry is not connected, this fixture will:
+    1. Start the backend if not running
+    2. Open/refresh Chrome to Foundry URL
+    3. Wait for Foundry module to connect via WebSocket
+    """
+    global _foundry_init_result, _foundry_init_done
+
+    # Skip if already initialized this session
+    if _foundry_init_done:
+        if _foundry_init_result and _foundry_init_result.get("error"):
+            pytest.fail(f"Foundry initialization failed: {_foundry_init_result['error']}")
+        yield _foundry_init_result
+        return
+
+    # Check skip conditions - including CI environment
+    is_ci = os.getenv("CI", "").lower() == "true"
+    skip_init = (
+        request.config.getoption("--skip-foundry-init", default=False)
+        or os.getenv("SKIP_FOUNDRY_INIT", "").lower() == "true"
+        or is_ci  # Always skip in CI - no Foundry available
+    )
+
+    if skip_init:
+        reason = "CI environment" if is_ci else "--skip-foundry-init or SKIP_FOUNDRY_INIT"
+        print(f"\nSkipping Foundry initialization ({reason})")
+        _foundry_init_done = True
+        yield None
+        return
+
+    # Check if any tests require Foundry (smoke, integration, or requires_foundry markers)
+    # or if running full suite
+    is_full_run = request.config.getoption("--full", default=False)
+    has_foundry_tests = False
+
+    for item in request.session.items:
+        if (item.get_closest_marker("smoke")
+            or item.get_closest_marker("integration")
+            or item.get_closest_marker("requires_foundry")):
+            has_foundry_tests = True
+            break
+
+    if not is_full_run and not has_foundry_tests:
+        print("\nNo smoke/integration/requires_foundry tests - skipping Foundry init")
+        _foundry_init_done = True
+        yield None
+        return
+
+    # Run initialization
+    _foundry_init_result = _ensure_foundry_ready()
+    _foundry_init_done = True
+
+    # If initialization failed, FAIL the test session with clear error
+    if _foundry_init_result.get("error"):
+        error_msg = _foundry_init_result["error"]
+        print("\n" + "=" * 70)
+        print("FOUNDRY INITIALIZATION FAILED")
+        print("=" * 70)
+        print(f"\nError: {error_msg}")
+        print("\nTo fix this issue:")
+        print("  1. Ensure FoundryVTT is running at http://localhost:30000")
+        print("  2. Enable the 'Tablewrite Assistant' module in FoundryVTT")
+        print("  3. Refresh the FoundryVTT page in your browser")
+        print("  4. Check that the backend is running: curl http://localhost:8000/health")
+        print("\nTo skip Foundry initialization (unit tests only):")
+        print("  uv run pytest --skip-foundry-init")
+        print("  # or: SKIP_FOUNDRY_INIT=true uv run pytest")
+        print("=" * 70 + "\n")
+
+        pytest.fail(
+            f"Foundry initialization failed: {error_msg}\n\n"
+            "Possible causes:\n"
+            "  - FoundryVTT is not running at http://localhost:30000\n"
+            "  - Tablewrite Assistant module is not enabled in FoundryVTT\n"
+            "  - Backend failed to start at http://localhost:8000\n"
+            "  - WebSocket connection timed out (waited 60s)\n\n"
+            "Run with --skip-foundry-init to skip Foundry tests."
+        )
+
+    yield _foundry_init_result
+
+    # Cleanup: terminate backend if we started it
+    if _foundry_init_result and _foundry_init_result.get("backend_process"):
+        print("\nTerminating backend process started by test session...")
+        _foundry_init_result["backend_process"].terminate()
+
+
+@pytest.fixture(scope="session")
+def foundry_status(ensure_foundry_connected):
+    """
+    Provides Foundry connection status for tests.
+
+    Use this fixture in tests that need to check Foundry connectivity.
+    """
+    return ensure_foundry_connected
+
+
+@pytest.fixture
+def require_foundry(ensure_foundry_connected):
+    """
+    Skip test if Foundry is not connected.
+
+    Use this fixture in tests that require a live Foundry connection.
+    """
+    if not ensure_foundry_connected:
+        pytest.skip("Foundry initialization was skipped")
+    if ensure_foundry_connected.get("error"):
+        pytest.skip(f"Foundry not available: {ensure_foundry_connected['error']}")
+    if not ensure_foundry_connected.get("foundry_connected"):
+        pytest.skip("Foundry is not connected")
+    return ensure_foundry_connected
 
 
 # Project root
@@ -161,21 +304,14 @@ def check_api_key():
 
 @pytest.fixture(scope="session")
 def check_foundry_credentials():
-    """Check if FoundryVTT API credentials are available."""
+    """Check if FoundryVTT backend connection is available."""
     from dotenv import load_dotenv
     load_dotenv(PROJECT_ROOT / ".env")
 
-    relay_url = os.getenv("FOUNDRY_RELAY_URL")
-    api_key = os.getenv("FOUNDRY_API_KEY")
-    client_id = os.getenv("FOUNDRY_CLIENT_ID")
-
-    if not all([relay_url, api_key, client_id]):
-        pytest.skip("FoundryVTT credentials not found. Set FOUNDRY_RELAY_URL, FOUNDRY_API_KEY, and FOUNDRY_CLIENT_ID in .env file.")
+    backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
 
     return {
-        "relay_url": relay_url,
-        "api_key": api_key,
-        "client_id": client_id
+        "backend_url": backend_url
     }
 
 

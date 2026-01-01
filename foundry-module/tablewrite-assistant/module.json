@@ -1,0 +1,25 @@
+{
+  "id": "tablewrite-assistant",
+  "title": "Tablewrite Assistant",
+  "description": "Create D&D content through natural language. Actors, journals, and scenes appear automatically.",
+  "version": "0.1.0",
+  "compatibility": {
+    "minimum": "11",
+    "verified": "12"
+  },
+  "authors": [
+    {
+      "name": "Ethan Otto"
+    }
+  ],
+  "esmodules": ["dist/main.js"],
+  "styles": ["styles/module.css"],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
+  "socket": true
+}

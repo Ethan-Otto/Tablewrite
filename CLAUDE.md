@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **NOTE:** Keep this file under 900 lines. Condense or move detailed docs to separate files if needed.
+
 ## Project Overview
 
 This is a D&D module converter that transforms official Dungeons & Dragons PDFs into structured XML assets for post-processing into FoundryVTT content. The pipeline uses Google's Gemini 2.5 Pro model for AI-powered document analysis and extraction.
@@ -68,13 +70,11 @@ uv run pytest tests/api/test_api_integration.py -v -m integration
    # Gemini API
    GeminiImageAPI=<your_gemini_api_key>
 
-   # FoundryVTT Configuration (optional - for journal upload)
-   FOUNDRY_RELAY_URL=https://foundryvtt-rest-api-relay.fly.dev
+   # FoundryVTT Configuration (for WebSocket communication)
    FOUNDRY_URL=http://localhost:30000
    FOUNDRY_API_KEY=<your_foundry_api_key>
    FOUNDRY_CLIENT_ID=<your_client_id>
    FOUNDRY_AUTO_UPLOAD=false
-   FOUNDRY_TARGET=local
    ```
 
 4. **Source PDFs**: Place D&D module PDFs in `data/pdfs/` (default expects `Lost_Mine_of_Phandelver.pdf`)
@@ -298,7 +298,7 @@ The system follows a four-stage pipeline (orchestrated by `scripts/full_pipeline
 The project includes full integration with FoundryVTT for uploading and exporting journal entries.
 
 **Architecture:**
-- Uses ThreeHats REST API module (relay server → WebSocket → FoundryVTT)
+- Uses direct WebSocket connection via Tablewrite Foundry module (Backend → WebSocket → FoundryVTT)
 - `src/foundry/client.py`: Base `FoundryClient` class with API configuration
 - `src/foundry/journals.py`: `JournalManager` class with all journal CRUD operations
 - `src/foundry/upload_to_foundry.py`: Batch upload script
@@ -484,23 +484,119 @@ results = create_actors_batch_sync(["dragon", "goblin"], challenge_ratings=[2.0,
 
 **Output**: `output/runs/<timestamp>/actors/` with `01_raw_stat_block.txt`, `02_stat_block.json`, `03_parsed_actor_data.json`, `04_foundry_actor.json`
 
-### Self-Hosted Relay Server
+### Backend API & WebSocket Architecture
 
-The project uses a **self-hosted local relay server** for local development.
+The backend provides both REST API endpoints and WebSocket communication for FoundryVTT integration.
 
-**Quick Setup:**
+**Backend Location:** `ui/backend/`
+
+**Quick Start:**
 ```bash
-cd relay-server && docker-compose -f docker-compose.local.yml up -d
-curl http://localhost:3010/health
-uv run python scripts/test_relay_connection.py
+cd ui/backend && uvicorn app.main:app --reload --port 8000
 ```
 
-**Configuration:**
-- Relay URL: `http://localhost:3010` (set in `.env` as `FOUNDRY_RELAY_URL`)
-- Database: In-memory (bypasses authentication)
-- Built from source for Apple Silicon (ARM64) compatibility
+#### REST API Endpoints
 
-See `reference/RELAY_SERVER_SETUP.md` for complete documentation.
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/foundry/status` | GET | Check WebSocket connection status |
+| `/api/foundry/actor` | POST | Create actor from FoundryVTT JSON |
+| `/api/foundry/actor/{uuid}` | GET | Fetch actor by UUID |
+| `/api/foundry/actor/{uuid}` | DELETE | Delete actor by UUID |
+| `/api/foundry/actor/{uuid}/items` | POST | Add compendium items to actor (give) |
+| `/api/foundry/actors` | GET | List all world actors |
+| `/api/foundry/journal` | POST | Create journal entry |
+| `/api/foundry/journal/{uuid}` | DELETE | Delete journal entry |
+| `/api/foundry/search` | GET | Search compendiums |
+| `/api/foundry/compendium` | GET | List all compendium items |
+| `/api/foundry/files` | GET | List files in Foundry |
+| `/api/actors/create` | POST | Create actor from description (AI pipeline) |
+
+**Example Usage:**
+```python
+import requests
+
+# Create actor
+response = requests.post("http://localhost:8000/api/foundry/actor", json={
+    "actor": {"name": "Goblin", "type": "npc", ...}
+})
+
+# Give items to actor (add spells from compendium)
+response = requests.post(f"http://localhost:8000/api/foundry/actor/{uuid}/items", json={
+    "item_uuids": ["Compendium.dnd5e.spells.Item.fireball", ...]
+})
+```
+
+#### WebSocket Endpoint
+
+**Endpoint:** `WS /ws/foundry`
+
+**Protocol:**
+- **Connect:** Client receives `{"type": "connected", "client_id": "..."}`
+- **Ping/Pong:** Send `{"type": "ping"}` -> Receive `{"type": "pong"}`
+- **Request/Response:** Include `request_id` for correlation
+
+**Message Types:**
+| Type | Direction | Description |
+|------|-----------|-------------|
+| `actor` | Backend → Foundry | Create actor |
+| `get_actor` | Backend → Foundry | Fetch actor |
+| `delete_actor` | Backend → Foundry | Delete actor |
+| `list_actors` | Backend → Foundry | List world actors |
+| `give_items` | Backend → Foundry | Add compendium items to actor |
+| `journal` | Backend → Foundry | Create journal |
+| `search_items` | Backend → Foundry | Search compendiums |
+| `list_compendium_items` | Backend → Foundry | List all items of type |
+| `list_files` | Backend → Foundry | Browse file system |
+
+**Python Usage (from backend):**
+```python
+from app.websocket import push_actor, give_items, fetch_actor, list_actors
+
+# Create actor
+result = await push_actor({"name": "Goblin", "type": "npc", ...})
+# result.uuid = "Actor.abc123"
+
+# Add spells to actor
+result = await give_items(
+    actor_uuid="Actor.abc123",
+    item_uuids=["Compendium.dnd5e.spells.Item.fireball"]
+)
+# result.items_added = 1
+
+# Fetch actor data
+result = await fetch_actor("Actor.abc123")
+# result.entity = {...}
+```
+
+#### Foundry Module
+
+The `foundry-module/tablewrite-assistant/` directory contains the FoundryVTT module that:
+1. Connects to backend WebSocket on startup
+2. Receives messages and executes Foundry API calls
+3. Handles: `Actor.create()`, `JournalEntry.create()`, `Scene.create()`, `createEmbeddedDocuments()`
+4. Shows notifications when content is created
+
+**Installation:**
+1. Copy `foundry-module/tablewrite-assistant/` to your Foundry `Data/modules/` directory
+2. Enable "Tablewrite Assistant" module in Foundry
+3. Configure backend URL in module settings (default: `http://localhost:8000`)
+
+**Module Handlers:** (`src/handlers/`)
+- `actor.ts`: handleActorCreate, handleGetActor, handleDeleteActor, handleListActors, handleGiveItems
+- `journal.ts`: handleJournalCreate, handleJournalDelete
+- `scene.ts`: handleSceneCreate
+- `items.ts`: handleSearchItems, handleGetItem, handleListCompendiumItems
+- `files.ts`: handleListFiles
+
+**Testing:**
+```bash
+# Backend tests
+cd ui/backend && uv run pytest -v
+
+# Module build
+cd foundry-module/tablewrite-assistant && npm run build
+```
 
 ### Scene Extraction & Artwork Generation
 
@@ -703,13 +799,35 @@ tests/
 
 ```bash
 pytest                                      # Smoke tests only (<2 min) - DEFAULT
-pytest --full                               # Full suite (~35 min)
+pytest --full                               # Full suite (~50 min)
 pytest -m "not integration and not slow"    # Unit tests only
 pytest -m integration                       # Integration tests (cost money)
 AUTO_ESCALATE=false pytest                  # Disable auto-escalation on failure
 ```
 
 **Smoke tests** cover: PDF Processing, Actor Creation, FoundryVTT Integration, XMLDocument Parsing, Image Asset Processing, Public API
+
+### REQUIRED: Full Test Suite Before PR
+
+**The full test suite (`pytest --full`) MUST pass before creating a PR.**
+
+This is non-negotiable. The default `pytest` command only runs smoke tests (~338 tests, ~2 min). The full suite (~420 tests, ~50 min) includes critical integration tests that verify:
+- Real FoundryVTT WebSocket communication
+- Real Gemini API calls
+- End-to-end actor creation pipeline
+- Map extraction with real PDFs
+
+```bash
+# Before creating any PR, run:
+uv run pytest --full -x  # -x stops on first failure
+
+# Requirements:
+# 1. Backend running: cd ui/backend && uvicorn app.main:app --reload
+# 2. FoundryVTT running with Tablewrite module connected
+# 3. Valid .env with API keys
+```
+
+**If integration tests fail, fix them before PR. Never skip or ignore failures.**
 
 ### Test Markers
 
@@ -718,6 +836,30 @@ AUTO_ESCALATE=false pytest                  # Disable auto-escalation on failure
 - `@pytest.mark.integration`: Real Gemini API calls (consume quota, cost money)
 - `@pytest.mark.slow`: Slow tests (API calls, large file processing)
 - `@pytest.mark.requires_api`: Tests requiring Gemini API key
+
+### Integration Test Requirements
+
+**IMPORTANT:** Integration tests that require Foundry connection MUST FAIL (not skip) if Foundry is not connected. Use explicit assertions with clear error messages:
+
+```python
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_create_actor():
+    from foundry import FoundryClient
+
+    client = FoundryClient()
+
+    # FAIL with actionable message - never skip silently
+    assert client.is_connected, "Foundry not connected - start backend and connect Foundry module"
+
+    result = await client.actors.create({"name": "Test", "type": "npc"})
+    assert result.success, f"Failed to create actor: {result.error}"
+```
+
+**Why fail instead of skip?**
+- Skipping hides broken functionality
+- CI/CD should catch missing connections
+- Clear failure messages guide developers to fix the issue
 
 ### Key Fixtures (from `conftest.py`)
 
@@ -732,6 +874,7 @@ AUTO_ESCALATE=false pytest                  # Disable auto-escalation on failure
 2. **Use fixtures**: Import from `conftest.py`
 3. **Mark appropriately**: Use `@pytest.mark.integration` for API calls
 4. **Test real behavior**: Integration tests make REAL Gemini API calls (not mocked)
+5. **REQUIRED: Integration test for every feature**: Every new feature MUST have an integration test that covers its full functionality with real data. Unit tests with mocks are not sufficient - the integration test must exercise the actual API/service.
 
 **Integration Test Warning:** Tests marked `@pytest.mark.integration` consume API quota and cost money. Run unit tests only for fast feedback: `uv run pytest -m "not integration and not slow"`
 
@@ -748,27 +891,10 @@ AUTO_ESCALATE=false pytest                  # Disable auto-escalation on failure
 - Avoid unnecessary complexity - use straightforward solutions
 - Clear is better than compact - favor explicit, readable code
 
-**From AGENTS.md:**
-- **Style**: PEP 8 with 4-space indentation, snake_case names, UPPER_SNAKE_CASE for constants
-- **Module Naming**: `verb_noun.py` pattern (e.g., `split_pdf.py`, `get_toc.py`)
-- **Strings**: Prefer f-strings
-- **Validation**: Early validation of external resources
-- **Helpers**: Keep helpers near call sites, confine I/O to small adapters
-- **Docstrings**: Concise module-level docstrings for entry points
+**Style:** PEP 8, 4-space indentation, snake_case, f-strings, `verb_noun.py` module naming
 
 ## Commit Style
 
-Based on git history:
-- Short, imperative mood summaries ("added requirements.txt", "updated", "fixes")
+- Short, imperative mood summaries
 - Group related changes
-- Mention impacted scripts
-
-## Future Development Notes
-
-- README mentions long-term goal: map XML to FoundryVTT module manifests
-- Need to normalize XML schema before building Foundry exporter
-- Consider adding pytest suites under `tests/` directory
-- Mock Gemini calls for offline testing
-- Use fixtures from `xml_examples/` or trimmed pages
-- "whenever creating a new worktree cp the .env file
-- If there is a failure, report with big red X, especially if you plan on showing greencheck marks
+- When creating new worktree, copy the `.env` file

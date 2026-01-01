@@ -1,0 +1,31 @@
+# Tablewrite Backend - Docker Compose Configuration
+# D&D Module Assistant with WebSocket support for FoundryVTT
+#
+# Usage:
+#   docker-compose -f docker-compose.tablewrite.yml up -d
+#
+# Prerequisites:
+#   - Create .env file with GEMINI_API_KEY (or GeminiImageAPI)
+#   - Optional: FOUNDRY_* variables for FoundryVTT integration
+
+services:
+  tablewrite:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tablewrite
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      # Persist data and output directories
+      - ./data:/app/data
+      - ./output:/app/output
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

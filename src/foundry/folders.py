@@ -1,30 +1,27 @@
-"""FoundryVTT Folder operations."""
+"""FoundryVTT Folder operations via WebSocket backend."""
 
 import logging
-import requests
 import sys
-from typing import Dict, Any, Optional, Literal
+from typing import Dict, Optional, Literal
 
 logger = logging.getLogger(__name__)
 
 
 class FolderManager:
-    """Manages folder operations for FoundryVTT."""
+    """Manages folder operations for FoundryVTT via WebSocket backend.
 
-    def __init__(self, relay_url: str, foundry_url: str, api_key: str, client_id: str):
+    NOTE: Folder operations via WebSocket backend are not yet implemented.
+    All methods raise NotImplementedError until backend endpoints are added.
+    """
+
+    def __init__(self, backend_url: str):
         """
         Initialize folder manager.
 
         Args:
-            relay_url: URL of the relay server
-            foundry_url: URL of the FoundryVTT instance
-            api_key: API key for authentication
-            client_id: Client ID for the FoundryVTT instance
+            backend_url: URL of the FastAPI backend (e.g., http://localhost:8000)
         """
-        self.relay_url = relay_url
-        self.foundry_url = foundry_url
-        self.api_key = api_key
-        self.client_id = client_id
+        self.backend_url = backend_url
         self._folder_cache: Dict[tuple[str, str], str] = {}  # (type, name) -> folder_id
 
     def get_or_create_folder(
@@ -35,35 +32,19 @@ class FolderManager:
         """
         Get existing folder by name or create it if it doesn't exist.
 
+        NOTE: This functionality requires backend endpoints that are not yet implemented.
+
         Args:
             name: Folder name
             folder_type: Type of entities this folder will contain
-                        ("Actor", "JournalEntry", "Item", "Scene")
-
-        Returns:
-            Folder ID
 
         Raises:
-            RuntimeError: If folder operations fail
+            NotImplementedError: Backend endpoints not yet implemented
         """
-        # Check cache first
-        cache_key = (folder_type, name)
-        if cache_key in self._folder_cache:
-            logger.debug(f"Using cached folder ID for '{name}' ({folder_type})")
-            return self._folder_cache[cache_key]
-
-        # Search for existing folder
-        folder_id = self.search_folder(name, folder_type)
-        if folder_id:
-            logger.info(f"Found existing folder: '{name}' ({folder_type}) - {folder_id}")
-            self._folder_cache[cache_key] = folder_id
-            return folder_id
-
-        # Create new folder
-        folder_id = self.create_folder(name, folder_type)
-        logger.info(f"Created new folder: '{name}' ({folder_type}) - {folder_id}")
-        self._folder_cache[cache_key] = folder_id
-        return folder_id
+        raise NotImplementedError(
+            "Folder operations via WebSocket backend not yet implemented. "
+            "Add /api/foundry/folder endpoints to backend."
+        )
 
     def search_folder(
         self,
@@ -71,55 +52,21 @@ class FolderManager:
         folder_type: Literal["Actor", "JournalEntry", "Item", "Scene"]
     ) -> Optional[str]:
         """
-        Get a folder by name and type using the /get-folder endpoint.
+        Get a folder by name and type.
+
+        NOTE: This functionality requires a backend endpoint that is not yet implemented.
 
         Args:
             name: Folder name to search for
             folder_type: Type of entities the folder contains
 
-        Returns:
-            Folder ID if found, None otherwise
+        Raises:
+            NotImplementedError: Backend endpoint not yet implemented
         """
-        url = f"{self.relay_url}/get-folder"
-
-        headers = {
-            "x-api-key": self.api_key,
-            "Content-Type": "application/json"
-        }
-
-        params = {
-            "clientId": self.client_id,
-            "name": name
-        }
-
-        logger.debug(f"Getting folder: {name} ({folder_type})")
-
-        try:
-            response = requests.get(url, params=params, headers=headers, timeout=30)
-
-            if response.status_code == 404:
-                logger.debug(f"Folder not found: {name}")
-                return None
-
-            if response.status_code != 200:
-                logger.warning(f"Get folder failed: {response.status_code} - {response.text}")
-                return None
-
-            result = response.json()
-            data = result.get("data", {})
-
-            # Check if the folder type matches
-            if data.get("type") == folder_type:
-                folder_id = data.get("id")
-                logger.debug(f"Found folder: {name} ({folder_type}) - {folder_id}")
-                return folder_id
-            else:
-                logger.debug(f"Folder found but type mismatch: expected {folder_type}, got {data.get('type')}")
-                return None
-
-        except Exception as e:
-            logger.warning(f"Get folder failed: {e}")
-            return None
+        raise NotImplementedError(
+            "Folder search via WebSocket backend not yet implemented. "
+            "Add GET /api/foundry/folder endpoint to backend."
+        )
 
     def create_folder(
         self,
@@ -127,55 +74,21 @@ class FolderManager:
         folder_type: Literal["Actor", "JournalEntry", "Item", "Scene"]
     ) -> str:
         """
-        Create a new folder using the /create-folder endpoint.
+        Create a new folder.
+
+        NOTE: This functionality requires a backend endpoint that is not yet implemented.
 
         Args:
             name: Folder name
             folder_type: Type of entities this folder will contain
 
-        Returns:
-            Folder ID
-
         Raises:
-            RuntimeError: If creation fails
+            NotImplementedError: Backend endpoint not yet implemented
         """
-        url = f"{self.relay_url}/create-folder"
-
-        headers = {
-            "x-api-key": self.api_key,
-            "Content-Type": "application/json"
-        }
-
-        payload = {
-            "clientId": self.client_id,
-            "name": name,
-            "folderType": folder_type
-        }
-
-        logger.debug(f"Creating folder: {name} ({folder_type})")
-
-        try:
-            response = requests.post(url, json=payload, headers=headers, timeout=30)
-
-            if response.status_code != 200:
-                logger.error(f"Folder creation failed: {response.status_code} - {response.text}")
-                raise RuntimeError(
-                    f"Failed to create folder: {response.status_code} - {response.text}"
-                )
-
-            result = response.json()
-            folder_id = result.get("data", {}).get("id")
-
-            if not folder_id:
-                logger.error(f"No folder ID in response: {result}")
-                raise RuntimeError("Failed to get folder ID from response")
-
-            logger.info(f"Created folder: {name} ({folder_type}) - {folder_id}")
-            return folder_id
-
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Folder creation request failed: {e}")
-            raise RuntimeError(f"Failed to create folder: {e}") from e
+        raise NotImplementedError(
+            "Folder creation via WebSocket backend not yet implemented. "
+            "Add POST /api/foundry/folder endpoint to backend."
+        )
 
 
 def is_running_in_tests() -> bool:

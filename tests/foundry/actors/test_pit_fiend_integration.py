@@ -199,8 +199,9 @@ class TestPitFiendIntegration:
         downloaded = client.actors.get_actor(actor_uuid)
 
         assert downloaded["name"] == "Pit Fiend"
-        # Should have 13 items total (9 from payload + 4 spells added via /give)
+        # 9 items from payload + 4 spells added via /give = 13 items
         assert len(downloaded["items"]) == 13
+        assert len(spell_uuids) == 4  # Spells returned separately (and added via /give)
 
         # Verify all weapons are present (not just count)
         uploaded_weapons = {i["name"] for i in foundry_json["items"] if i["type"] == "weapon"}

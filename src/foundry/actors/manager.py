@@ -1,4 +1,4 @@
-"""FoundryVTT Actor operations."""
+"""FoundryVTT Actor operations via WebSocket backend."""
 
 import logging
 import requests
@@ -7,42 +7,25 @@ from typing import Optional, Dict, Any, List
 logger = logging.getLogger(__name__)
 
 
-def _is_running_in_tests() -> bool:
-    """Check if running in pytest."""
-    import sys
-    return "pytest" in sys.modules
-
-
 class ActorManager:
-    """Manages actor operations for FoundryVTT."""
+    """Manages actor operations for FoundryVTT via WebSocket backend.
 
-    def __init__(
-        self,
-        relay_url: str,
-        foundry_url: str,
-        api_key: str,
-        client_id: str,
-        folder_manager: Optional[Any] = None
-    ):
+    All operations go through the FastAPI backend HTTP API, which internally
+    uses WebSocket to communicate with FoundryVTT. The relay server is no longer used.
+    """
+
+    def __init__(self, backend_url: str):
         """
         Initialize actor manager.
 
         Args:
-            relay_url: URL of the relay server
-            foundry_url: URL of the FoundryVTT instance
-            api_key: API key for authentication
-            client_id: Client ID for the FoundryVTT instance
-            folder_manager: Optional FolderManager instance for organizing actors
+            backend_url: URL of the FastAPI backend (e.g., http://localhost:8000)
         """
-        self.relay_url = relay_url
-        self.foundry_url = foundry_url
-        self.api_key = api_key
-        self.client_id = client_id
-        self.folder_manager = folder_manager
+        self.backend_url = backend_url
 
     def search_all_compendiums(self, name: str) -> Optional[str]:
         """
-        Search all user compendiums for actor by name.
+        Search all compendiums for actor by name.
 
         Args:
             name: Actor name to search for
@@ -50,41 +33,32 @@ class ActorManager:
         Returns:
             Actor UUID if found, None otherwise
         """
-        url = f"{self.relay_url}/search"
+        endpoint = f"{self.backend_url}/api/foundry/search"
 
-        headers = {
-            "x-api-key": self.api_key,
-            "Content-Type": "application/json"
-        }
-
-        # Use filter parameter (not type) for Actor filtering
         params = {
-            "clientId": self.client_id,
-            "filter": "Actor",
-            "query": name
+            "query": name,
+            "document_type": "Actor"
         }
 
         logger.debug(f"Searching for actor: {name}")
 
         try:
-            response = requests.get(url, params=params, headers=headers, timeout=30)
+            response = requests.get(endpoint, params=params, timeout=30)
 
             if response.status_code != 200:
                 logger.warning(f"Actor search failed: {response.status_code}")
                 return None
 
-            results = response.json()
+            data = response.json()
 
-            # Handle empty results
-            if not results or (isinstance(results, dict) and results.get("error")):
+            if not data.get("success"):
                 logger.debug(f"No actor found with name: {name}")
                 return None
 
-            # Handle both list and dict response formats
-            search_results = results if isinstance(results, list) else results.get("results", [])
+            results = data.get("results", [])
 
             # Find exact name match
-            for actor in search_results:
+            for actor in results:
                 if actor.get("name") == name:
                     uuid = actor.get("uuid")
                     logger.debug(f"Found actor: {name} (UUID: {uuid})")
@@ -101,6 +75,9 @@ class ActorManager:
         """
         Create a creature Actor from a stat block.
 
+        NOTE: This method requires a backend endpoint for raw actor creation.
+        For now, use the /api/actors/create endpoint with a description instead.
+
         Args:
             stat_block: Parsed StatBlock object
 
@@ -108,79 +85,18 @@ class ActorManager:
             Actor UUID
 
         Raises:
-            RuntimeError: If creation fails
+            NotImplementedError: Raw actor creation endpoint not yet implemented
         """
-        url = f"{self.relay_url}/create?clientId={self.client_id}"
-
-        headers = {
-            "x-api-key": self.api_key,
-            "Content-Type": "application/json"
-        }
-
-        # Map stat block to D&D 5e Actor structure
-        actor_data = {
-            "name": stat_block.name,
-            "type": "npc",
-            "system": {
-                "attributes": {
-                    "ac": {"value": stat_block.armor_class},
-                    "hp": {
-                        "value": stat_block.hit_points,
-                        "max": stat_block.hit_points
-                    }
-                },
-                "details": {
-                    "cr": stat_block.challenge_rating,
-                    "type": {
-                        "value": stat_block.type or "",
-                        "subtype": ""
-                    },
-                    "alignment": stat_block.alignment or "",
-                    "biography": {
-                        "value": f"<pre>{stat_block.raw_text}</pre>"
-                    }
-                }
-            }
-        }
-
-        # Add abilities if present
-        if stat_block.abilities:
-            actor_data["system"]["abilities"] = {
-                ability.lower(): {"value": value}
-                for ability, value in stat_block.abilities.items()
-            }
-
-        payload = {
-            "entityType": "Actor",
-            "data": actor_data
-        }
-
-        logger.debug(f"Creating creature actor: {stat_block.name}")
-
-        try:
-            response = requests.post(url, json=payload, headers=headers, timeout=30)
-
-            if response.status_code != 200:
-                logger.error(f"Failed to create actor: {response.status_code} - {response.text}")
-                raise RuntimeError(
-                    f"Failed to create actor: {response.status_code} - {response.text}"
-                )
-
-            result = response.json()
-            uuid = result.get("uuid")
-            logger.info(f"Created creature actor: {stat_block.name} (UUID: {uuid})")
-            return uuid
-
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Actor creation request failed: {e}")
-            raise RuntimeError(f"Failed to create actor: {e}") from e
+        raise NotImplementedError(
+            "Raw actor creation via WebSocket backend not yet implemented. "
+            "Use create_actor() with actor_data dict, or /api/actors/create with description."
+        )
 
     def create_npc_actor(self, npc, stat_block_uuid: Optional[str] = None) -> str:
         """
         Create an NPC Actor with biography and optional stat block link.
 
-        NPCs are bio-only Actors with no stats. If stat_block_uuid provided,
-        biography includes @UUID link to the creature's stat block.
+        NOTE: This method requires a backend endpoint for raw actor creation.
 
         Args:
             npc: NPC object with description and plot info
@@ -190,86 +106,26 @@ class ActorManager:
             Actor UUID
 
         Raises:
-            RuntimeError: If creation fails
+            NotImplementedError: Raw actor creation endpoint not yet implemented
         """
-        url = f"{self.relay_url}/create?clientId={self.client_id}"
-
-        headers = {
-            "x-api-key": self.api_key,
-            "Content-Type": "application/json"
-        }
-
-        # Build biography HTML
-        bio_parts = [
-            f"<h2>{npc.name}</h2>",
-            f"<p><strong>Description:</strong> {npc.description}</p>",
-            f"<p><strong>Plot Role:</strong> {npc.plot_relevance}</p>"
-        ]
-
-        if npc.location:
-            bio_parts.append(f"<p><strong>Location:</strong> {npc.location}</p>")
-
-        if stat_block_uuid:
-            bio_parts.append(
-                f'<p><strong>Creature Stats:</strong> '
-                f'@UUID[{stat_block_uuid}]{{View {npc.creature_stat_block_name} stats}}</p>'
-            )
-
-        bio_html = "\n".join(bio_parts)
-
-        # Create bio-only NPC actor (no stats)
-        actor_data = {
-            "name": npc.name,
-            "type": "npc",
-            "system": {
-                "details": {
-                    "biography": {
-                        "value": bio_html
-                    }
-                }
-            }
-        }
-
-        payload = {
-            "entityType": "Actor",
-            "data": actor_data
-        }
-
-        logger.debug(f"Creating NPC actor: {npc.name}")
-
-        try:
-            response = requests.post(url, json=payload, headers=headers, timeout=30)
-
-            if response.status_code != 200:
-                logger.error(f"Failed to create NPC: {response.status_code} - {response.text}")
-                raise RuntimeError(
-                    f"Failed to create NPC: {response.status_code} - {response.text}"
-                )
-
-            result = response.json()
-            uuid = result.get("uuid")
-            logger.info(f"Created NPC actor: {npc.name} (UUID: {uuid})")
-            return uuid
-
-        except requests.exceptions.RequestException as e:
-            logger.error(f"NPC creation request failed: {e}")
-            raise RuntimeError(f"Failed to create NPC: {e}") from e
+        raise NotImplementedError(
+            "Raw NPC creation via WebSocket backend not yet implemented. "
+            "Use create_actor() with actor_data dict instead."
+        )
 
     def create_actor(self, actor_data: Dict[str, Any], spell_uuids: list[str] = None) -> str:
         """
         Create an Actor from pre-built FoundryVTT JSON format.
 
         This method accepts a complete FoundryVTT actor JSON structure
-        (as produced by convert_to_foundry) and uploads it to FoundryVTT.
-        Optionally adds compendium spells via /give endpoint after creation.
-
-        When running in pytest, automatically creates actors in a "tests" folder.
+        (as produced by convert_to_foundry) and uploads it to FoundryVTT
+        via the backend's WebSocket connection.
 
         Args:
             actor_data: Complete FoundryVTT actor JSON with 'name', 'type',
                        'system', 'items', etc.
-            spell_uuids: Optional list of compendium spell UUIDs to add via /give
-                        (recommended for full spell data)
+            spell_uuids: Optional list of compendium spell UUIDs to add
+                        (NOTE: not yet implemented via WebSocket)
 
         Returns:
             Actor UUID
@@ -277,51 +133,44 @@ class ActorManager:
         Raises:
             RuntimeError: If creation fails
         """
-        # Auto-organize test actors into "tests" folder
-        folder_id = None
-        if _is_running_in_tests() and self.folder_manager:
-            try:
-                folder_id = self.folder_manager.get_or_create_folder("tests", "Actor")
-                logger.debug("Adding actor to 'tests' folder (running in pytest)")
-            except Exception as e:
-                logger.warning(f"Failed to set test folder: {e}")
-
-        url = f"{self.relay_url}/create?clientId={self.client_id}"
-
-        headers = {
-            "x-api-key": self.api_key,
-            "Content-Type": "application/json"
-        }
-
-        payload = {
-            "entityType": "Actor",
-            "data": actor_data
-        }
-
-        # Add folder at top level of payload if needed
-        if folder_id:
-            payload["folder"] = folder_id
+        # Use the backend's direct actor push endpoint
+        # This bypasses the description-based pipeline and sends raw actor data
+        endpoint = f"{self.backend_url}/api/foundry/actor"
 
         actor_name = actor_data.get("name", "Unknown")
         logger.debug(f"Creating actor: {actor_name}")
 
         try:
-            response = requests.post(url, json=payload, headers=headers, timeout=30)
+            response = requests.post(
+                endpoint,
+                json={"actor": actor_data},
+                timeout=60
+            )
 
             if response.status_code != 200:
-                logger.error(f"Failed to create actor: {response.status_code} - {response.text}")
+                error_detail = response.text
+                logger.error(f"Failed to create actor: {response.status_code} - {error_detail}")
                 raise RuntimeError(
-                    f"Failed to create actor: {response.status_code} - {response.text}"
+                    f"Failed to create actor: {response.status_code} - {error_detail}"
                 )
 
             result = response.json()
+
+            if not result.get("success"):
+                error = result.get("error", "Unknown error")
+                raise RuntimeError(f"Failed to create actor: {error}")
+
             uuid = result.get("uuid")
             logger.info(f"Created actor: {actor_name} (UUID: {uuid})")
 
-            # Add compendium spells via /give if provided
+            # Add spells via /give if provided
             if spell_uuids:
-                logger.info(f"Adding {len(spell_uuids)} compendium spells via /give...")
-                self.add_compendium_items(uuid, spell_uuids)
+                try:
+                    self.add_compendium_items(uuid, spell_uuids)
+                    logger.info(f"Added {len(spell_uuids)} spells to {actor_name}")
+                except Exception as e:
+                    logger.warning(f"Failed to add spells to {actor_name}: {e}")
+                    # Don't fail the whole operation if spells can't be added
 
             return uuid
 
@@ -342,29 +191,29 @@ class ActorManager:
         Raises:
             RuntimeError: If retrieval fails
         """
-        url = f"{self.relay_url}/get?clientId={self.client_id}&uuid={actor_uuid}"
-
-        headers = {
-            "x-api-key": self.api_key,
-            "Content-Type": "application/json"
-        }
+        endpoint = f"{self.backend_url}/api/foundry/actor/{actor_uuid}"
 
         logger.debug(f"Retrieving actor: {actor_uuid}")
 
         try:
-            response = requests.get(url, headers=headers, timeout=30)
+            response = requests.get(endpoint, timeout=30)
+
+            if response.status_code == 404:
+                raise RuntimeError(f"Actor not found: {actor_uuid}")
 
             if response.status_code != 200:
-                logger.error(f"Failed to retrieve actor: {response.status_code} - {response.text}")
+                error_detail = response.text
+                logger.error(f"Failed to retrieve actor: {response.status_code} - {error_detail}")
                 raise RuntimeError(
-                    f"Failed to retrieve actor: {response.status_code} - {response.text}"
+                    f"Failed to retrieve actor: {response.status_code} - {error_detail}"
                 )
 
-            response_data = response.json()
+            result = response.json()
 
-            # Extract actor data from response envelope
-            actor_data = response_data.get("data", response_data)
+            if not result.get("success"):
+                raise RuntimeError(f"Failed to retrieve actor: {result.get('error')}")
 
+            actor_data = result.get("entity", {})
             actor_name = actor_data.get("name", "Unknown")
             logger.info(f"Retrieved actor: {actor_name} (UUID: {actor_uuid})")
             return actor_data
@@ -373,116 +222,94 @@ class ActorManager:
             logger.error(f"Actor retrieval request failed: {e}")
             raise RuntimeError(f"Failed to retrieve actor: {e}") from e
 
-    def add_compendium_items(self, actor_uuid: str, item_uuids: list[str]) -> None:
+    def add_compendium_items(self, actor_uuid: str, item_uuids: list[str]) -> int:
         """
-        Add compendium items to an actor using the /give endpoint.
+        Add compendium items to an actor.
 
-        This method adds items from compendiums (typically spells) to an existing
-        actor. Items added this way retain full compendium data including
-        descriptions, activities, and damage formulas.
+        Fetches items from compendiums by UUID and adds them to the actor
+        using the WebSocket /give message.
 
         Args:
             actor_uuid: UUID of the actor to add items to
             item_uuids: List of compendium item UUIDs to add
 
+        Returns:
+            Number of items successfully added
+
         Raises:
-            RuntimeError: If any item addition fails
+            RuntimeError: If the request fails
         """
-        url = f"{self.relay_url}/give"
+        if not item_uuids:
+            return 0
 
-        headers = {
-            "x-api-key": self.api_key,
-            "Content-Type": "application/json"
-        }
+        endpoint = f"{self.backend_url}/api/foundry/actor/{actor_uuid}/items"
 
-        failed_items = []
+        logger.debug(f"Adding {len(item_uuids)} items to actor: {actor_uuid}")
 
-        for item_uuid in item_uuids:
-            payload = {
-                "toUuid": actor_uuid,
-                "itemUuid": item_uuid,
-                "selected": False
-            }
-
-            try:
-                response = requests.post(
-                    f"{url}?clientId={self.client_id}",
-                    json=payload,
-                    headers=headers,
-                    timeout=30
-                )
-
-                if response.status_code != 200:
-                    logger.warning(f"Failed to add item {item_uuid}: {response.status_code}")
-                    failed_items.append(item_uuid)
-                else:
-                    logger.debug(f"Added compendium item: {item_uuid}")
-
-            except requests.exceptions.RequestException as e:
-                logger.warning(f"Failed to add item {item_uuid}: {e}")
-                failed_items.append(item_uuid)
-
-        if failed_items:
-            raise RuntimeError(
-                f"Failed to add {len(failed_items)}/{len(item_uuids)} compendium items"
+        try:
+            response = requests.post(
+                endpoint,
+                json={"item_uuids": item_uuids},
+                timeout=60
             )
 
-        logger.info(f"Successfully added {len(item_uuids)} compendium items to actor {actor_uuid}")
+            if response.status_code != 200:
+                error_detail = response.text
+                logger.error(f"Failed to add items: {response.status_code} - {error_detail}")
+                raise RuntimeError(
+                    f"Failed to add items: {response.status_code} - {error_detail}"
+                )
+
+            result = response.json()
+
+            if not result.get("success"):
+                raise RuntimeError(f"Failed to add items: {result.get('error')}")
+
+            items_added = result.get("items_added", 0)
+            errors = result.get("errors", [])
+
+            if errors:
+                logger.warning(f"Some items failed to add: {errors}")
+
+            logger.info(f"Added {items_added} items to actor {actor_uuid}")
+            return items_added
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Add items request failed: {e}")
+            raise RuntimeError(f"Failed to add items: {e}") from e
 
     def get_all_actors(self) -> List[Dict[str, Any]]:
         """
-        Get all world actors using multiple search queries.
-
-        Note: The search API requires a non-empty query to return world actors.
-        Empty queries only return compendium actors. This method searches with
-        common letters and deduplicates by UUID.
+        Get all world actors (not compendium actors).
 
         Returns:
-            List of world actor data dictionaries (Actor.* UUIDs only)
+            List of world actor data dictionaries
 
         Raises:
             RuntimeError: If request fails
         """
-        url = f"{self.relay_url}/search"
+        endpoint = f"{self.backend_url}/api/foundry/actors"
 
-        headers = {
-            "x-api-key": self.api_key,
-            "Content-Type": "application/json"
-        }
-
-        all_actors = {}  # Use dict to deduplicate by UUID
-
-        # Search with all letters of the alphabet to find all actors
-        # API has 200 result limit, so we need multiple queries for comprehensive coverage
-        import string
-        search_queries = list(string.ascii_lowercase)  # a-z
+        logger.debug("Retrieving all world actors")
 
         try:
-            for query in search_queries:
-                params = {
-                    "clientId": self.client_id,
-                    "filter": "Actor",
-                    "query": query
-                }
+            response = requests.get(endpoint, timeout=30)
 
-                response = requests.get(url, params=params, headers=headers, timeout=30)
+            if response.status_code != 200:
+                error_detail = response.text
+                logger.error(f"Failed to get actors: {response.status_code} - {error_detail}")
+                raise RuntimeError(
+                    f"Failed to get actors: {response.status_code} - {error_detail}"
+                )
 
-                if response.status_code != 200:
-                    logger.warning(f"Search for '{query}' failed: {response.status_code}")
-                    continue
+            result = response.json()
 
-                results = response.json()
-                actors = results if isinstance(results, list) else results.get("results", [])
+            if not result.get("success"):
+                raise RuntimeError(f"Failed to get actors: {result.get('error')}")
 
-                # Filter to only world actors and deduplicate
-                for actor in actors:
-                    uuid = actor.get("uuid", actor.get("_id", ""))
-                    if uuid.startswith("Actor."):
-                        all_actors[uuid] = actor
-
-            actor_list = list(all_actors.values())
-            logger.info(f"Retrieved {len(actor_list)} unique world actors")
-            return actor_list
+            actors = result.get("actors", [])
+            logger.info(f"Retrieved {len(actors)} world actors")
+            return actors
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Get all actors request failed: {e}")
@@ -501,19 +328,20 @@ class ActorManager:
         Raises:
             RuntimeError: If deletion fails
         """
-        url = f"{self.relay_url}/delete?clientId={self.client_id}&uuid={actor_uuid}"
+        endpoint = f"{self.backend_url}/api/foundry/actor/{actor_uuid}"
 
-        headers = {
-            "x-api-key": self.api_key,
-            "Content-Type": "application/json"
-        }
+        logger.debug(f"Deleting actor: {actor_uuid}")
 
         try:
-            response = requests.delete(url, headers=headers, timeout=30)
+            response = requests.delete(endpoint, timeout=30)
+
+            if response.status_code == 404:
+                raise RuntimeError(f"Actor not found: {actor_uuid}")
 
             if response.status_code != 200:
-                logger.error(f"Delete failed: {response.status_code} - {response.text}")
-                raise RuntimeError(f"Failed to delete actor: {response.status_code} - {response.text}")
+                error_detail = response.text
+                logger.error(f"Delete failed: {response.status_code} - {error_detail}")
+                raise RuntimeError(f"Failed to delete actor: {response.status_code} - {error_detail}")
 
             result = response.json()
             logger.info(f"Deleted actor: {actor_uuid}")

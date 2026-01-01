@@ -39,9 +39,9 @@ class TestSpellCache:
         assert not cache.loaded
         assert cache.spell_count == 0
 
-    @patch('foundry.actors.spell_cache.fetch_all_spells')
+    @patch('foundry.actors.spell_cache.fetch_all_spells_ws_sync')
     def test_load(self, mock_fetch, mock_spells):
-        """Should load spells from FoundryVTT."""
+        """Should load spells from FoundryVTT via WebSocket."""
         mock_fetch.return_value = mock_spells
 
         cache = SpellCache()
@@ -51,7 +51,7 @@ class TestSpellCache:
         assert cache.spell_count == 3
         mock_fetch.assert_called_once()
 
-    @patch('foundry.actors.spell_cache.fetch_all_spells')
+    @patch('foundry.actors.spell_cache.fetch_all_spells_ws_sync')
     def test_get_spell_uuid(self, mock_fetch, mock_spells):
         """Should return UUID for spell by name."""
         mock_fetch.return_value = mock_spells
@@ -69,7 +69,7 @@ class TestSpellCache:
         # Not found
         assert cache.get_spell_uuid('Nonexistent Spell') is None
 
-    @patch('foundry.actors.spell_cache.fetch_all_spells')
+    @patch('foundry.actors.spell_cache.fetch_all_spells_ws_sync')
     def test_get_spell_data(self, mock_fetch, mock_spells):
         """Should return full spell data."""
         mock_fetch.return_value = mock_spells
@@ -84,7 +84,7 @@ class TestSpellCache:
         assert spell['uuid'] == 'Compendium.dnd5e.spells.Item.abc123'
         assert spell['level'] == 1
 
-    @patch('foundry.actors.spell_cache.fetch_all_spells')
+    @patch('foundry.actors.spell_cache.fetch_all_spells_ws_sync')
     def test_get_before_load(self, mock_fetch):
         """Should return None if called before load()."""
         cache = SpellCache()
@@ -96,20 +96,15 @@ class TestSpellCache:
         # Should not have called fetch
         mock_fetch.assert_not_called()
 
-    @patch('foundry.actors.spell_cache.fetch_all_spells')
-    def test_load_with_credentials(self, mock_fetch, mock_spells):
-        """Should pass credentials to fetch_all_spells()."""
-        mock_fetch.return_value = mock_spells
+    @patch('foundry.actors.spell_cache.fetch_all_spells_ws_sync')
+    def test_load_failure_raises_runtime_error(self, mock_fetch):
+        """Should raise RuntimeError if WebSocket fetch fails (no fallback)."""
+        mock_fetch.side_effect = ConnectionError("Backend not running")
 
         cache = SpellCache()
-        cache.load(
-            relay_url='https://example.com',
-            api_key='test-key',
-            client_id='test-client'
-        )
 
-        mock_fetch.assert_called_once_with(
-            relay_url='https://example.com',
-            api_key='test-key',
-            client_id='test-client'
-        )
+        with pytest.raises(RuntimeError, match="SpellCache WebSocket fetch failed"):
+            cache.load()
+
+        # Cache should not be marked as loaded
+        assert not cache.loaded

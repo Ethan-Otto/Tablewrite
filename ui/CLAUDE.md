@@ -150,6 +150,85 @@ npm run dev  # Runs on http://localhost:5173
   - Returns: `{"message": str, "type": "text"}`
 - `GET /health` - Health check
 
+### WebSocket & Foundry Integration
+
+The backend communicates with FoundryVTT via WebSocket for real-time entity management.
+
+**WebSocket Endpoint:**
+- `WS /ws/foundry` - Foundry module connection
+
+**Foundry API Endpoints:**
+- `GET /api/foundry/status` - Check WebSocket connection status
+- `GET /api/foundry/actors` - List all world actors (excludes compendium)
+- `GET /api/foundry/actor/{uuid}` - Fetch actor by UUID
+- `DELETE /api/foundry/actor/{uuid}` - Delete actor by UUID
+- `DELETE /api/foundry/actors/duplicates` - Delete all duplicate actors
+
+**WebSocket Protocol:**
+```
+Backend → Foundry: {"type": "actor|get_actor|delete_actor|list_actors", "data": {...}, "request_id": "..."}
+Foundry → Backend: {"type": "actor_created|actor_data|actor_deleted|actors_list", "request_id": "...", "data": {...}}
+```
+
+**Key Modules:**
+- `app/websocket/connection_manager.py` - Manages WebSocket connections
+- `app/websocket/foundry_endpoint.py` - WebSocket endpoint handler
+- `app/websocket/push.py` - Functions: `push_actor`, `fetch_actor`, `delete_actor`, `list_actors`
+
+**Python Usage:**
+```python
+from app.websocket import fetch_actor, delete_actor, list_actors
+
+# Fetch actor
+result = await fetch_actor("Actor.abc123")
+if result.success:
+    print(result.entity["name"])
+
+# Delete actor
+result = await delete_actor("Actor.abc123")
+
+# List all world actors
+result = await list_actors()
+for actor in result.actors:
+    print(f"{actor.name} ({actor.uuid})")
+```
+
+### Additional WebSocket Operations
+
+Beyond entity creation, the WebSocket supports:
+
+**Search Items:**
+```python
+from app.websocket import search_items
+
+result = await search_items(query="fire", sub_type="spell")
+for item in result.results:
+    print(f"{item.name}: {item.uuid}")
+```
+
+**List Files:**
+```python
+from app.websocket import list_files
+
+result = await list_files(path="icons", recursive=True, extensions=[".webp", ".png"])
+for file_path in result.files:
+    print(file_path)
+```
+
+**Message Types:**
+| Type | Direction | Description |
+|------|-----------|-------------|
+| `actor` | Backend -> Foundry | Create actor |
+| `search_items` | Backend -> Foundry | Search compendiums |
+| `items_found` | Foundry -> Backend | Search results |
+| `list_files` | Backend -> Foundry | Browse file system |
+| `files_list` | Foundry -> Backend | File list results |
+
+**Foundry Module:**
+Located in `foundry-module/tablewrite-assistant/`. Handlers in `src/handlers/`:
+- `handleActorCreate`, `handleGetActor`, `handleDeleteActor`, `handleListActors`
+- `handleJournalCreate`, `handleSceneCreate`
+
 **Key Services**:
 
 1. **GeminiService** (`app/services/gemini_service.py`)

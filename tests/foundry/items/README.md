@@ -34,16 +34,16 @@ Tests for item deduplication and source priority logic:
   - Empty items
   - Items without UUID
 
-#### `test_fetch.py` (9 tests)
-Tests for fetching items from FoundryVTT API:
+#### `test_fetch.py` (7 tests)
+Tests for fetching items from FoundryVTT API via WebSocket backend:
 
 - **Fetch Logic** (6 tests)
   - Basic fetch with mocked API
-  - Missing credentials error
   - UUID deduplication
   - Two-letter fallback when hitting 200 limit
-  - Custom credentials override
+  - Custom backend URL override
   - API error handling
+  - Failed success response handling
 
 - **Convenience Functions** (1 test)
   - `fetch_all_spells()` delegates to `fetch_items_by_type()`
@@ -52,7 +52,7 @@ Tests for fetching items from FoundryVTT API:
   - Fetch real spells from FoundryVTT
   - Fetch real weapons from FoundryVTT
 
-#### `test_manager.py` (8 tests)
+#### `test_manager.py` (7 tests)
 Tests for ItemManager API operations:
 
 - **Search Operations** (3 tests)
@@ -61,13 +61,12 @@ Tests for ItemManager API operations:
   - Item not found returns None
 
 - **Get Operations** (1 test)
-  - Get item by UUID
+  - Get item by UUID (raises NotImplementedError)
 
-- **Filter & Error Handling** (4 tests)
-  - Search with filter parameter
+- **Filter & Error Handling** (3 tests)
+  - Search with document_type parameter
   - Search error handling
-  - Get error handling
-  - List response format handling
+  - Failed response handling
 
 ## Running Tests
 
@@ -94,8 +93,8 @@ uv run pytest tests/foundry/items/test_deduplicate.py::TestDeduplicateItems::tes
 ## Test Markers
 
 - `@pytest.mark.integration` - Tests that make real API calls to FoundryVTT
-  - Requires running relay server and FoundryVTT instance
-  - Skipped if `FOUNDRY_RELAY_URL` not configured
+  - Requires running backend and FoundryVTT instance connected via WebSocket
+  - Fails if backend not running or Foundry not connected
 
 ## Coverage Summary
 
@@ -103,8 +102,8 @@ uv run pytest tests/foundry/items/test_deduplicate.py::TestDeduplicateItems::tes
 |--------|-------|----------|
 | `deduplicate.py` | 19 | Complete |
 | `fetch.py` | 9 | Complete (unit + integration) |
-| `manager.py` | 8 | Complete |
-| **Total** | **36** | **100%** |
+| `manager.py` | 7 | Complete |
+| **Total** | **35** | **100%** |
 
 ## Key Testing Patterns
 
@@ -113,7 +112,8 @@ uv run pytest tests/foundry/items/test_deduplicate.py::TestDeduplicateItems::tes
 @patch('foundry.items.fetch.requests.get')
 def test_api_call(self, mock_get):
     mock_response = MagicMock()
-    mock_response.json.return_value = {'results': [...]}
+    mock_response.json.return_value = {'success': True, 'results': [...]}
+    mock_response.raise_for_status = MagicMock()
     mock_get.return_value = mock_response
     # ... test logic
 ```
@@ -130,8 +130,8 @@ with pytest.raises(RuntimeError, match="Failed to search"):
 ### Integration Tests
 ```python
 @pytest.mark.integration
-def test_real_api(self, check_api_key):
-    # Makes real API calls
+def test_real_api(self, require_backend):
+    # Makes real API calls via WebSocket backend
     items = fetch_items_by_type('spell')
     assert len(items) > 0
 ```
