@@ -1,6 +1,5 @@
 """Actor conversion to FoundryVTT format."""
 
-from .converter import convert_to_foundry
 from .models import (
     ParsedActorData,
     Attack,
@@ -15,11 +14,14 @@ from .models import (
     SkillProficiency,
     DamageModification,
 )
-from .parser import parse_stat_block_to_actor
+
+# These will be added in subsequent tasks
+# from .converter import convert_to_foundry
+# from .parser import parse_stat_block_to_actor
 
 __all__ = [
-    "convert_to_foundry",
-    "parse_stat_block_to_actor",
+    # "convert_to_foundry",  # Task 1.3
+    # "parse_stat_block_to_actor",  # Task 1.4
     "ParsedActorData",
     "Attack",
     "Trait",
