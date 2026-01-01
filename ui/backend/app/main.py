@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import Optional
 from pydantic import BaseModel
 from dotenv import load_dotenv
-from app.routers import chat
+from app.routers import chat, health
 from app.config import settings
-from app.websocket import foundry_websocket_endpoint, foundry_manager, fetch_actor, delete_actor, list_actors
+from app.websocket import foundry_websocket_endpoint, fetch_actor, delete_actor, list_actors
 
 
 class CreateActorRequest(BaseModel):
@@ -43,23 +43,8 @@ app.add_middleware(
 )
 
 # Register routers
+app.include_router(health.router)
 app.include_router(chat.router)
-
-
-@app.get("/health")
-async def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy", "service": "module-assistant-api"}
-
-
-@app.get("/")
-async def root():
-    """Root endpoint."""
-    return {
-        "message": "D&D Module Assistant API",
-        "docs": "/docs",
-        "health": "/health"
-    }
 
 
 @app.get("/api/images/{filename}")
@@ -96,15 +81,6 @@ async def serve_image(filename: str):
 async def websocket_foundry(websocket: WebSocket):
     """WebSocket endpoint for Foundry module connections."""
     await foundry_websocket_endpoint(websocket)
-
-
-@app.get("/api/foundry/status")
-async def foundry_status():
-    """Check Foundry WebSocket connection status."""
-    return {
-        "connected_clients": foundry_manager.connection_count,
-        "status": "connected" if foundry_manager.connection_count > 0 else "disconnected"
-    }
 
 
 @app.get("/api/foundry/actor/{uuid}")
