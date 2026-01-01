@@ -1,14 +1,9 @@
 """Convert ParsedActorData to FoundryVTT actor JSON format."""
 
-import asyncio
 import logging
 import secrets
-from typing import Dict, Any, Optional, TYPE_CHECKING, List, Tuple
+from typing import Dict, Any, Optional, List, Tuple
 from .models import ParsedActorData, Attack, AttackSave
-
-if TYPE_CHECKING:
-    # SpellCache and IconCache are passed as parameters, not imported
-    pass
 
 logger = logging.getLogger(__name__)
 
