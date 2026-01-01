@@ -15,13 +15,18 @@ from .models import (
     DamageModification,
 )
 
-# These will be added in subsequent tasks
 from .converter import convert_to_foundry
-# from .parser import parse_stat_block_to_actor
+from .parser import (
+    parse_senses,
+    parse_stat_block_parallel,
+    parse_multiple_stat_blocks,
+)
 
 __all__ = [
-    "convert_to_foundry",  # Task 1.3
-    # "parse_stat_block_to_actor",  # Task 1.4
+    "convert_to_foundry",
+    "parse_senses",
+    "parse_stat_block_parallel",
+    "parse_multiple_stat_blocks",
     "ParsedActorData",
     "Attack",
     "Trait",
