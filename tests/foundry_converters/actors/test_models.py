@@ -9,6 +9,7 @@ from foundry_converters.actors.models import (
 )
 
 
+@pytest.mark.unit
 class TestParsedActorData:
     """Tests for ParsedActorData model."""
 
@@ -31,6 +32,7 @@ class TestParsedActorData:
         assert actor.abilities["DEX"] == 14
 
 
+@pytest.mark.unit
 class TestAttack:
     """Tests for Attack model."""
 
@@ -49,6 +51,7 @@ class TestAttack:
         assert attack.damage[0].denomination == 6
 
 
+@pytest.mark.unit
 class TestDamageFormula:
     """Tests for DamageFormula model."""
 
@@ -60,3 +63,15 @@ class TestDamageFormula:
         assert formula.denomination == 6
         assert formula.bonus == "+3"
         assert formula.type == "fire"
+
+
+@pytest.mark.unit
+class TestTrait:
+    """Tests for Trait model."""
+
+    def test_creates_trait(self):
+        """Should create trait with name and description."""
+        trait = Trait(name="Darkvision", description="Can see in dim light within 60 feet.")
+
+        assert trait.name == "Darkvision"
+        assert trait.description == "Can see in dim light within 60 feet."
