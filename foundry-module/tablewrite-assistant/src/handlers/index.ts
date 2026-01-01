@@ -112,7 +112,11 @@ export async function handleMessage(message: TablewriteMessage): Promise<Message
           error: result.error
         };
       }
-      break;
+      return {
+        responseType: 'actor_error',
+        request_id: message.request_id,
+        error: 'Missing data for actor creation'
+      };
     case 'journal':
       if (message.data) {
         const result = await handleJournalCreate(message.data);
@@ -123,7 +127,11 @@ export async function handleMessage(message: TablewriteMessage): Promise<Message
           error: result.error
         };
       }
-      break;
+      return {
+        responseType: 'journal_error',
+        request_id: message.request_id,
+        error: 'Missing data for journal creation'
+      };
     case 'delete_journal':
       if (message.data?.uuid) {
         const result = await handleJournalDelete(message.data.uuid as string);
@@ -134,7 +142,11 @@ export async function handleMessage(message: TablewriteMessage): Promise<Message
           error: result.error
         };
       }
-      break;
+      return {
+        responseType: 'journal_error',
+        request_id: message.request_id,
+        error: 'Missing uuid for journal deletion'
+      };
     case 'scene':
       if (message.data) {
         const result = await handleSceneCreate(message.data);
@@ -145,7 +157,11 @@ export async function handleMessage(message: TablewriteMessage): Promise<Message
           error: result.error
         };
       }
-      break;
+      return {
+        responseType: 'scene_error',
+        request_id: message.request_id,
+        error: 'Missing data for scene creation'
+      };
     case 'get_actor':
       if (message.data?.uuid) {
         const result = await handleGetActor(message.data.uuid as string);
@@ -156,7 +172,11 @@ export async function handleMessage(message: TablewriteMessage): Promise<Message
           error: result.error
         };
       }
-      break;
+      return {
+        responseType: 'actor_error',
+        request_id: message.request_id,
+        error: 'Missing uuid for get_actor'
+      };
     case 'delete_actor':
       if (message.data?.uuid) {
         const result = await handleDeleteActor(message.data.uuid as string);
@@ -167,7 +187,11 @@ export async function handleMessage(message: TablewriteMessage): Promise<Message
           error: result.error
         };
       }
-      break;
+      return {
+        responseType: 'actor_error',
+        request_id: message.request_id,
+        error: 'Missing uuid for delete_actor'
+      };
     case 'list_actors': {
       const result = await handleListActors();
       return {
@@ -190,7 +214,11 @@ export async function handleMessage(message: TablewriteMessage): Promise<Message
           error: result.error
         };
       }
-      break;
+      return {
+        responseType: 'give_error',
+        request_id: message.request_id,
+        error: 'Missing data for give_items'
+      };
     case 'search_items':
       if (message.data) {
         const result = await handleSearchItems(message.data as {
@@ -205,7 +233,11 @@ export async function handleMessage(message: TablewriteMessage): Promise<Message
           error: result.error
         };
       }
-      break;
+      return {
+        responseType: 'search_error',
+        request_id: message.request_id,
+        error: 'Missing data for search_items'
+      };
     case 'get_item':
       if (message.data?.uuid) {
         const result = await handleGetItem(message.data.uuid as string);
@@ -216,7 +248,11 @@ export async function handleMessage(message: TablewriteMessage): Promise<Message
           error: result.error
         };
       }
-      break;
+      return {
+        responseType: 'item_error',
+        request_id: message.request_id,
+        error: 'Missing uuid for get_item'
+      };
     case 'list_compendium_items': {
       const result = await handleListCompendiumItems(message.data as {
         documentType?: string;
@@ -244,7 +280,11 @@ export async function handleMessage(message: TablewriteMessage): Promise<Message
           error: result.error
         };
       }
-      break;
+      return {
+        responseType: 'files_error',
+        request_id: message.request_id,
+        error: 'Missing data for list_files'
+      };
     case 'connected':
       console.log('[Tablewrite] Connected with client_id:', message.client_id);
       return null;  // No response needed
