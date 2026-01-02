@@ -12,10 +12,16 @@ const mockGame = {
 };
 
 // Track Hooks callbacks
-const hookCallbacks: Record<string, (() => void)[]> = {};
+const hookCallbacks: Record<string, ((...args: unknown[]) => void)[]> = {};
 
 const mockHooks = {
-  once: vi.fn((hookName: string, callback: () => void) => {
+  once: vi.fn((hookName: string, callback: (...args: unknown[]) => void) => {
+    if (!hookCallbacks[hookName]) {
+      hookCallbacks[hookName] = [];
+    }
+    hookCallbacks[hookName].push(callback);
+  }),
+  on: vi.fn((hookName: string, callback: (...args: unknown[]) => void) => {
     if (!hookCallbacks[hookName]) {
       hookCallbacks[hookName] = [];
     }

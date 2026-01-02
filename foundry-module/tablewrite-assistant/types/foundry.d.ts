@@ -39,6 +39,11 @@ declare global {
     notifications?: Notifications;
   }
 
+  // Application base class (minimal definition for renderSidebar hook)
+  interface Application {
+    id: string;
+  }
+
   interface CompendiumCollection {
     get(key: string): Compendium | undefined;
     filter(fn: (pack: Compendium) => boolean): Compendium[];
@@ -76,9 +81,10 @@ declare global {
   const ui: UI;
 
   // Foundry Hooks
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const Hooks: {
-    once(hook: string, callback: (...args: unknown[]) => void): void;
-    on(hook: string, callback: (...args: unknown[]) => void): void;
+    once(hook: string, callback: (...args: any[]) => void): void;
+    on(hook: string, callback: (...args: any[]) => void): void;
   };
 
   // Foundry Document classes
