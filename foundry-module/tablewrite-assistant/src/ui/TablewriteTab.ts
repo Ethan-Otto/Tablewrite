@@ -92,8 +92,15 @@ export class TablewriteTab {
   }
 
   private formatContent(content: string): string {
-    // Basic markdown: **bold**, *italic*, `code`
-    return content
+    // First escape HTML entities to prevent XSS
+    const escaped = content
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+
+    // Then apply markdown transformations: **bold**, *italic*, `code`
+    return escaped
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
       .replace(/`(.*?)`/g, '<code>$1</code>')

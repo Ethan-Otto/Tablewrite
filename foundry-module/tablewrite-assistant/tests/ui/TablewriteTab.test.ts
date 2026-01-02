@@ -165,6 +165,19 @@ describe('TablewriteTab', () => {
       const assistantMessage = container.querySelector('.tablewrite-message--assistant');
       expect(assistantMessage?.innerHTML).toContain('<br>');
     });
+
+    it('escapes HTML in message content to prevent XSS', async () => {
+      mockSend.mockResolvedValueOnce('<script>alert("xss")</script>');
+      const { TablewriteTab } = await import('../../src/ui/TablewriteTab');
+      const tab = new TablewriteTab(container);
+      tab.render();
+
+      await tab.sendMessage('test');
+
+      const assistantMessage = container.querySelector('.tablewrite-message--assistant');
+      expect(assistantMessage?.innerHTML).toContain('&lt;script&gt;');
+      expect(assistantMessage?.innerHTML).not.toContain('<script>');
+    });
   });
 
   describe('keyboard handling', () => {
