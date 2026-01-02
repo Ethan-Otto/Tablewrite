@@ -57,6 +57,24 @@ from scenes.models import SceneCreationResult
 
 logger = logging.getLogger(__name__)
 
+# Public API exports
+__all__ = [
+    # Exceptions
+    "APIError",
+    # Result types
+    "ActorCreationResult",
+    "MapExtractionResult",
+    "JournalCreationResult",
+    "SceneCreationResult",
+    # Functions
+    "create_actor",
+    "extract_maps",
+    "process_pdf_to_journal",
+    "create_scene",
+    # Configuration
+    "BACKEND_URL",
+]
+
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 

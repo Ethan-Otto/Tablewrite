@@ -7,9 +7,11 @@ from api import (
     ActorCreationResult,
     MapExtractionResult,
     JournalCreationResult,
+    SceneCreationResult,
     create_actor,
     extract_maps,
     process_pdf_to_journal,
+    create_scene,
     BACKEND_URL,
 )
 
@@ -241,12 +243,7 @@ def test_create_scene_api(mock_create_scene):
         test_image_path = tmp.name
 
     try:
-        # Import after patching
-        from api import create_scene
-
-        # Mock the SceneCreationResult from scenes.models
-        from scenes.models import SceneCreationResult
-
+        # Use SceneCreationResult from top-level import (re-exported from api module)
         mock_result = SceneCreationResult(
             uuid="Scene.abc123",
             name="Test Battle Map",
@@ -291,9 +288,13 @@ def test_create_scene_api(mock_create_scene):
 @patch('api.create_scene_from_map_sync')
 def test_create_scene_api_error_handling(mock_create_scene):
     """Test create_scene wraps errors in APIError."""
-    from api import create_scene, APIError
+    # Import api module fresh to ensure we get the patched version
+    # (needed because test_backend_url_from_env reloads the module, which
+    # creates a new APIError class that's different from the top-level import)
+    import api as api_module
 
     mock_create_scene.side_effect = FileNotFoundError("Image not found: /nonexistent.png")
 
-    with pytest.raises(APIError, match="Failed to create scene"):
-        create_scene(image_path="/nonexistent.png")
+    # Use api_module.APIError to match the reloaded module's exception class
+    with pytest.raises(api_module.APIError, match="Failed to create scene"):
+        api_module.create_scene(image_path="/nonexistent.png")
