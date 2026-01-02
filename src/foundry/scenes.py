@@ -111,35 +111,95 @@ class SceneManager:
         """
         Retrieve a Scene by UUID.
 
-        NOTE: This functionality requires a backend endpoint that is not yet implemented.
-
         Args:
-            scene_uuid: UUID of the scene to retrieve
+            scene_uuid: UUID of the scene to retrieve (e.g., "Scene.abc123")
 
-        Raises:
-            NotImplementedError: Backend endpoint not yet implemented
+        Returns:
+            {"success": True, "entity": {...}} on success
+            {"success": False, "error": "..."} on failure
         """
-        raise NotImplementedError(
-            "Get scene via WebSocket backend not yet implemented. "
-            "Add GET /api/foundry/scene/{uuid} endpoint to backend."
-        )
+        endpoint = f"{self.backend_url}/api/foundry/scene/{scene_uuid}"
+
+        logger.debug(f"Getting scene: {scene_uuid}")
+
+        try:
+            response = requests.get(endpoint, timeout=30)
+
+            if response.status_code == 404:
+                return {"success": False, "error": f"Scene not found: {scene_uuid}"}
+
+            if response.status_code != 200:
+                # Safe JSON parsing for error details
+                try:
+                    error_detail = response.json().get("detail", f"HTTP {response.status_code}")
+                except (ValueError, JSONDecodeError):
+                    error_detail = f"HTTP {response.status_code}: {response.text[:200]}"
+                return {"success": False, "error": error_detail}
+
+            # Parse and validate response
+            try:
+                data = response.json()
+            except (ValueError, JSONDecodeError) as e:
+                logger.error(f"Invalid JSON response: {e}")
+                return {"success": False, "error": f"Invalid JSON response: {e}"}
+
+            # Validate response has required fields
+            if not isinstance(data, dict):
+                return {"success": False, "error": f"Unexpected response type: {type(data).__name__}"}
+
+            logger.info(f"Got scene: {scene_uuid}")
+            return {"success": True, **data}
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Get scene failed: {e}")
+            return {"success": False, "error": str(e)}
 
     def delete_scene(self, scene_uuid: str) -> Dict[str, Any]:
         """
         Delete a scene.
 
-        NOTE: This functionality requires a backend endpoint that is not yet implemented.
-
         Args:
-            scene_uuid: UUID of the scene to delete
+            scene_uuid: UUID of the scene to delete (e.g., "Scene.abc123")
 
-        Raises:
-            NotImplementedError: Backend endpoint not yet implemented
+        Returns:
+            {"success": True, "uuid": "...", "name": "..."} on success
+            {"success": False, "error": "..."} on failure
         """
-        raise NotImplementedError(
-            "Delete scene via WebSocket backend not yet implemented. "
-            "Add DELETE /api/foundry/scene/{uuid} endpoint to backend."
-        )
+        endpoint = f"{self.backend_url}/api/foundry/scene/{scene_uuid}"
+
+        logger.debug(f"Deleting scene: {scene_uuid}")
+
+        try:
+            response = requests.delete(endpoint, timeout=30)
+
+            if response.status_code == 404:
+                return {"success": False, "error": f"Scene not found: {scene_uuid}"}
+
+            if response.status_code != 200:
+                # Safe JSON parsing for error details
+                try:
+                    error_detail = response.json().get("detail", f"HTTP {response.status_code}")
+                except (ValueError, JSONDecodeError):
+                    error_detail = f"HTTP {response.status_code}: {response.text[:200]}"
+                return {"success": False, "error": error_detail}
+
+            # Parse and validate response
+            try:
+                data = response.json()
+            except (ValueError, JSONDecodeError) as e:
+                logger.error(f"Invalid JSON response: {e}")
+                return {"success": False, "error": f"Invalid JSON response: {e}"}
+
+            # Validate response has required fields
+            if not isinstance(data, dict):
+                return {"success": False, "error": f"Unexpected response type: {type(data).__name__}"}
+
+            logger.info(f"Deleted scene: {data.get('name')} ({scene_uuid})")
+            return {"success": True, **data}
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Delete scene failed: {e}")
+            return {"success": False, "error": str(e)}
 
     def search_scenes(self, name: str) -> List[Dict[str, Any]]:
         """

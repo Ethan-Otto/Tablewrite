@@ -210,6 +210,172 @@ class TestSceneManagerCreateScene:
 
 
 @pytest.mark.unit
+class TestSceneManagerGetScene:
+    """Tests for SceneManager.get_scene method."""
+
+    @pytest.fixture
+    def manager(self):
+        """Create a SceneManager instance."""
+        from foundry.scenes import SceneManager
+        return SceneManager(backend_url="http://localhost:8000")
+
+    def test_get_scene_success(self, manager):
+        """SceneManager.get_scene retrieves scene by UUID."""
+        with patch('foundry.scenes.requests.get') as mock_get:
+            mock_get.return_value = MagicMock(
+                status_code=200,
+                json=lambda: {
+                    "success": True,
+                    "entity": {
+                        "name": "Castle",
+                        "width": 1400,
+                        "height": 1000,
+                        "walls": [{"c": [0, 0, 100, 100]}]
+                    }
+                }
+            )
+
+            result = manager.get_scene("Scene.abc123")
+
+            assert result["success"] is True
+            assert result["entity"]["name"] == "Castle"
+            assert result["entity"]["width"] == 1400
+            mock_get.assert_called_once()
+
+    def test_get_scene_correct_endpoint(self, manager):
+        """SceneManager.get_scene calls correct endpoint."""
+        with patch('foundry.scenes.requests.get') as mock_get:
+            mock_get.return_value = MagicMock(
+                status_code=200,
+                json=lambda: {"success": True, "entity": {"name": "Test"}}
+            )
+
+            manager.get_scene("Scene.abc123")
+
+            call_args = mock_get.call_args
+            assert call_args[0][0] == "http://localhost:8000/api/foundry/scene/Scene.abc123"
+
+    def test_get_scene_not_found(self, manager):
+        """SceneManager.get_scene handles 404 not found."""
+        with patch('foundry.scenes.requests.get') as mock_get:
+            mock_get.return_value = MagicMock(
+                status_code=404,
+                json=lambda: {"detail": "Scene not found"}
+            )
+
+            result = manager.get_scene("Scene.nonexistent")
+
+            assert result["success"] is False
+            assert "not found" in result["error"].lower()
+
+    def test_get_scene_server_error(self, manager):
+        """SceneManager.get_scene handles server errors."""
+        with patch('foundry.scenes.requests.get') as mock_get:
+            mock_get.return_value = MagicMock(
+                status_code=500,
+                json=lambda: {"detail": "Internal server error"}
+            )
+
+            result = manager.get_scene("Scene.abc123")
+
+            assert result["success"] is False
+            assert "Internal server error" in result["error"]
+
+    def test_get_scene_network_error(self, manager):
+        """SceneManager.get_scene handles network errors."""
+        import requests
+
+        with patch('foundry.scenes.requests.get') as mock_get:
+            mock_get.side_effect = requests.exceptions.ConnectionError("Connection refused")
+
+            result = manager.get_scene("Scene.abc123")
+
+            assert result["success"] is False
+            assert "Connection refused" in result["error"]
+
+
+@pytest.mark.unit
+class TestSceneManagerDeleteScene:
+    """Tests for SceneManager.delete_scene method."""
+
+    @pytest.fixture
+    def manager(self):
+        """Create a SceneManager instance."""
+        from foundry.scenes import SceneManager
+        return SceneManager(backend_url="http://localhost:8000")
+
+    def test_delete_scene_success(self, manager):
+        """SceneManager.delete_scene deletes scene by UUID."""
+        with patch('foundry.scenes.requests.delete') as mock_delete:
+            mock_delete.return_value = MagicMock(
+                status_code=200,
+                json=lambda: {
+                    "success": True,
+                    "uuid": "Scene.abc123",
+                    "name": "Castle"
+                }
+            )
+
+            result = manager.delete_scene("Scene.abc123")
+
+            assert result["success"] is True
+            assert result["uuid"] == "Scene.abc123"
+            assert result["name"] == "Castle"
+            mock_delete.assert_called_once()
+
+    def test_delete_scene_correct_endpoint(self, manager):
+        """SceneManager.delete_scene calls correct endpoint."""
+        with patch('foundry.scenes.requests.delete') as mock_delete:
+            mock_delete.return_value = MagicMock(
+                status_code=200,
+                json=lambda: {"success": True, "uuid": "Scene.abc123", "name": "Test"}
+            )
+
+            manager.delete_scene("Scene.abc123")
+
+            call_args = mock_delete.call_args
+            assert call_args[0][0] == "http://localhost:8000/api/foundry/scene/Scene.abc123"
+
+    def test_delete_scene_not_found(self, manager):
+        """SceneManager.delete_scene handles 404 not found."""
+        with patch('foundry.scenes.requests.delete') as mock_delete:
+            mock_delete.return_value = MagicMock(
+                status_code=404,
+                json=lambda: {"detail": "Scene not found"}
+            )
+
+            result = manager.delete_scene("Scene.nonexistent")
+
+            assert result["success"] is False
+            assert "not found" in result["error"].lower()
+
+    def test_delete_scene_server_error(self, manager):
+        """SceneManager.delete_scene handles server errors."""
+        with patch('foundry.scenes.requests.delete') as mock_delete:
+            mock_delete.return_value = MagicMock(
+                status_code=500,
+                json=lambda: {"detail": "Internal server error"}
+            )
+
+            result = manager.delete_scene("Scene.abc123")
+
+            assert result["success"] is False
+            assert "Internal server error" in result["error"]
+
+    def test_delete_scene_network_error(self, manager):
+        """SceneManager.delete_scene handles network errors."""
+        import requests
+
+        with patch('foundry.scenes.requests.delete') as mock_delete:
+            mock_delete.side_effect = requests.exceptions.ConnectionError("Connection refused")
+
+            result = manager.delete_scene("Scene.abc123")
+
+            assert result["success"] is False
+            assert "Connection refused" in result["error"]
+
+
+@pytest.mark.unit
 class TestSceneManagerSearch:
     """Tests for SceneManager search methods."""
 
@@ -315,19 +481,50 @@ class TestSceneManagerIntegration:
         return True
 
     def test_create_scene_roundtrip(self, require_websocket):
-        """Integration test: Create scene in Foundry and verify UUID returned."""
+        """Integration test: Create scene in Foundry, fetch it, verify data, then delete."""
         from foundry.scenes import SceneManager
+        import time
 
         manager = SceneManager(backend_url=self.BACKEND_URL)
 
-        result = manager.create_scene(
-            name="Test Scene - Integration",
+        # Use timestamp for unique name
+        scene_name = f"Test Scene - Integration {int(time.time())}"
+
+        # 1. Create the scene
+        create_result = manager.create_scene(
+            name=scene_name,
             width=1000,
             height=800,
             grid_size=50,
             folder="tests"
         )
 
-        assert result["success"] is True, f"Create scene failed: {result.get('error')}"
-        assert "uuid" in result
-        assert result["uuid"].startswith("Scene.")
+        assert create_result["success"] is True, f"Create scene failed: {create_result.get('error')}"
+        assert "uuid" in create_result
+        assert create_result["uuid"].startswith("Scene.")
+        scene_uuid = create_result["uuid"]
+
+        # 2. Fetch the scene back
+        get_result = manager.get_scene(scene_uuid)
+        assert get_result["success"] is True, f"Get scene failed: {get_result.get('error')}"
+        assert "entity" in get_result
+
+        # 3. Verify the fetched data matches what we sent
+        entity = get_result["entity"]
+        assert entity["name"] == scene_name
+        assert entity["width"] == 1000
+        assert entity["height"] == 800
+        # Grid size is nested in Foundry v10+
+        if "grid" in entity:
+            assert entity["grid"]["size"] == 50
+
+        # 4. Delete the scene (cleanup)
+        delete_result = manager.delete_scene(scene_uuid)
+        assert delete_result["success"] is True, f"Delete scene failed: {delete_result.get('error')}"
+        assert delete_result["uuid"] == scene_uuid
+        assert delete_result["name"] == scene_name
+
+        # 5. Verify scene is gone (optional - should return not found)
+        verify_result = manager.get_scene(scene_uuid)
+        assert verify_result["success"] is False
+        assert "not found" in verify_result["error"].lower()

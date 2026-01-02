@@ -219,6 +219,87 @@ async def push_scene(scene_data: Dict[str, Any], timeout: float = 30.0) -> PushR
         )
 
 
+async def fetch_scene(uuid: str, timeout: float = 30.0) -> FetchResult:
+    """
+    Fetch a scene from Foundry by UUID.
+
+    Args:
+        uuid: The scene UUID (e.g., "Scene.abc123")
+        timeout: Maximum seconds to wait for Foundry response
+
+    Returns:
+        FetchResult with entity data if successful, error if failed
+    """
+    response = await foundry_manager.broadcast_and_wait(
+        {"type": "get_scene", "data": {"uuid": uuid}},
+        timeout=timeout
+    )
+
+    if response is None:
+        return FetchResult(
+            success=False,
+            error="No Foundry client connected or timeout waiting for response"
+        )
+
+    if response.get("type") == "scene_data":
+        data = response.get("data", {})
+        return FetchResult(
+            success=True,
+            entity=data.get("entity")
+        )
+    elif response.get("type") == "scene_error":
+        return FetchResult(
+            success=False,
+            error=response.get("error", "Unknown error from Foundry")
+        )
+    else:
+        return FetchResult(
+            success=False,
+            error=f"Unexpected response type: {response.get('type')}"
+        )
+
+
+async def delete_scene(uuid: str, timeout: float = 30.0) -> DeleteResult:
+    """
+    Delete a scene from Foundry by UUID.
+
+    Args:
+        uuid: The scene UUID (e.g., "Scene.abc123")
+        timeout: Maximum seconds to wait for Foundry response
+
+    Returns:
+        DeleteResult with success status and deleted entity info
+    """
+    response = await foundry_manager.broadcast_and_wait(
+        {"type": "delete_scene", "data": {"uuid": uuid}},
+        timeout=timeout
+    )
+
+    if response is None:
+        return DeleteResult(
+            success=False,
+            error="No Foundry client connected or timeout waiting for response"
+        )
+
+    if response.get("type") == "scene_deleted":
+        data = response.get("data", {})
+        return DeleteResult(
+            success=True,
+            uuid=data.get("uuid"),
+            name=data.get("name")
+        )
+    elif response.get("type") == "scene_error":
+        return DeleteResult(
+            success=False,
+            error=response.get("error", "Unknown error from Foundry")
+        )
+    else:
+        return DeleteResult(
+            success=False,
+            error=f"Unexpected response type: {response.get('type')}"
+        )
+
+
 async def fetch_actor(uuid: str, timeout: float = 30.0) -> FetchResult:
     """
     Fetch an actor from Foundry by UUID.

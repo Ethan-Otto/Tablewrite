@@ -4,17 +4,17 @@
 
 export { handleActorCreate, handleGetActor, handleDeleteActor, handleListActors, handleGiveItems } from './actor.js';
 export { handleJournalCreate, handleJournalDelete } from './journal.js';
-export { handleSceneCreate } from './scene.js';
+export { handleSceneCreate, handleGetScene, handleDeleteScene } from './scene.js';
 export { handleSearchItems, handleGetItem, handleListCompendiumItems } from './items.js';
 export { handleListFiles, handleFileUpload } from './files.js';
 
 import { handleActorCreate, handleGetActor, handleDeleteActor, handleListActors, handleGiveItems } from './actor.js';
 import { handleJournalCreate, handleJournalDelete } from './journal.js';
-import { handleSceneCreate } from './scene.js';
+import { handleSceneCreate, handleGetScene, handleDeleteScene } from './scene.js';
 import { handleSearchItems, handleGetItem, handleListCompendiumItems } from './items.js';
 import { handleListFiles, handleFileUpload } from './files.js';
 
-export type MessageType = 'actor' | 'journal' | 'delete_journal' | 'scene' | 'get_actor' | 'delete_actor' | 'list_actors' | 'give_items' | 'search_items' | 'get_item' | 'list_compendium_items' | 'list_files' | 'upload_file' | 'connected' | 'pong';
+export type MessageType = 'actor' | 'journal' | 'delete_journal' | 'scene' | 'get_scene' | 'delete_scene' | 'get_actor' | 'delete_actor' | 'list_actors' | 'give_items' | 'search_items' | 'get_item' | 'list_compendium_items' | 'list_files' | 'upload_file' | 'connected' | 'pong';
 
 export interface TablewriteMessage {
   type: MessageType;
@@ -167,6 +167,36 @@ export async function handleMessage(message: TablewriteMessage): Promise<Message
         responseType: 'scene_error',
         request_id: message.request_id,
         error: 'Missing data for scene creation'
+      };
+    case 'get_scene':
+      if (message.data?.uuid) {
+        const result = await handleGetScene(message.data.uuid as string);
+        return {
+          responseType: result.success ? 'scene_data' : 'scene_error',
+          request_id: message.request_id,
+          data: result,
+          error: result.error
+        };
+      }
+      return {
+        responseType: 'scene_error',
+        request_id: message.request_id,
+        error: 'Missing uuid for get_scene'
+      };
+    case 'delete_scene':
+      if (message.data?.uuid) {
+        const result = await handleDeleteScene(message.data.uuid as string);
+        return {
+          responseType: result.success ? 'scene_deleted' : 'scene_error',
+          request_id: message.request_id,
+          data: result,
+          error: result.error
+        };
+      }
+      return {
+        responseType: 'scene_error',
+        request_id: message.request_id,
+        error: 'Missing uuid for delete_scene'
       };
     case 'get_actor':
       if (message.data?.uuid) {
