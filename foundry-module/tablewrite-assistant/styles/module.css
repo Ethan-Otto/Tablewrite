@@ -1,1 +1,74 @@
-/* Tablewrite module styles - placeholder for future UI elements */
+/* Tablewrite module styles */
+
+/* Chat container fills sidebar tab */
+.tablewrite-chat {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0.5rem;
+}
+
+/* Messages area - scrollable */
+.tablewrite-messages {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Individual message bubble */
+.tablewrite-message {
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-size: var(--font-size-12);
+  line-height: 1.4;
+}
+
+/* User message - right aligned */
+.tablewrite-message--user {
+  background: rgba(0, 0, 0, 0.1);
+  margin-left: 1rem;
+}
+
+/* Assistant message - left aligned with accent border */
+.tablewrite-message--assistant {
+  background: rgba(255, 255, 255, 0.1);
+  border-left: 2px solid var(--color-border-highlight);
+  margin-right: 1rem;
+}
+
+/* Input form - bottom of sidebar */
+.tablewrite-input-form {
+  display: flex;
+  gap: 0.25rem;
+}
+
+/* Text input */
+.tablewrite-input {
+  flex: 1;
+  resize: none;
+  font-family: var(--font-primary);
+  font-size: var(--font-size-12);
+}
+
+/* Send button */
+.tablewrite-send {
+  width: 2rem;
+  padding: 0;
+}
+
+/* Loading state - disabled */
+.tablewrite-send.loading {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Code styling in messages */
+.tablewrite-message-content code {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 0.1rem 0.25rem;
+  border-radius: 2px;
+  font-family: var(--font-mono);
+}
