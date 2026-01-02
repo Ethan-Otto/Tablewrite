@@ -887,6 +887,44 @@ async def test_create_actor():
 - CI/CD should catch missing connections
 - Clear failure messages guide developers to fix the issue
 
+### Round-Trip Integration Tests for Foundry Resources
+
+**REQUIRED:** All new features that upload or modify resources in FoundryVTT (actors, journals, scenes, items) MUST have round-trip integration tests that:
+
+1. **Create** the resource in Foundry
+2. **Fetch** the resource back from Foundry
+3. **Verify** the fetched data matches what was sent
+4. **Clean up** by deleting the test resource
+
+```python
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_actor_roundtrip():
+    """Create actor, fetch it back, verify data, delete."""
+    # Create
+    result = await create_actor({"name": "Test Goblin", "type": "npc", ...})
+    assert result.success, f"Create failed: {result.error}"
+    actor_uuid = result.uuid
+
+    # Fetch back
+    fetched = await get_actor(actor_uuid)
+    assert fetched.success, f"Fetch failed: {fetched.error}"
+
+    # Verify critical fields match
+    assert fetched.entity["name"] == "Test Goblin"
+    assert fetched.entity["type"] == "npc"
+    # Verify items, spells, etc. are correct type
+
+    # Cleanup
+    await delete_actor(actor_uuid)
+```
+
+**Why round-trip tests?**
+- Catches serialization/deserialization bugs
+- Verifies Foundry module handles data correctly
+- Ensures items (spells, weapons, feats) have correct types
+- Prevents regressions like spells being created as feats
+
 ### Key Fixtures (from `conftest.py`)
 
 - `test_pdf_path`: `Lost_Mine_of_Phandelver_test.pdf` (7 pages)
