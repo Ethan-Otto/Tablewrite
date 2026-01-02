@@ -36,7 +36,7 @@ Hooks.on('renderSidebar', (app: Application, html: JQuery, context?: unknown, op
   // v13: Skip partial re-renders
   if (options?.parts && !options.parts.includes('sidebar')) return;
 
-  const tabsContainer = html.find('.sidebar-tabs');
+  const tabsContainer = html.find('#sidebar-tabs');
   if (!tabsContainer.length) return;
 
   // Prevent duplicates (important for v13 re-renders)
@@ -50,9 +50,8 @@ Hooks.on('renderSidebar', (app: Application, html: JQuery, context?: unknown, op
   `);
   tabsContainer.append(tabButton);
 
-  // Add tab content container
-  const sidebar = html.find('#sidebar');
-  sidebar.append('<section id="tablewrite" class="sidebar-tab" data-tab="tablewrite"></section>');
+  // Add tab content container (html IS the sidebar element)
+  html.append('<section id="tablewrite" class="sidebar-tab" data-tab="tablewrite"></section>');
 
   // Initialize tab when clicked (lazy initialization)
   tabButton.on('click', () => {
