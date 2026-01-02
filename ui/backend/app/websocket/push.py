@@ -567,6 +567,68 @@ async def give_items(
         )
 
 
+@dataclass
+class FileUploadResult:
+    """Result of uploading a file to Foundry."""
+    success: bool
+    path: Optional[str] = None
+    error: Optional[str] = None
+
+
+async def upload_file(
+    filename: str,
+    content: str,
+    destination: str = "uploaded-maps",
+    timeout: float = 60.0
+) -> FileUploadResult:
+    """
+    Upload a file to FoundryVTT world folder via WebSocket.
+
+    Args:
+        filename: Name of the file (e.g., "castle.webp")
+        content: Base64-encoded file content
+        destination: Subdirectory in world folder (default: "uploaded-maps")
+        timeout: Maximum seconds to wait for response
+
+    Returns:
+        FileUploadResult with Foundry-relative path if successful
+    """
+    response = await foundry_manager.broadcast_and_wait(
+        {
+            "type": "upload_file",
+            "data": {
+                "filename": filename,
+                "content": content,
+                "destination": destination
+            }
+        },
+        timeout=timeout
+    )
+
+    if response is None:
+        return FileUploadResult(
+            success=False,
+            error="No Foundry client connected or timeout waiting for response"
+        )
+
+    if response.get("type") == "file_uploaded":
+        data = response.get("data", {})
+        return FileUploadResult(
+            success=True,
+            path=data.get("path")
+        )
+    elif response.get("type") == "file_error":
+        return FileUploadResult(
+            success=False,
+            error=response.get("error", "Unknown upload error")
+        )
+    else:
+        return FileUploadResult(
+            success=False,
+            error=f"Unexpected response type: {response.get('type')}"
+        )
+
+
 async def list_files(
     path: str,
     source: str = "public",
