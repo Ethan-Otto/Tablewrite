@@ -29,29 +29,64 @@ class SceneManager:
         background_image: Optional[str] = None,
         width: int = 3000,
         height: int = 2000,
-        grid_size: int = 100,
+        grid_size: Optional[int] = 100,
+        walls: Optional[List[Dict[str, Any]]] = None,
         folder: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Create a scene in FoundryVTT via the backend WebSocket.
 
-        NOTE: This functionality requires a backend endpoint that is not yet implemented.
-
         Args:
             name: Name of the scene
-            background_image: URL or path to background image (optional)
+            background_image: Foundry-relative path to background image
             width: Scene width in pixels (default 3000)
             height: Scene height in pixels (default 2000)
-            grid_size: Grid size in pixels (default 100)
-            folder: Folder ID to assign to the scene
+            grid_size: Grid size in pixels (None for gridless)
+            walls: Optional list of wall objects
+            folder: Optional folder ID
 
-        Raises:
-            NotImplementedError: Backend endpoint not yet implemented
+        Returns:
+            {"success": True, "uuid": "Scene.xxx", "name": "..."} on success
+            {"success": False, "error": "..."} on failure
         """
-        raise NotImplementedError(
-            "Scene creation via WebSocket backend not yet implemented. "
-            "Add POST /api/foundry/scene endpoint to backend."
-        )
+        endpoint = f"{self.backend_url}/api/foundry/scene"
+
+        scene_data: Dict[str, Any] = {
+            "name": name,
+            "width": width,
+            "height": height,
+        }
+
+        if background_image:
+            scene_data["background"] = {"src": background_image}
+
+        if grid_size is not None:
+            scene_data["grid"] = {"size": grid_size, "type": 1}
+
+        if walls:
+            scene_data["walls"] = walls
+
+        if folder:
+            scene_data["folder"] = folder
+
+        payload = {"scene": scene_data}
+
+        logger.debug(f"Creating scene: {name}")
+
+        try:
+            response = requests.post(endpoint, json=payload, timeout=60)
+
+            if response.status_code != 200:
+                error_msg = response.json().get("detail", f"HTTP {response.status_code}")
+                return {"success": False, "error": error_msg}
+
+            data = response.json()
+            logger.info(f"Created scene: {data.get('uuid')}")
+            return {"success": True, "uuid": data.get("uuid"), "name": data.get("name")}
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Create scene failed: {e}")
+            return {"success": False, "error": str(e)}
 
     def get_scene(self, scene_uuid: str) -> Dict[str, Any]:
         """
