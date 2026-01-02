@@ -52,7 +52,7 @@ describe('TablewriteTab', () => {
       expect(container.querySelector('.tablewrite-messages')).toBeTruthy();
       expect(container.querySelector('.tablewrite-input-form')).toBeTruthy();
       expect(container.querySelector('.tablewrite-input')).toBeTruthy();
-      expect(container.querySelector('.tablewrite-send')).toBeTruthy();
+      // No send button - Enter key submits (like native Foundry chat)
     });
 
     it('sets placeholder text from localization', async () => {
