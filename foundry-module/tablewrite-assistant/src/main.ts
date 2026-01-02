@@ -52,7 +52,8 @@ Hooks.on('renderSidebar', (app: Application, html: JQuery, context?: unknown, op
   chatTab.after(tabButton);
 
   // Add tab content container (html IS the sidebar element)
-  html.append('<section id="tablewrite" class="sidebar-tab" data-tab="tablewrite"></section>');
+  // Must include 'tab' class for Foundry's tab switching to work
+  html.append('<section id="tablewrite" class="tab sidebar-tab flexcol" data-tab="tablewrite"></section>');
 
   // Initialize tab when clicked (lazy initialization)
   tabButton.on('click', () => {
