@@ -891,18 +891,24 @@ async def test_create_actor():
 
 **REQUIRED:** All new features that upload or modify resources in FoundryVTT (actors, journals, scenes, items) MUST have round-trip integration tests that:
 
-1. **Create** the resource in Foundry
+1. **Create** the resource in Foundry (in a `/tests` folder)
 2. **Fetch** the resource back from Foundry
 3. **Verify** the fetched data matches what was sent
-4. **Clean up** by deleting the test resource
+
+**Note:** Test resources should be created in a `/tests` folder in Foundry for organization. Cleanup is not required.
 
 ```python
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_actor_roundtrip():
-    """Create actor, fetch it back, verify data, delete."""
-    # Create
-    result = await create_actor({"name": "Test Goblin", "type": "npc", ...})
+    """Create actor in /tests folder, fetch it back, verify data."""
+    # Create in /tests folder
+    result = await create_actor({
+        "name": "Test Goblin",
+        "type": "npc",
+        "folder": "tests",  # Put in /tests folder
+        ...
+    })
     assert result.success, f"Create failed: {result.error}"
     actor_uuid = result.uuid
 
@@ -914,9 +920,6 @@ async def test_actor_roundtrip():
     assert fetched.entity["name"] == "Test Goblin"
     assert fetched.entity["type"] == "npc"
     # Verify items, spells, etc. are correct type
-
-    # Cleanup
-    await delete_actor(actor_uuid)
 ```
 
 **Why round-trip tests?**
