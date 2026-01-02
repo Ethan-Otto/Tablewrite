@@ -26,6 +26,7 @@ from foundry_converters.actors.models import (
     Multiattack,
     ParsedActorData,
     SkillProficiency,
+    Spell,
     Trait,
 )
 from util.gemini import generate_content_async
@@ -281,9 +282,9 @@ async def parse_single_trait_async(
     trait_text: str,
     spell_cache: Optional[Any] = None,
     model_name: str = DEFAULT_MODEL
-) -> Union[Trait, InnateSpellcasting]:
+) -> Union[Trait, InnateSpellcasting, tuple]:
     """
-    Parse a single trait entry into Trait or InnateSpellcasting.
+    Parse a single trait entry into Trait, InnateSpellcasting, or spellcasting tuple.
 
     Args:
         trait_text: Raw trait text
@@ -291,13 +292,23 @@ async def parse_single_trait_async(
         model_name: Gemini model to use
 
     Returns:
-        Trait or InnateSpellcasting object
+        Trait, InnateSpellcasting, or tuple of (spellcasting_info, List[Spell])
     """
-    # Detect if this is innate spellcasting
-    is_spellcasting = "spellcasting" in trait_text.lower() and "innate" in trait_text.lower()
+    trait_lower = trait_text.lower()
 
-    if is_spellcasting:
+    # Detect spellcasting type
+    is_innate = "innate spellcasting" in trait_lower or ("innate" in trait_lower and "spellcasting" in trait_lower)
+    is_pact_magic = "pact magic" in trait_lower
+    is_regular_spellcasting = (
+        ("spellcasting" in trait_lower or "spellcaster" in trait_lower)
+        and not is_innate
+        and not is_pact_magic
+    )
+
+    if is_innate:
         return await parse_innate_spellcasting_async(trait_text, spell_cache, model_name)
+    elif is_regular_spellcasting or is_pact_magic:
+        return await parse_spellcasting_async(trait_text, spell_cache, model_name, is_pact_magic=is_pact_magic)
     else:
         prompt = f"""
 Parse this D&D 5e trait/feature into JSON.
@@ -346,6 +357,115 @@ OUTPUT ONLY VALID JSON. No explanations.
             logger.warning(f"Gemini returned list instead of dict for trait, using first element")
 
         return Trait(**parsed_json)
+
+
+async def parse_spellcasting_async(
+    trait_text: str,
+    spell_cache: Optional[Any] = None,
+    model_name: str = DEFAULT_MODEL,
+    is_pact_magic: bool = False
+) -> tuple:
+    """
+    Parse regular Spellcasting or Pact Magic trait with spell UUID resolution.
+
+    Args:
+        trait_text: Raw spellcasting trait text
+        spell_cache: Optional spell cache for UUID resolution
+        model_name: Gemini model to use
+        is_pact_magic: True if this is Pact Magic (warlock-style)
+
+    Returns:
+        Tuple of (spellcasting_info dict, List[Spell])
+        spellcasting_info contains: ability, save_dc, attack_bonus, caster_level
+    """
+    spellcasting_type = "Pact Magic" if is_pact_magic else "Spellcasting"
+
+    prompt = f"""
+Parse this D&D 5e {spellcasting_type} trait into JSON.
+
+TRAIT TEXT:
+{trait_text}
+
+OUTPUT JSON SCHEMA:
+{{
+  "ability": "string (intelligence, wisdom, or charisma)",
+  "save_dc": integer,
+  "attack_bonus": integer (OPTIONAL - spell attack bonus if mentioned),
+  "caster_level": integer (OPTIONAL - e.g., '9th-level spellcaster' → 9),
+  "spells": [
+    {{
+      "name": "string (spell name)",
+      "level": integer (0-9, where 0 = cantrip)
+    }}
+  ]
+}}
+
+PARSING RULES:
+1. ability: Extract from "spellcasting ability is Intelligence" or "(spell save DC X, +Y to hit with spell attacks). The mage's spellcasting ability is Intelligence."
+2. save_dc: Extract from "spell save DC X"
+3. attack_bonus: Extract from "+X to hit with spell attacks" if present
+4. caster_level: Extract from "Xth-level spellcaster" or "Xth level" if present
+5. spells: Parse ALL spells from the spell list, organized by level
+   - Cantrips (at will): level 0
+   - "1st level (X slots): spell1, spell2" → level 1
+   - "2nd level (X slots): spell1" → level 2
+   - etc.
+6. Spell names should match official D&D 5e spell names (capitalize properly)
+
+OUTPUT ONLY VALID JSON. No explanations.
+"""
+
+    client = genai.Client(api_key=os.getenv("GeminiImageAPI") or os.getenv("GEMINI_API_KEY"))
+    response = await generate_content_async(
+        client=client,
+        model=model_name,
+        contents=prompt,
+        config={
+            'temperature': PARSE_TEMPERATURE,
+            'response_mime_type': 'application/json'
+        }
+    )
+
+    parsed_json = json.loads(response.text)
+    logger.debug(f"Gemini spellcasting response: {parsed_json}")
+
+    # Handle case where Gemini returns a list instead of dict
+    if isinstance(parsed_json, list):
+        if len(parsed_json) == 0:
+            raise ValueError(f"Gemini returned empty list for spellcasting: {trait_text[:100]}")
+        parsed_json = parsed_json[0]
+        logger.warning(f"Gemini returned list instead of dict for spellcasting, using first element")
+
+    # Extract spellcasting info
+    spellcasting_info = {
+        "ability": parsed_json.get("ability"),
+        "save_dc": parsed_json.get("save_dc"),
+        "attack_bonus": parsed_json.get("attack_bonus"),
+        "caster_level": parsed_json.get("caster_level"),
+        "is_pact_magic": is_pact_magic
+    }
+
+    # Create Spell objects with UUID resolution
+    spells = []
+    for spell_data in parsed_json.get("spells", []):
+        spell_name = spell_data.get("name", "")
+        spell_level = spell_data.get("level", 0)
+
+        # Resolve UUID from spell cache
+        spell_uuid = None
+        if spell_cache:
+            spell_uuid = spell_cache.get_spell_uuid(spell_name)
+            if not spell_uuid:
+                logger.warning(f"Spell '{spell_name}' not found in cache")
+
+        spells.append(Spell(
+            name=spell_name,
+            level=spell_level,
+            uuid=spell_uuid
+        ))
+
+    logger.info(f"Parsed {spellcasting_type}: {len(spells)} spells, ability={spellcasting_info['ability']}, DC={spellcasting_info['save_dc']}")
+    return (spellcasting_info, spells)
 
 
 async def parse_innate_spellcasting_async(
@@ -495,11 +615,29 @@ async def parse_stat_block_parallel(
             # Special actions (like Ink Cloud) parsed as Traits
             traits.append(result)
 
-    # Separate innate spellcasting from regular traits
+    # Separate spellcasting types from regular traits
     innate_spellcasting = None
+    spells = []
+    spellcasting_ability = None
+    spell_save_dc = None
+    spell_attack_bonus = None
+
     for result in trait_results:
         if isinstance(result, InnateSpellcasting):
             innate_spellcasting = result
+        elif isinstance(result, tuple) and len(result) == 2:
+            # Regular Spellcasting or Pact Magic: (spellcasting_info, List[Spell])
+            spellcasting_info, spell_list = result
+            spells.extend(spell_list)
+            # Extract spellcasting attributes
+            if spellcasting_info.get("ability"):
+                ability_map = {"intelligence": "int", "wisdom": "wis", "charisma": "cha"}
+                raw_ability = spellcasting_info["ability"].lower()
+                spellcasting_ability = ability_map.get(raw_ability, raw_ability[:3])
+            if spellcasting_info.get("save_dc"):
+                spell_save_dc = spellcasting_info["save_dc"]
+            if spellcasting_info.get("attack_bonus"):
+                spell_attack_bonus = spellcasting_info["attack_bonus"]
         elif isinstance(result, Trait):
             traits.append(result)
 
@@ -509,7 +647,7 @@ async def parse_stat_block_parallel(
     # Legendary actions are traits with legendary activation
     traits.extend([t for t in legendary_results if isinstance(t, Trait)])
 
-    logger.info(f"Parsed {stat_block.name}: {len(attacks)} attacks, {len(traits)} traits, {multiattack is not None} multiattack, {innate_spellcasting is not None} spellcasting")
+    logger.info(f"Parsed {stat_block.name}: {len(attacks)} attacks, {len(traits)} traits, {len(spells)} spells, {multiattack is not None} multiattack, {innate_spellcasting is not None} innate spellcasting")
 
     # Convert saving throws to proficiency list
     saving_throw_proficiencies = []
@@ -562,6 +700,10 @@ async def parse_stat_block_parallel(
         attacks=attacks,
         traits=traits,
         multiattack=multiattack,
+        spells=spells,
+        spellcasting_ability=spellcasting_ability,
+        spell_save_dc=spell_save_dc,
+        spell_attack_bonus=spell_attack_bonus,
         innate_spellcasting=innate_spellcasting,
         size=stat_block.size,
         creature_type=stat_block.type,

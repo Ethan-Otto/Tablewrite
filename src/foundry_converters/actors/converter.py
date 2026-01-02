@@ -392,8 +392,19 @@ async def convert_to_foundry(
     items = []
     spell_uuids = []  # Collect spell UUIDs to add via /give
 
+    # Collect spell names to filter from attacks/traits (case-insensitive)
+    # Spells will be added via /give from compendium, so don't duplicate as feat/weapon
+    spell_names = {spell.name.lower() for spell in parsed_actor.spells}
+    if parsed_actor.innate_spellcasting:
+        spell_names.update(spell.name.lower() for spell in parsed_actor.innate_spellcasting.spells)
+    logger.debug(f"Spell names to filter from attacks/traits: {spell_names}")
+
     # Convert attacks to weapon items (NEW v10+ structure with activities)
     for attack in parsed_actor.attacks:
+        # Skip attacks that are actually spells (they'll be added from compendium)
+        if attack.name.lower() in spell_names:
+            logger.info(f"Skipping attack '{attack.name}' - will be added as spell from compendium")
+            continue
         activities = {}
 
         # Determine if this is a save-only attack (e.g., breath weapon)
@@ -477,6 +488,11 @@ async def convert_to_foundry(
 
     # Convert traits to feat items
     for trait in parsed_actor.traits:
+        # Skip traits that are actually spells (they'll be added from compendium)
+        if trait.name.lower() in spell_names:
+            logger.info(f"Skipping trait '{trait.name}' - will be added as spell from compendium")
+            continue
+
         # Create activity for non-passive traits
         activities = {}
         if trait.activation != "passive":
@@ -624,11 +640,12 @@ async def convert_to_foundry(
 
     # Convert spells - collect UUIDs for /give endpoint
     for spell in parsed_actor.spells:
-        # Get UUID from cache or spell object
+        # Get UUID from cache or spell object (cache first, then fallback to spell.uuid)
         spell_uuid = None
         if spell_cache:
             spell_uuid = spell_cache.get_spell_uuid(spell.name)
-        elif spell.uuid:
+        # Fallback to spell's uuid if cache miss or cache not available
+        if not spell_uuid and spell.uuid:
             spell_uuid = spell.uuid
 
         if spell_uuid:
@@ -692,10 +709,13 @@ async def convert_to_foundry(
 
         # Collect UUIDs for innate spells (to add via /give)
         for spell in innate.spells:
-            # Look up UUID from spell cache
+            # Look up UUID from cache or spell object (cache first, then fallback)
             spell_uuid = None
             if spell_cache:
                 spell_uuid = spell_cache.get_spell_uuid(spell.name)
+            # Fallback to spell's uuid if cache miss or cache not available
+            if not spell_uuid and hasattr(spell, 'uuid') and spell.uuid:
+                spell_uuid = spell.uuid
 
             if spell_uuid:
                 spell_uuids.append(spell_uuid)

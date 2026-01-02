@@ -23,14 +23,31 @@ export async function handleActorCreate(data: Record<string, unknown>): Promise<
 
     const actor = await Actor.create(actorData);
     if (actor) {
+      const actorUuid = `Actor.${actor.id}`;
+      console.log('[Tablewrite] Created actor:', actor.name, actor.id);
+
+      // Add spells if spell_uuids provided
+      const spellUuids = data.spell_uuids as string[] | undefined;
+      if (spellUuids && spellUuids.length > 0) {
+        console.log('[Tablewrite] Adding', spellUuids.length, 'spells to actor...');
+        const giveResult = await handleGiveItems({
+          actor_uuid: actorUuid,
+          item_uuids: spellUuids
+        });
+        if (giveResult.success) {
+          console.log('[Tablewrite] Added', giveResult.items_added, 'spells to actor');
+        } else {
+          console.warn('[Tablewrite] Failed to add some spells:', giveResult.errors);
+        }
+      }
+
       const message = game.i18n.format('TABLEWRITE_ASSISTANT.CreatedActor', { name: actor.name });
       ui.notifications?.info(message);
-      console.log('[Tablewrite] Created actor:', actor.name, actor.id);
 
       return {
         success: true,
         id: actor.id,
-        uuid: `Actor.${actor.id}`,
+        uuid: actorUuid,
         name: actor.name ?? undefined
       };
     }

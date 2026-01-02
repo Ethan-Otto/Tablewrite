@@ -908,6 +908,14 @@ async def test_create_actor():
 
 - **Test Output**: When running tests, write output to a log file (e.g., `uv run pytest 2>&1 | tee test_output.log`) instead of truncating with `head`/`tail`. This preserves full warnings, errors, and test summaries for review.
 - **Running Tests**: Run non-slow tests normally. Run full test suite (`pytest --full`) in the background since it takes ~40 minutes.
+- **Restarting Backend & Foundry**: If the backend becomes unresponsive or Foundry disconnects, use the foundry_init script:
+  ```bash
+  # Kill backend on port 8000 and restart
+  lsof -ti :8000 | xargs kill -9; cd ui/backend && source .venv/bin/activate && uvicorn app.main:app --reload --port 8000 &
+
+  # Reconnect Foundry (refreshes Chrome tab with Foundry)
+  python tests/foundry_init.py --force-refresh
+  ```
 
 ## Coding Conventions
 

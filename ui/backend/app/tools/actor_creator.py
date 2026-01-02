@@ -1,32 +1,109 @@
-"""Actor creation tool using WebSocket-only (no relay server)."""
+"""Actor creation tool - thin wrapper around shared actor creation logic."""
 import sys
+import asyncio
 import logging
 from pathlib import Path
-from datetime import datetime
 from dotenv import load_dotenv
 from .base import BaseTool, ToolSchema, ToolResponse
 
 # Add project paths for module imports
 project_root = Path(__file__).parent.parent.parent.parent.parent
-sys.path.insert(0, str(project_root))  # For "from src.xxx" imports
-sys.path.insert(0, str(project_root / "src"))  # For "from xxx" imports
+sys.path.insert(0, str(project_root))
+sys.path.insert(0, str(project_root / "src"))
 
 # Load environment variables from project root before imports
 env_path = project_root / ".env"
 if env_path.exists():
     load_dotenv(env_path)
 
-# Import actor creation pipeline components (without FoundryClient)
-from actors.generate_actor_file import generate_actor_description  # noqa: E402
-from actors.generate_actor_biography import generate_actor_biography  # noqa: E402
-from actors.statblock_parser import parse_raw_text_to_statblock  # noqa: E402
-from foundry_converters.actors.parser import parse_stat_block_parallel  # noqa: E402
-from foundry_converters.actors.converter import convert_to_foundry  # noqa: E402
+from actors.orchestrate import create_actor_from_description  # noqa: E402
 from foundry.actors.spell_cache import SpellCache  # noqa: E402
 from foundry.icon_cache import IconCache  # noqa: E402
-from app.websocket import push_actor  # noqa: E402
+from app.websocket import push_actor, list_files, list_compendium_items  # noqa: E402
 
 logger = logging.getLogger(__name__)
+
+
+async def list_compendium_items_with_retry(
+    document_type: str = "Item",
+    sub_type: str = None,
+    max_retries: int = 3,
+    initial_delay: float = 1.0
+):
+    """
+    Fetch compendium items with retry logic for WebSocket reconnection.
+
+    After a hot reload, the Foundry WebSocket may not be reconnected yet.
+    This retries with exponential backoff to wait for the connection.
+    """
+    delay = initial_delay
+    last_result = None
+
+    for attempt in range(max_retries):
+        result = await list_compendium_items(
+            document_type=document_type,
+            sub_type=sub_type,
+            timeout=15.0
+        )
+        last_result = result
+
+        if result.success:
+            return result
+
+        # Check if it's a connection issue (worth retrying)
+        logger.warning(f"Attempt {attempt + 1}/{max_retries}: error={result.error}")
+        if result.error and "No Foundry client connected" in result.error:
+            if attempt < max_retries - 1:
+                logger.warning(f"WebSocket not connected, waiting {delay}s before retry {attempt + 2}/{max_retries}...")
+                await asyncio.sleep(delay)
+                delay *= 2  # Exponential backoff
+            continue
+
+        # Non-connection error, don't retry
+        break
+
+    logger.warning(f"All {max_retries} attempts failed, returning last result")
+    return last_result
+
+
+async def list_files_with_retry(
+    path: str,
+    source: str = "public",
+    recursive: bool = False,
+    extensions: list = None,
+    max_retries: int = 3,
+    initial_delay: float = 1.0
+):
+    """
+    List files with retry logic for WebSocket reconnection.
+    """
+    delay = initial_delay
+    last_result = None
+
+    for attempt in range(max_retries):
+        result = await list_files(
+            path=path,
+            source=source,
+            recursive=recursive,
+            extensions=extensions,
+            timeout=15.0
+        )
+        last_result = result
+
+        if result.success:
+            return result
+
+        # Check if it's a connection issue (worth retrying)
+        if result.error and "No Foundry client connected" in result.error:
+            if attempt < max_retries - 1:
+                logger.info(f"WebSocket not connected for files, waiting {delay}s before retry {attempt + 2}/{max_retries}...")
+                await asyncio.sleep(delay)
+                delay *= 2
+            continue
+
+        break
+
+    return last_result
 
 
 class ActorCreatorTool(BaseTool):
@@ -64,94 +141,135 @@ class ActorCreatorTool(BaseTool):
         )
 
     async def execute(self, description: str, challenge_rating: float = None) -> ToolResponse:
-        """Execute actor creation via WebSocket (no relay server)."""
+        """Execute actor creation using shared logic from actors.orchestrate."""
         try:
-            model_name = "gemini-2.0-flash"
+            # Pre-fetch spells and icons via WebSocket (avoids HTTP self-deadlock)
+            # Uses retry logic to wait for WebSocket reconnection after hot reload
+            # HARD FAIL: SpellCache MUST load successfully - spells won't work without it
+            spell_cache = SpellCache()
+            logger.info("Fetching spells from compendium via WebSocket (with retry)...")
+            spells_result = await list_compendium_items_with_retry(
+                document_type="Item",
+                sub_type="spell",
+                max_retries=3,
+                initial_delay=1.0
+            )
 
-            # Step 1: Generate raw stat block text
-            logger.info("Step 1/5: Generating stat block text with Gemini...")
-            raw_text = await generate_actor_description(
+            if not spells_result.success:
+                error_msg = f"❌ SpellCache FAILED to load: {spells_result.error}"
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
+
+            if not spells_result.results or len(spells_result.results) == 0:
+                error_msg = "❌ SpellCache FAILED: No spells returned from compendium"
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
+
+            # Convert SearchResultItem objects to dicts for load_from_data
+            spell_dicts = [
+                {
+                    "name": r.name,
+                    "uuid": r.uuid,
+                    "type": r.type,
+                    "img": r.img,
+                    "pack": r.pack,
+                }
+                for r in spells_result.results
+            ]
+            spell_cache.load_from_data(spell_dicts)
+            logger.info(f"✓ SpellCache loaded with {spell_cache.spell_count} spells")
+
+            # Verify critical spells exist
+            test_uuid = spell_cache.get_spell_uuid("Fire Bolt")
+            if not test_uuid:
+                error_msg = "❌ SpellCache FAILED: 'Fire Bolt' not found - cache may be incomplete"
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
+            logger.info(f"✓ Test lookup 'Fire Bolt' -> {test_uuid}")
+
+            # HARD FAIL: IconCache MUST load successfully
+            icon_cache = IconCache()
+            logger.info("Fetching icons via WebSocket (with retry)...")
+            files_result = await list_files_with_retry(
+                path="icons",
+                source="public",
+                recursive=True,
+                extensions=[".webp", ".png", ".jpg", ".svg"],
+                max_retries=3,
+                initial_delay=1.0
+            )
+
+            if not files_result.success:
+                error_msg = f"❌ IconCache FAILED to load: {files_result.error}"
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
+
+            icon_cache.load_from_data(files_result.files or [])
+            logger.info(f"✓ IconCache loaded with {icon_cache.icon_count} icons")
+
+            # WebSocket-based actor upload function with retry
+            async def ws_actor_upload(actor_data: dict, spell_uuids: list) -> str:
+                """Upload actor via WebSocket instead of relay."""
+                # Log spell_uuids being sent
+                logger.info(f"📤 Uploading actor '{actor_data.get('name')}' with {len(spell_uuids)} spell UUIDs")
+                if spell_uuids:
+                    for uuid in spell_uuids:
+                        logger.info(f"   - {uuid}")
+                else:
+                    logger.warning("⚠️ No spell_uuids to send!")
+
+                # Wrap in expected format: {actor: {...}, spell_uuids: [...]}
+                delay = 1.0
+                last_error = None
+
+                for attempt in range(3):
+                    result = await push_actor({
+                        "actor": actor_data,
+                        "spell_uuids": spell_uuids
+                    }, timeout=30.0)
+
+                    if result.success:
+                        return result.uuid
+
+                    last_error = result.error
+
+                    # Check if it's a connection issue (worth retrying)
+                    if result.error and "No Foundry client connected" in result.error:
+                        if attempt < 2:
+                            logger.info(f"WebSocket not connected for actor upload, waiting {delay}s before retry {attempt + 2}/3...")
+                            await asyncio.sleep(delay)
+                            delay *= 2
+                        continue
+
+                    # Non-connection error, don't retry
+                    break
+
+                raise RuntimeError(f"Failed to create actor: {last_error}")
+
+            # Use shared actor creation logic (same as /api/actors/create)
+            result = await create_actor_from_description(
                 description=description,
                 challenge_rating=challenge_rating,
-                model_name=model_name
-            )
-
-            # Step 2: Parse to StatBlock model
-            logger.info("Step 2/5: Parsing stat block to StatBlock model...")
-            stat_block = await parse_raw_text_to_statblock(raw_text, model_name=model_name)
-
-            # Step 3: Parse to detailed ParsedActorData
-            logger.info("Step 3/5: Parsing to detailed ParsedActorData...")
-            parsed_actor = await parse_stat_block_parallel(stat_block)
-
-            # Step 4: Generate biography
-            logger.info("Step 4/5: Generating actor biography...")
-            biography = await generate_actor_biography(parsed_actor, model_name=model_name)
-            parsed_actor = parsed_actor.model_copy(update={"biography": biography})
-
-            # Step 5: Convert to FoundryVTT format
-            logger.info("Step 5/5: Converting to FoundryVTT format...")
-
-            # Try to load spell cache, but continue without it if relay server is unavailable
-            spell_cache = None
-            try:
-                spell_cache = SpellCache()
-                spell_cache.load()
-            except Exception as e:
-                logger.warning(f"SpellCache unavailable (relay server not running?): {e}")
-                logger.info("Continuing without spell resolution - Foundry module will resolve spells")
-
-            # Try to load icon cache, but continue without it if unavailable
-            icon_cache = None
-            try:
-                icon_cache = IconCache()
-                icon_cache.load()
-            except Exception as e:
-                logger.warning(f"IconCache unavailable: {e}")
-                logger.info("Continuing without custom icons")
-
-            actor_json, spell_uuids = await convert_to_foundry(
-                parsed_actor,
                 spell_cache=spell_cache,
                 icon_cache=icon_cache,
-                use_ai_icons=True
+                actor_upload_fn=ws_actor_upload,
             )
 
-            # Get CR from parsed actor data
-            actor_cr = parsed_actor.challenge_rating
-            actor_name = parsed_actor.name
+            actor_name = result.stat_block.name if result.stat_block else "Unknown"
+            actor_cr = result.challenge_rating
 
-            # Push FULL actor data to connected Foundry clients via WebSocket
-            # The Foundry module will call Actor.create(data) and return the UUID
-            result = await push_actor({
-                "actor": actor_json,
-                "spell_uuids": spell_uuids,
-                "name": actor_name,
-                "cr": actor_cr
-            })
+            logger.info(f"Created actor '{actor_name}' (CR {actor_cr}) with UUID {result.foundry_uuid}")
 
-            if not result.success:
-                logger.error(f"Failed to create actor in Foundry: {result.error}")
-                return ToolResponse(
-                    type="error",
-                    message=f"Failed to create actor in Foundry: {result.error}",
-                    data=None
-                )
-
-            logger.info(f"Created actor '{actor_name}' (CR {actor_cr}) in Foundry with UUID {result.uuid}")
-
-            # Format text response with UUID
-            cr_text = f"CR {actor_cr}"
             message = (
-                f"Created **{actor_name}** ({cr_text})!\n\n"
-                f"UUID: `{result.uuid}`\n"
+                f"Created **{actor_name}** (CR {actor_cr})!\n\n"
+                f"UUID: `{result.foundry_uuid}`\n"
                 f"The actor has been created in FoundryVTT."
             )
 
             return ToolResponse(
                 type="text",
                 message=message,
-                data={"uuid": result.uuid, "name": actor_name, "cr": actor_cr}
+                data={"uuid": result.foundry_uuid, "name": actor_name, "cr": actor_cr}
             )
 
         except Exception as e:

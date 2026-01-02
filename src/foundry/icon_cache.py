@@ -128,7 +128,7 @@ class IconCache:
                 response = await client.get(
                     f"{BACKEND_URL}/api/foundry/files",
                     params=params,
-                    timeout=120.0
+                    timeout=15.0
                 )
                 response.raise_for_status()
                 data = response.json()
@@ -147,7 +147,7 @@ class IconCache:
             import concurrent.futures
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(asyncio.run, fetch())
-                return future.result(timeout=300)
+                return future.result(timeout=15)
 
     def _categorize_icon(self, path: str) -> None:
         """

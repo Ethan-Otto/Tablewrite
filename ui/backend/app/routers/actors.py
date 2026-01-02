@@ -284,12 +284,15 @@ async def create_actor_endpoint(request: CreateActorRequest):
         # WebSocket-based actor upload function (bypasses relay server)
         async def ws_actor_upload(actor_data: dict, spell_uuids: list) -> str:
             """Upload actor via WebSocket instead of relay."""
-            result = await push_actor(actor_data, timeout=30.0)
+            # Wrap in expected format: {actor: {...}, spell_uuids: [...]}
+            result = await push_actor({
+                "actor": actor_data,
+                "spell_uuids": spell_uuids
+            }, timeout=30.0)
             if not result.success:
                 raise RuntimeError(
                     f"Failed to create actor via WebSocket: {result.error}"
                 )
-            # TODO: Add spell_uuids via WebSocket give message if needed
             return result.uuid
 
         result = await create_actor_from_description(

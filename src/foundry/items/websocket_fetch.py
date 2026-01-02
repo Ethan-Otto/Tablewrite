@@ -146,7 +146,7 @@ async def fetch_all_spells_ws() -> List[Dict]:
 async def fetch_compendium_items(
     document_type: str = "Item",
     sub_type: Optional[str] = None,
-    timeout: float = 60.0
+    timeout: float = 15.0
 ) -> List[Dict]:
     """
     Fetch ALL items of a specific type from compendiums in one request.
@@ -203,4 +203,4 @@ def fetch_all_spells_ws_sync() -> List[Dict]:
         import concurrent.futures
         with concurrent.futures.ThreadPoolExecutor() as executor:
             future = executor.submit(asyncio.run, fetch_all_spells_efficient())
-            return future.result(timeout=120)
+            return future.result(timeout=15)
