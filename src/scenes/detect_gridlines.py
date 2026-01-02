@@ -79,18 +79,17 @@ async def detect_gridlines(
 
     logger.info(f"Detecting grid in: {image_path}")
 
-    # Load image
-    image = Image.open(image_path)
-
     # Create Gemini client
     client = create_client()
 
-    # Call Gemini Vision API (synchronous call wrapped in thread)
-    response = await asyncio.to_thread(
-        client.models.generate_content,
-        model=model_name,
-        contents=[image, GRID_DETECTION_PROMPT]
-    )
+    # Load image and call API (context manager ensures proper cleanup)
+    with Image.open(image_path) as image:
+        # Call Gemini Vision API (synchronous call wrapped in thread)
+        response = await asyncio.to_thread(
+            client.models.generate_content,
+            model=model_name,
+            contents=[image, GRID_DETECTION_PROMPT]
+        )
 
     # Parse response
     response_text = response.text

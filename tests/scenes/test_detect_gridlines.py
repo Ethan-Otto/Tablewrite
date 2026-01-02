@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, patch
 class TestDetectGridlines:
     """Test detect_gridlines function with mocked Gemini API."""
 
+    @pytest.mark.smoke
     async def test_detect_gridlines_with_grid(self, tmp_path):
         """Test grid detection returns grid_size when grid is detected."""
         from scenes.detect_gridlines import detect_gridlines
@@ -193,10 +194,14 @@ class TestDetectGridlines:
             "confidence": 0.8
         })
 
+        # Create mock that works with context manager
         mock_pil_image = MagicMock()
+        mock_context = MagicMock()
+        mock_context.__enter__ = MagicMock(return_value=mock_pil_image)
+        mock_context.__exit__ = MagicMock(return_value=False)
 
         with patch("scenes.detect_gridlines.create_client") as mock_create_client, \
-             patch("scenes.detect_gridlines.Image.open", return_value=mock_pil_image):
+             patch("scenes.detect_gridlines.Image.open", return_value=mock_context):
             mock_client = MagicMock()
             mock_client.models.generate_content = MagicMock(return_value=mock_response)
             mock_create_client.return_value = mock_client
@@ -211,7 +216,7 @@ class TestDetectGridlines:
             contents = call_kwargs.kwargs.get("contents")
             assert contents is not None
             assert len(contents) == 2  # [image, prompt]
-            # First item should be the mock PIL image
+            # First item should be the mock PIL image (from context manager)
             assert contents[0] is mock_pil_image
 
 
