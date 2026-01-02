@@ -2,6 +2,7 @@
 
 import logging
 import requests
+from json import JSONDecodeError
 from typing import Optional, Dict, Any, List
 
 logger = logging.getLogger(__name__)
@@ -77,12 +78,30 @@ class SceneManager:
             response = requests.post(endpoint, json=payload, timeout=60)
 
             if response.status_code != 200:
-                error_msg = response.json().get("detail", f"HTTP {response.status_code}")
-                return {"success": False, "error": error_msg}
+                # Safe JSON parsing for error details
+                try:
+                    error_detail = response.json().get("detail", f"HTTP {response.status_code}")
+                except (ValueError, JSONDecodeError):
+                    error_detail = f"HTTP {response.status_code}: {response.text[:200]}"
+                return {"success": False, "error": error_detail}
 
-            data = response.json()
+            # Parse and validate response
+            try:
+                data = response.json()
+            except (ValueError, JSONDecodeError) as e:
+                logger.error(f"Invalid JSON response: {e}")
+                return {"success": False, "error": f"Invalid JSON response: {e}"}
+
+            # Validate response has required fields
+            if not isinstance(data, dict):
+                return {"success": False, "error": f"Unexpected response type: {type(data).__name__}"}
+
+            if "uuid" not in data:
+                logger.warning(f"Response missing 'uuid' field: {data}")
+
             logger.info(f"Created scene: {data.get('uuid')}")
-            return {"success": True, "uuid": data.get("uuid"), "name": data.get("name")}
+            # Return complete response with success flag
+            return {"success": True, **data}
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Create scene failed: {e}")
@@ -148,9 +167,14 @@ class SceneManager:
                 logger.warning(f"Search failed: {response.status_code}")
                 return []
 
-            data = response.json()
+            # Safe JSON parsing
+            try:
+                data = response.json()
+            except (ValueError, JSONDecodeError):
+                logger.warning("Search returned invalid JSON")
+                return []
 
-            if not data.get("success"):
+            if not isinstance(data, dict) or not data.get("success"):
                 return []
 
             results = data.get("results", [])
