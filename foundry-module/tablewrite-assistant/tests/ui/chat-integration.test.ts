@@ -24,10 +24,7 @@ describe('Chat Integration', () => {
   });
 
   it('can send message to /api/chat and receive response', async () => {
-    if (!backendAvailable) {
-      console.warn('Backend not available - skipping integration test');
-      return;
-    }
+    expect(backendAvailable, 'Backend not available - start: cd ui/backend && uvicorn app.main:app --reload --port 8000').toBe(true);
 
     const response = await fetch(`${BACKEND_URL}/api/chat`, {
       method: 'POST',
@@ -48,10 +45,7 @@ describe('Chat Integration', () => {
   });
 
   it('handles conversation history correctly', async () => {
-    if (!backendAvailable) {
-      console.warn('Backend not available - skipping integration test');
-      return;
-    }
+    expect(backendAvailable, 'Backend not available - start: cd ui/backend && uvicorn app.main:app --reload --port 8000').toBe(true);
 
     const response = await fetch(`${BACKEND_URL}/api/chat`, {
       method: 'POST',
