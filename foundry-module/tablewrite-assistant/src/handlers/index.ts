@@ -6,15 +6,15 @@ export { handleActorCreate, handleGetActor, handleDeleteActor, handleListActors,
 export { handleJournalCreate, handleJournalDelete } from './journal.js';
 export { handleSceneCreate } from './scene.js';
 export { handleSearchItems, handleGetItem, handleListCompendiumItems } from './items.js';
-export { handleListFiles } from './files.js';
+export { handleListFiles, handleFileUpload } from './files.js';
 
 import { handleActorCreate, handleGetActor, handleDeleteActor, handleListActors, handleGiveItems } from './actor.js';
 import { handleJournalCreate, handleJournalDelete } from './journal.js';
 import { handleSceneCreate } from './scene.js';
 import { handleSearchItems, handleGetItem, handleListCompendiumItems } from './items.js';
-import { handleListFiles } from './files.js';
+import { handleListFiles, handleFileUpload } from './files.js';
 
-export type MessageType = 'actor' | 'journal' | 'delete_journal' | 'scene' | 'get_actor' | 'delete_actor' | 'list_actors' | 'give_items' | 'search_items' | 'get_item' | 'list_compendium_items' | 'list_files' | 'connected' | 'pong';
+export type MessageType = 'actor' | 'journal' | 'delete_journal' | 'scene' | 'get_actor' | 'delete_actor' | 'list_actors' | 'give_items' | 'search_items' | 'get_item' | 'list_compendium_items' | 'list_files' | 'upload_file' | 'connected' | 'pong';
 
 export interface TablewriteMessage {
   type: MessageType;
@@ -89,10 +89,16 @@ export interface FileListResult {
   error?: string;
 }
 
+export interface FileUploadResult {
+  success: boolean;
+  path?: string;
+  error?: string;
+}
+
 export interface MessageResult {
   responseType: string;
   request_id?: string;
-  data?: CreateResult | GetResult | DeleteResult | ListResult | GiveResult | SearchResult | FileListResult;
+  data?: CreateResult | GetResult | DeleteResult | ListResult | GiveResult | SearchResult | FileListResult | FileUploadResult;
   error?: string;
 }
 
@@ -284,6 +290,25 @@ export async function handleMessage(message: TablewriteMessage): Promise<Message
         responseType: 'files_error',
         request_id: message.request_id,
         error: 'Missing data for list_files'
+      };
+    case 'upload_file':
+      if (message.data) {
+        const result = await handleFileUpload(message.data as {
+          filename: string;
+          content: string;
+          destination: string;
+        });
+        return {
+          responseType: result.success ? 'file_uploaded' : 'file_error',
+          request_id: message.request_id,
+          data: result,
+          error: result.error
+        };
+      }
+      return {
+        responseType: 'file_error',
+        request_id: message.request_id,
+        error: 'Missing data for upload_file'
       };
     case 'connected':
       console.log('[Tablewrite] Connected with client_id:', message.client_id);
