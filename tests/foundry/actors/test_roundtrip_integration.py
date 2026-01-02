@@ -5,8 +5,8 @@ import json
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-from foundry.actors.models import ParsedActorData, Attack, DamageFormula, AttackSave
-from foundry.actors.converter import convert_to_foundry
+from foundry_converters.actors.models import ParsedActorData, Attack, DamageFormula, AttackSave
+from foundry_converters.actors.converter import convert_to_foundry
 from foundry.client import FoundryClient
 
 # Load environment variables from .env file

@@ -234,6 +234,26 @@ STAT BLOCK GUIDELINES:
 - Consider legendary actions if CR >= 10
 - Ensure all numbers are mechanically balanced for the chosen CR
 
+SPELLCASTING FORMAT (use when creature has spells):
+For spellcasting creatures, include a "Spellcasting" trait in the Traits section:
+
+Spellcasting. The [creature] is a Xth-level spellcaster. Its spellcasting ability is [Intelligence/Wisdom/Charisma] (spell save DC X, +X to hit with spell attacks). The [creature] has the following spells prepared:
+
+Cantrips (at will): fire bolt, light, mage hand
+1st level (4 slots): mage armor, magic missile, shield
+2nd level (3 slots): misty step, suggestion
+3rd level (3 slots): counterspell, fireball, fly
+4th level (2 slots): greater invisibility
+5th level (1 slot): cone of cold
+
+For innate spellcasting (racial/creature abilities without slots):
+
+Innate Spellcasting. The [creature]'s innate spellcasting ability is [ability] (spell save DC X). It can innately cast the following spells, requiring no material components:
+
+At will: detect magic, levitate
+3/day each: dispel magic, invisibility
+1/day: plane shift
+
 After the stat block, add:
 
 Bio

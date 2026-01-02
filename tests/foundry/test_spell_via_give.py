@@ -1,8 +1,8 @@
 """Tests for adding compendium spells via /give endpoint."""
 
 import pytest
-from foundry.actors.models import ParsedActorData, Attack, DamageFormula, InnateSpellcasting, InnateSpell
-from foundry.actors.converter import convert_to_foundry
+from foundry_converters.actors.models import ParsedActorData, Attack, DamageFormula, InnateSpellcasting, InnateSpell
+from foundry_converters.actors.converter import convert_to_foundry
 from foundry.client import FoundryClient
 from foundry.actors.spell_cache import SpellCache
 

@@ -1,8 +1,8 @@
 """Tests for innate spellcasting."""
 
 import pytest
-from foundry.actors.models import ParsedActorData, InnateSpellcasting, InnateSpell
-from foundry.actors.converter import convert_to_foundry
+from foundry_converters.actors.models import ParsedActorData, InnateSpellcasting, InnateSpell
+from foundry_converters.actors.converter import convert_to_foundry
 
 
 class TestInnateSpellcastingModel:

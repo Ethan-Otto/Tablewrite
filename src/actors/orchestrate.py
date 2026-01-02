@@ -13,8 +13,8 @@ from actors.generate_actor_file import generate_actor_description
 from actors.generate_actor_biography import generate_actor_biography
 from actors.statblock_parser import parse_raw_text_to_statblock
 from actors.models import ActorCreationResult
-from foundry.actors.parser import parse_stat_block_parallel
-from foundry.actors.converter import convert_to_foundry
+from foundry_converters.actors.parser import parse_stat_block_parallel
+from foundry_converters.actors.converter import convert_to_foundry
 from foundry.actors.spell_cache import SpellCache
 from foundry.icon_cache import IconCache
 from foundry.client import FoundryClient
@@ -176,9 +176,24 @@ async def create_actor_from_description(
             "StatBlock model"
         )
 
+        # Initialize caches early so they're available for parsing
+        # SpellCache is needed for spell UUID resolution during trait parsing
+        if spell_cache is None:
+            logger.info("Loading spell cache...")
+            spell_cache = SpellCache()
+            spell_cache.load()
+
+        if icon_cache is None:
+            logger.info("Loading icon cache...")
+            icon_cache = IconCache()
+            icon_cache.load()
+
         # Step 3: Parse to detailed ParsedActorData
         logger.info("Step 3/6: Parsing to detailed ParsedActorData...")
-        parsed_actor = await parse_stat_block_parallel(stat_block)
+        parsed_actor = await parse_stat_block_parallel(
+            stat_block,
+            spell_cache=spell_cache  # Pass spell_cache for spell UUID resolution
+        )
         parsed_data_file = _save_intermediate_file(
             parsed_actor,
             output_dir / "03_parsed_actor_data.json",
@@ -199,14 +214,6 @@ async def create_actor_from_description(
 
         # Step 5: Convert to FoundryVTT format
         logger.info("Step 5/6: Converting to FoundryVTT format...")
-        if spell_cache is None:
-            spell_cache = SpellCache()
-            spell_cache.load()
-
-        if icon_cache is None:
-            logger.info("Loading icon cache...")
-            icon_cache = IconCache()
-            icon_cache.load()
 
         actor_json, spell_uuids = await convert_to_foundry(
             parsed_actor,

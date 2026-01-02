@@ -6,7 +6,7 @@ import os
 from typing import Optional
 from google import genai
 
-from foundry.actors.models import ParsedActorData
+from foundry_converters.actors.models import ParsedActorData
 from util.gemini import generate_content_async
 
 logger = logging.getLogger(__name__)

@@ -61,9 +61,10 @@ async def push_actor(actor_data: Dict[str, Any], timeout: float = 30.0) -> PushR
     Returns:
         PushResult with UUID if successful, error if failed
     """
-    # Wrap actor data as expected by Foundry handler: {actor: {...}}
+    # Send actor data directly - actor_creator.py already formats it as
+    # {actor: {...}, spell_uuids: [...], name: ..., cr: ...}
     response = await foundry_manager.broadcast_and_wait(
-        {"type": "actor", "data": {"actor": actor_data}},
+        {"type": "actor", "data": actor_data},
         timeout=timeout
     )
 
