@@ -10,12 +10,105 @@ from unittest.mock import AsyncMock, patch
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.routers.files import (
+    sanitize_filename,
+    validate_destination,
+    ALLOWED_DESTINATIONS,
+    MAX_FILE_SIZE,
+)
 
 
 client = TestClient(app)
 
 
 BACKEND_URL = "http://localhost:8000"
+
+
+@pytest.mark.unit
+class TestSanitizeFilename:
+    """Unit tests for filename sanitization."""
+
+    def test_sanitize_filename_normal(self):
+        """Normal filenames pass through."""
+        assert sanitize_filename("castle.png") == "castle.png"
+        assert sanitize_filename("my-map_v2.webp") == "my-map_v2.webp"
+
+    def test_sanitize_filename_removes_path_separators(self):
+        """Path separators are replaced with underscores, .. becomes __."""
+        # ../ becomes .._ (/ -> _), then .. -> __, so ../ -> ___
+        # Three of them: _________etc_passwd (9 underscores)
+        result = sanitize_filename("../../../etc/passwd")
+        assert ".." not in result  # Most important: no path traversal
+        assert "/" not in result
+        assert sanitize_filename("path/to/file.png") == "path_to_file.png"
+        assert sanitize_filename("path\\to\\file.png") == "path_to_file.png"
+
+    def test_sanitize_filename_removes_special_chars(self):
+        """Special characters are replaced with underscores."""
+        # Note: . is preserved for file extensions, so count carefully
+        assert sanitize_filename("file<>:\"|?*.png") == "file_______.png"
+        assert sanitize_filename("file\x00name.png") == "file_name.png"
+
+    def test_sanitize_filename_removes_leading_dots(self):
+        """Leading dots are stripped (prevents hidden files)."""
+        assert sanitize_filename(".hidden") == "hidden"
+        assert sanitize_filename("...triple") == "triple"
+        assert sanitize_filename(".htaccess") == "htaccess"
+
+    def test_sanitize_filename_handles_none(self):
+        """None filename returns 'unnamed'."""
+        assert sanitize_filename(None) == "unnamed"
+
+    def test_sanitize_filename_handles_empty(self):
+        """Empty filename returns 'unnamed'."""
+        assert sanitize_filename("") == "unnamed"
+        assert sanitize_filename("...") == "unnamed"  # All dots stripped
+
+    def test_sanitize_filename_truncates_long_names(self):
+        """Filenames are truncated to 255 characters."""
+        long_name = "a" * 300 + ".png"
+        result = sanitize_filename(long_name)
+        assert len(result) == 255
+
+
+@pytest.mark.unit
+class TestValidateDestination:
+    """Unit tests for destination validation."""
+
+    def test_validate_destination_allowed_paths(self):
+        """Allowed destinations pass validation."""
+        for dest in ALLOWED_DESTINATIONS:
+            assert validate_destination(dest) == dest
+
+    def test_validate_destination_blocks_path_traversal(self):
+        """Path traversal attempts are blocked."""
+        from fastapi import HTTPException
+
+        with pytest.raises(HTTPException) as exc_info:
+            validate_destination("../etc/passwd")
+        assert exc_info.value.status_code == 400
+        assert "path traversal" in exc_info.value.detail
+
+    def test_validate_destination_blocks_absolute_paths(self):
+        """Absolute paths are blocked."""
+        from fastapi import HTTPException
+
+        with pytest.raises(HTTPException) as exc_info:
+            validate_destination("/etc/passwd")
+        assert exc_info.value.status_code == 400
+
+        with pytest.raises(HTTPException) as exc_info:
+            validate_destination("\\windows\\system32")
+        assert exc_info.value.status_code == 400
+
+    def test_validate_destination_blocks_unknown_paths(self):
+        """Paths not in whitelist are blocked."""
+        from fastapi import HTTPException
+
+        with pytest.raises(HTTPException) as exc_info:
+            validate_destination("unknown-folder")
+        assert exc_info.value.status_code == 400
+        assert "must be one of" in exc_info.value.detail
 
 
 @pytest.mark.unit
@@ -77,12 +170,35 @@ class TestUploadFileEndpointUnit:
             call_kwargs = mock_upload.call_args.kwargs
             assert call_kwargs["destination"] == "uploaded-maps"
 
-    def test_upload_file_endpoint_error_returns_500(self):
-        """POST /api/foundry/files/upload returns 500 on upload error."""
+    def test_upload_file_endpoint_returns_503_when_not_connected(self):
+        """POST /api/foundry/files/upload returns 503 when Foundry not connected."""
         mock_result = type('MockResult', (), {
             'success': False,
             'path': None,
-            'error': 'Foundry client not connected'
+            'error': 'No Foundry client connected or timeout waiting for response'
+        })()
+
+        with patch('app.routers.files.upload_file', new_callable=AsyncMock) as mock_upload:
+            mock_upload.return_value = mock_result
+
+            response = client.post(
+                "/api/foundry/files/upload",
+                files={"file": ("castle.webp", b"data", "image/webp")},
+                data={"destination": "uploaded-maps"}
+            )
+
+            assert response.status_code == 503
+            data = response.json()
+            # Check for either "not connected" or "client connected" (the actual message)
+            detail_lower = data["detail"].lower()
+            assert "connected" in detail_lower or "timeout" in detail_lower
+
+    def test_upload_file_endpoint_returns_500_on_other_errors(self):
+        """POST /api/foundry/files/upload returns 500 on non-connection errors."""
+        mock_result = type('MockResult', (), {
+            'success': False,
+            'path': None,
+            'error': 'Failed to write file to disk'
         })()
 
         with patch('app.routers.files.upload_file', new_callable=AsyncMock) as mock_upload:
@@ -96,7 +212,7 @@ class TestUploadFileEndpointUnit:
 
             assert response.status_code == 500
             data = response.json()
-            assert "Foundry client not connected" in data["detail"]
+            assert "Failed to write file" in data["detail"]
 
     def test_upload_file_endpoint_missing_file(self):
         """POST /api/foundry/files/upload returns 422 without file."""
@@ -107,6 +223,65 @@ class TestUploadFileEndpointUnit:
         )
 
         assert response.status_code == 422
+
+    def test_upload_file_endpoint_rejects_invalid_destination(self):
+        """POST /api/foundry/files/upload returns 400 for invalid destination."""
+        response = client.post(
+            "/api/foundry/files/upload",
+            files={"file": ("test.png", b"test", "image/png")},
+            data={"destination": "../../../etc/passwd"}
+        )
+
+        assert response.status_code == 400
+        assert "path traversal" in response.json()["detail"]
+
+    def test_upload_file_endpoint_rejects_unknown_destination(self):
+        """POST /api/foundry/files/upload returns 400 for non-whitelisted destination."""
+        response = client.post(
+            "/api/foundry/files/upload",
+            files={"file": ("test.png", b"test", "image/png")},
+            data={"destination": "malicious-folder"}
+        )
+
+        assert response.status_code == 400
+        assert "must be one of" in response.json()["detail"]
+
+    def test_upload_file_endpoint_sanitizes_filename(self):
+        """POST /api/foundry/files/upload sanitizes filenames."""
+        mock_result = type('MockResult', (), {
+            'success': True,
+            'path': 'worlds/test/uploaded-maps/______etc_passwd',
+            'error': None
+        })()
+
+        with patch('app.routers.files.upload_file', new_callable=AsyncMock) as mock_upload:
+            mock_upload.return_value = mock_result
+
+            response = client.post(
+                "/api/foundry/files/upload",
+                files={"file": ("../../../etc/passwd", b"test", "text/plain")},
+                data={"destination": "uploaded-maps"}
+            )
+
+            assert response.status_code == 200
+            call_kwargs = mock_upload.call_args.kwargs
+            # Filename should be sanitized
+            assert ".." not in call_kwargs["filename"]
+            assert "/" not in call_kwargs["filename"]
+
+    def test_upload_file_endpoint_rejects_large_files(self):
+        """POST /api/foundry/files/upload returns 413 for files over 50MB."""
+        # Create content just over the limit
+        large_content = b"x" * (MAX_FILE_SIZE + 1)
+
+        response = client.post(
+            "/api/foundry/files/upload",
+            files={"file": ("large.bin", large_content, "application/octet-stream")},
+            data={"destination": "uploaded-maps"}
+        )
+
+        assert response.status_code == 413
+        assert "too large" in response.json()["detail"].lower()
 
 
 @pytest.mark.integration
