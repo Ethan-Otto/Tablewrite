@@ -1,9 +1,12 @@
-"""File serving router."""
+"""File serving and upload router."""
 
-from fastapi import APIRouter, HTTPException
+import base64
+
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse
 
 from app.config import settings
+from app.websocket.push import upload_file
 
 
 router = APIRouter(prefix="/api", tags=["files"])
@@ -37,3 +40,39 @@ async def serve_image(filename: str):
         raise HTTPException(status_code=404, detail="Image not found")
 
     return FileResponse(file_path, media_type="image/png")
+
+
+@router.post("/foundry/files/upload")
+async def upload_file_endpoint(
+    file: UploadFile = File(...),
+    destination: str = Form("uploaded-maps")
+):
+    """
+    Upload a file to FoundryVTT world folder.
+
+    The file is sent to the connected Foundry client via WebSocket,
+    which saves it to: worlds/<current-world>/<destination>/<filename>
+
+    Args:
+        file: The file to upload
+        destination: Subdirectory in world folder (default: "uploaded-maps")
+
+    Returns:
+        {"success": true, "path": "worlds/.../<filename>"}
+    """
+    content = await file.read()
+    content_b64 = base64.b64encode(content).decode('utf-8')
+
+    result = await upload_file(
+        filename=file.filename,
+        content=content_b64,
+        destination=destination
+    )
+
+    if not result.success:
+        raise HTTPException(status_code=500, detail=result.error)
+
+    return {
+        "success": True,
+        "path": result.path
+    }
