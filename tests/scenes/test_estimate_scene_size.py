@@ -208,3 +208,33 @@ class TestEstimateSceneSize:
 
         with pytest.raises(FileNotFoundError):
             estimate_scene_size(non_existent)
+
+    def test_estimate_scene_size_invalid_target_squares_zero(self, tmp_path):
+        """Test that ValueError is raised when target_squares is 0."""
+        from scenes.estimate_scene_size import estimate_scene_size
+
+        # Create a test image
+        test_image = tmp_path / "test_map.png"
+        with Image.new("RGB", (2000, 1000), color="white") as img:
+            img.save(test_image)
+
+        try:
+            with pytest.raises(ValueError, match="target_squares must be positive"):
+                estimate_scene_size(test_image, target_squares=0)
+        finally:
+            os.unlink(test_image)
+
+    def test_estimate_scene_size_invalid_target_squares_negative(self, tmp_path):
+        """Test that ValueError is raised when target_squares is negative."""
+        from scenes.estimate_scene_size import estimate_scene_size
+
+        # Create a test image
+        test_image = tmp_path / "test_map.png"
+        with Image.new("RGB", (2000, 1000), color="white") as img:
+            img.save(test_image)
+
+        try:
+            with pytest.raises(ValueError, match="target_squares must be positive"):
+                estimate_scene_size(test_image, target_squares=-5)
+        finally:
+            os.unlink(test_image)

@@ -37,6 +37,7 @@ def estimate_scene_size(image_path: Path, target_squares: int = DEFAULT_TARGET_S
 
     Raises:
         FileNotFoundError: If image_path does not exist
+        ValueError: If target_squares is not positive
 
     Example:
         # For a 2000x1000 pixel map with default target_squares=25:
@@ -47,6 +48,9 @@ def estimate_scene_size(image_path: Path, target_squares: int = DEFAULT_TARGET_S
         grid_size = estimate_scene_size(Path("maps/castle.png"))
         print(f"Estimated grid size: {grid_size}px")
     """
+    if target_squares <= 0:
+        raise ValueError(f"target_squares must be positive, got {target_squares}")
+
     image_path = Path(image_path)
     if not image_path.exists():
         raise FileNotFoundError(f"Image not found: {image_path}")
