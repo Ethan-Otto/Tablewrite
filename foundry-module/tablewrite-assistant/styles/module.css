@@ -1,62 +1,67 @@
-/* Tablewrite module styles */
+/* Tablewrite module styles - matches Foundry native chat */
 
 /* Chat container fills sidebar tab */
 .tablewrite-chat {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 0.5rem;
+  padding: 0;
 }
 
-/* Messages area - scrollable */
+/* Messages area - scrollable, matches #chat-log */
 .tablewrite-messages {
   flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  padding: 0;
 }
 
-/* Individual message bubble */
+/* Individual message - matches .chat-message */
 .tablewrite-message {
-  padding: 0.5rem;
-  border-radius: 4px;
-  font-size: var(--font-size-12);
+  padding: 8px;
+  margin: 3px;
+  border-radius: 6px;
+  background: rgb(241, 235, 232);
+  font-size: var(--font-size-14, 14px);
   line-height: 1.4;
 }
 
-/* User message - right aligned */
+/* User message styling */
 .tablewrite-message--user {
-  background: rgba(0, 0, 0, 0.1);
-  margin-left: 1rem;
+  background: rgb(230, 225, 220);
 }
 
-/* Assistant message - left aligned with accent border */
+/* Assistant message styling */
 .tablewrite-message--assistant {
-  background: rgba(255, 255, 255, 0.1);
-  border-left: 2px solid var(--color-border-highlight);
-  margin-right: 1rem;
+  background: rgb(241, 235, 232);
 }
 
-/* Input form - bottom of sidebar */
+/* Input form - matches Foundry chat controls */
 .tablewrite-input-form {
   display: flex;
   gap: 0.25rem;
+  padding: 3px;
+  border-top: 1px solid var(--color-border-light, #999);
 }
 
-/* Text input */
+/* Text input - matches #chat-message */
 .tablewrite-input {
   flex: 1;
   resize: none;
-  font-family: var(--font-primary);
-  font-size: var(--font-size-12);
+  padding: 5px;
+  border: 1px solid rgb(0, 0, 0);
+  border-radius: 3px;
+  font-family: var(--font-primary, "Signika", sans-serif);
+  font-size: var(--font-size-14, 14px);
+  background: url("/ui/parchment.jpg") repeat;
 }
 
 /* Send button */
 .tablewrite-send {
   width: 2rem;
   padding: 0;
+  flex-shrink: 0;
 }
 
 /* Loading state - disabled */
@@ -67,8 +72,18 @@
 
 /* Code styling in messages */
 .tablewrite-message-content code {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.1);
   padding: 0.1rem 0.25rem;
   border-radius: 2px;
-  font-family: var(--font-mono);
+  font-family: var(--font-mono, monospace);
+}
+
+/* Strong/bold text */
+.tablewrite-message-content strong {
+  font-weight: bold;
+}
+
+/* Emphasis/italic text */
+.tablewrite-message-content em {
+  font-style: italic;
 }

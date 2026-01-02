@@ -42,13 +42,14 @@ Hooks.on('renderSidebar', (app: Application, html: JQuery, context?: unknown, op
   // Prevent duplicates (important for v13 re-renders)
   if (tabsContainer.find('[data-tab="tablewrite"]').length) return;
 
-  // Add tab button
+  // Add tab button right after the chat tab
+  const chatTab = tabsContainer.find('[data-tab="chat"]');
   const tabButton = $(`
     <a class="item" data-tab="tablewrite" data-tooltip="${game.i18n.localize('TABLEWRITE_ASSISTANT.TabTooltip')}">
-      <i class="fas fa-hat-wizard"></i>
+      <i class="fas fa-feather-alt"></i>
     </a>
   `);
-  tabsContainer.append(tabButton);
+  chatTab.after(tabButton);
 
   // Add tab content container (html IS the sidebar element)
   html.append('<section id="tablewrite" class="sidebar-tab" data-tab="tablewrite"></section>');

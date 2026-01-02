@@ -27,7 +27,7 @@ app = FastAPI(
 # CORS middleware for local development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174"],  # Vite ports
+    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:30000"],  # Vite + Foundry
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
