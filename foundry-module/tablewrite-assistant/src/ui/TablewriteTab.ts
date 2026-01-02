@@ -21,11 +21,7 @@ export class TablewriteTab {
           <textarea
             class="tablewrite-input"
             placeholder="${game.i18n.localize('TABLEWRITE_ASSISTANT.Placeholder')}"
-            rows="2"
           ></textarea>
-          <button type="submit" class="tablewrite-send">
-            <i class="fas fa-paper-plane"></i>
-          </button>
         </form>
       </div>
     `;
@@ -42,10 +38,31 @@ export class TablewriteTab {
       input.value = '';
     });
 
+    // Enter to send, Shift+Enter for new line
     input?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         form?.dispatchEvent(new Event('submit'));
+      }
+    });
+
+    // Drag and drop support for future file uploads
+    input?.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      input.classList.add('dragover');
+    });
+
+    input?.addEventListener('dragleave', () => {
+      input.classList.remove('dragover');
+    });
+
+    input?.addEventListener('drop', (e) => {
+      e.preventDefault();
+      input.classList.remove('dragover');
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) {
+        // TODO: Handle file upload
+        ui.notifications?.info(`File upload coming soon: ${files[0].name}`);
       }
     });
   }
@@ -108,7 +125,12 @@ export class TablewriteTab {
   }
 
   private updateLoadingState(): void {
-    const btn = this.container.querySelector('.tablewrite-send');
-    btn?.classList.toggle('loading', this.isLoading);
+    const input = this.container.querySelector('.tablewrite-input') as HTMLTextAreaElement;
+    if (input) {
+      input.disabled = this.isLoading;
+      input.placeholder = this.isLoading
+        ? 'Thinking...'
+        : game.i18n.localize('TABLEWRITE_ASSISTANT.Placeholder');
+    }
   }
 }
