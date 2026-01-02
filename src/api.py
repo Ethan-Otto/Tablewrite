@@ -52,6 +52,9 @@ from typing import List, Dict, Any, Optional
 
 import requests
 
+from scenes.orchestrate import create_scene_from_map_sync
+from scenes.models import SceneCreationResult
+
 logger = logging.getLogger(__name__)
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
@@ -248,3 +251,55 @@ def process_pdf_to_journal(
         "Use the full pipeline script: "
         "uv run python scripts/full_pipeline.py --journal-name 'My Module'"
     )
+
+
+def create_scene(
+    image_path: str,
+    name: Optional[str] = None,
+    skip_wall_detection: bool = False,
+    grid_size: Optional[int] = None
+) -> SceneCreationResult:
+    """
+    Create a FoundryVTT scene from a battle map image.
+
+    This function orchestrates the full scene creation pipeline:
+    - Wall detection (AI-powered wall tracing)
+    - Grid detection (or use provided grid_size)
+    - Image upload to FoundryVTT
+    - Scene creation with walls
+
+    Args:
+        image_path: Path to the battle map image (PNG, JPG, WebP)
+        name: Optional custom scene name (defaults to filename-derived name)
+        skip_wall_detection: If True, create scene without walls (default: False)
+        grid_size: Grid size in pixels (auto-detected if None)
+
+    Returns:
+        SceneCreationResult with scene UUID, name, wall count, and output paths
+
+    Raises:
+        APIError: If scene creation fails (file not found, Foundry errors, etc.)
+
+    Example:
+        >>> result = create_scene("maps/castle.png", name="Castle Ruins")
+        >>> print(f"Created: {result.name} ({result.uuid})")
+        Created: Castle Ruins (Scene.abc123)
+        >>> print(f"Walls: {result.wall_count}, Grid: {result.grid_size}px")
+        Walls: 150, Grid: 100px
+    """
+    try:
+        logger.info(f"Creating scene from image: {image_path}")
+
+        result = create_scene_from_map_sync(
+            image_path=Path(image_path),
+            name=name,
+            skip_wall_detection=skip_wall_detection,
+            grid_size_override=grid_size
+        )
+
+        logger.info(f"Scene created: {result.name} ({result.uuid})")
+        return result
+
+    except Exception as e:
+        logger.error(f"Scene creation failed: {e}")
+        raise APIError(f"Failed to create scene: {e}") from e
