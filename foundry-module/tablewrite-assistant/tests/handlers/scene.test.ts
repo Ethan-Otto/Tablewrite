@@ -35,11 +35,10 @@ describe('handleSceneCreate', () => {
 
   it('calls Scene.create with the scene data from message', async () => {
     const { handleSceneCreate } = await import('../../src/handlers/scene');
+    // Handler receives data directly as scene data (not wrapped)
     const sceneData = { name: 'Cave Entrance', background: { src: 'path/to/image.webp' }, grid: { size: 100 } };
-    // New message format wraps scene data
-    const message = { scene: sceneData, name: 'Cave Entrance', background_image: 'path/to/image.webp' };
 
-    const result = await handleSceneCreate(message);
+    const result = await handleSceneCreate(sceneData);
 
     expect(mockScene.create).toHaveBeenCalledWith(sceneData);
     expect(result.success).toBe(true);
@@ -49,7 +48,7 @@ describe('handleSceneCreate', () => {
     mockScene.create.mockResolvedValue({ id: 'scene456', name: 'Cave Entrance' });
     const { handleSceneCreate } = await import('../../src/handlers/scene');
 
-    const result = await handleSceneCreate({ scene: { name: 'Cave Entrance' }, name: 'Cave Entrance' });
+    const result = await handleSceneCreate({ name: 'Cave Entrance' });
 
     expect(result.success).toBe(true);
     expect(result.uuid).toBe('Scene.scene456');
@@ -60,7 +59,7 @@ describe('handleSceneCreate', () => {
   it('shows notification on success', async () => {
     const { handleSceneCreate } = await import('../../src/handlers/scene');
 
-    await handleSceneCreate({ scene: { name: 'Cave Entrance' }, name: 'Cave Entrance' });
+    await handleSceneCreate({ name: 'Cave Entrance' });
 
     expect(mockNotifications.info).toHaveBeenCalled();
   });
@@ -69,7 +68,7 @@ describe('handleSceneCreate', () => {
     mockScene.create.mockResolvedValue({ id: 'scene123', name: 'Cave Entrance' });
     const { handleSceneCreate } = await import('../../src/handlers/scene');
 
-    await handleSceneCreate({ scene: { name: 'Cave Entrance' }, name: 'Cave Entrance' });
+    await handleSceneCreate({ name: 'Cave Entrance' });
 
     expect(mockI18n.format).toHaveBeenCalledWith(
       'TABLEWRITE_ASSISTANT.CreatedScene',
@@ -81,7 +80,7 @@ describe('handleSceneCreate', () => {
     mockScene.create.mockRejectedValue(new Error('Permission denied'));
     const { handleSceneCreate } = await import('../../src/handlers/scene');
 
-    const result = await handleSceneCreate({ scene: { name: 'Cave Entrance' }, name: 'Cave Entrance' });
+    const result = await handleSceneCreate({ name: 'Cave Entrance' });
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('Permission denied');
