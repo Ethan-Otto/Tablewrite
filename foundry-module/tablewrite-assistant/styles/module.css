@@ -90,3 +90,156 @@
 .tablewrite-message-content em {
   font-style: italic;
 }
+
+/* Tab styling */
+.tablewrite-tabs {
+  display: flex;
+  border-bottom: 1px solid #444;
+  margin-bottom: 10px;
+}
+
+.tab-btn {
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  color: #aaa;
+  font-size: 13px;
+}
+
+.tab-btn.active {
+  color: #fff;
+  border-bottom-color: #7a4;
+}
+
+.tab-btn:hover {
+  color: #fff;
+}
+
+/* Battle Map Upload */
+.battlemap-upload {
+  padding: 10px;
+}
+
+.battlemap-upload h3 {
+  margin: 0 0 15px 0;
+  font-size: 14px;
+}
+
+.battlemap-upload .form-group {
+  margin-bottom: 12px;
+}
+
+.battlemap-upload label {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.battlemap-upload input[type="text"],
+.battlemap-upload input[type="number"],
+.battlemap-upload select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #333;
+  color: #fff;
+  font-size: 12px;
+}
+
+.battlemap-upload input[type="file"] {
+  padding: 8px 0;
+  font-size: 12px;
+}
+
+.battlemap-upload input[type="checkbox"] {
+  margin-right: 6px;
+}
+
+.battlemap-upload button.primary {
+  width: 100%;
+  padding: 10px;
+  background: #7a4;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.battlemap-upload button.primary:hover {
+  background: #8b5;
+}
+
+/* Progress bar */
+.progress-container {
+  margin-top: 20px;
+  padding: 10px;
+}
+
+.progress-bar {
+  height: 20px;
+  background: #333;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #7a4, #5a2);
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+.progress-status {
+  margin-top: 8px;
+  text-align: center;
+  color: #aaa;
+  font-size: 12px;
+}
+
+/* Result container */
+.result-container {
+  text-align: center;
+  padding: 20px 10px;
+}
+
+.success-message {
+  margin-bottom: 15px;
+  font-size: 13px;
+}
+
+.success-message p {
+  margin: 4px 0;
+}
+
+#open-scene-btn,
+#reset-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  margin: 4px;
+  font-size: 12px;
+}
+
+#open-scene-btn {
+  background: #47a;
+}
+
+#open-scene-btn:hover {
+  background: #58b;
+}
+
+#reset-btn {
+  background: #555;
+}
+
+#reset-btn:hover {
+  background: #666;
+}
