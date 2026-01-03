@@ -76,7 +76,7 @@ describe('ChatService', () => {
       await expect(chatService.send('Hello', [])).rejects.toThrow('Chat request failed: 500');
     });
 
-    it('excludes current message from conversation history', async () => {
+    it('passes history through unchanged (caller excludes current message)', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ message: 'Response', type: 'text' })
@@ -84,19 +84,19 @@ describe('ChatService', () => {
 
       const { chatService } = await import('../../src/ui/chat-service');
 
-      // History includes the current message (last item)
+      // History should NOT include the current message (per API contract)
       const history = [
         { role: 'user' as const, content: 'First message', timestamp: new Date() },
-        { role: 'assistant' as const, content: 'First response', timestamp: new Date() },
-        { role: 'user' as const, content: 'Current message', timestamp: new Date() }
+        { role: 'assistant' as const, content: 'First response', timestamp: new Date() }
       ];
 
       await chatService.send('Current message', history);
 
       const callArgs = mockFetch.mock.calls[0];
       const body = JSON.parse(callArgs[1].body);
-      // Should only include first 2 messages (excluding current)
+      // History passed through as-is
       expect(body.conversation_history).toHaveLength(2);
+      expect(body.conversation_history[0].content).toBe('First message');
       expect(body.conversation_history[1].content).toBe('First response');
     });
   });

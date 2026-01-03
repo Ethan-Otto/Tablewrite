@@ -8,6 +8,7 @@
   "TABLEWRITE_ASSISTANT.CreatedScene": "Created scene: {name}",
   "TABLEWRITE_ASSISTANT.TabTooltip": "Tablewrite AI",
   "TABLEWRITE_ASSISTANT.Placeholder": "Ask me anything about D&D...",
+  "TABLEWRITE_ASSISTANT.Loading": "Thinking...",
   "TABLEWRITE_ASSISTANT.ChatError": "Failed to send message",
   "TABLEWRITE_ASSISTANT.Send": "Send"
 }

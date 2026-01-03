@@ -70,16 +70,19 @@ export class TablewriteTab {
   async sendMessage(content: string): Promise<void> {
     if (!content.trim() || this.isLoading) return;
 
-    // Add user message
+    // Capture history before adding current message (API contract requirement)
+    const historyBeforeSend = [...this.messages];
+
+    // Add user message and render immediately for responsive UI
     this.messages.push({ role: 'user', content, timestamp: new Date() });
     this.renderMessages();
 
-    // Send to backend
+    // Send to backend with prior history (excludes current message)
     this.isLoading = true;
     this.updateLoadingState();
 
     try {
-      const response = await chatService.send(content, this.messages);
+      const response = await chatService.send(content, historyBeforeSend);
       this.messages.push({ role: 'assistant', content: response, timestamp: new Date() });
     } catch (error) {
       ui.notifications?.error(game.i18n.localize('TABLEWRITE_ASSISTANT.ChatError'));
@@ -129,7 +132,7 @@ export class TablewriteTab {
     if (input) {
       input.disabled = this.isLoading;
       input.placeholder = this.isLoading
-        ? 'Thinking...'
+        ? game.i18n.localize('TABLEWRITE_ASSISTANT.Loading')
         : game.i18n.localize('TABLEWRITE_ASSISTANT.Placeholder');
     }
   }
