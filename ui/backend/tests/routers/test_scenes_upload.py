@@ -68,6 +68,6 @@ def test_create_scene_from_map_skip_walls():
             )
 
     assert response.status_code == 200
-    # Verify skip_walls was passed to the function
+    # Verify skip_walls was passed to the function (mapped to skip_wall_detection)
     call_kwargs = mock_fn.call_args.kwargs
-    assert call_kwargs.get("skip_walls") is True
+    assert call_kwargs.get("skip_wall_detection") is True

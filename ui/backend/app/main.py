@@ -6,6 +6,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from app.routers import actors, chat, files, health, journals, scenes, search
+from app.routers.scenes import scene_upload_router
 from app.websocket import foundry_websocket_endpoint
 
 
@@ -41,6 +42,7 @@ app.include_router(journals.router)
 app.include_router(search.router)
 app.include_router(files.router)
 app.include_router(scenes.router)
+app.include_router(scene_upload_router)
 
 
 @app.websocket("/ws/foundry")
