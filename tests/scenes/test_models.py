@@ -3,7 +3,7 @@
 import pytest
 from pathlib import Path
 from pydantic import ValidationError
-from src.scenes.models import GridDetectionResult, SceneCreationResult
+from scenes.models import GridDetectionResult, SceneCreationResult
 
 
 @pytest.mark.unit

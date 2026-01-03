@@ -572,6 +572,10 @@ cd ui/backend && uvicorn app.main:app --reload --port 8000
 | `/api/foundry/actors` | GET | List all world actors |
 | `/api/foundry/journal` | POST | Create journal entry |
 | `/api/foundry/journal/{uuid}` | DELETE | Delete journal entry |
+| `/api/foundry/scene` | POST | Create scene with walls and grid |
+| `/api/foundry/scene/{uuid}` | GET | Fetch scene by UUID |
+| `/api/foundry/scene/{uuid}` | DELETE | Delete scene by UUID |
+| `/api/foundry/files/upload` | POST | Upload file to Foundry world |
 | `/api/foundry/search` | GET | Search compendiums |
 | `/api/foundry/compendium` | GET | List all compendium items |
 | `/api/foundry/files` | GET | List files in Foundry |
