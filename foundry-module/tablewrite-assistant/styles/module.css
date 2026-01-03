@@ -25,6 +25,7 @@
   background: rgb(241, 235, 232);
   font-size: var(--font-size-14, 14px);
   line-height: 1.4;
+  color: #1a1a1a;
 }
 
 /* User message styling */
@@ -70,12 +71,14 @@
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-/* Code styling in messages */
+/* Code styling in messages - warm tint to match parchment */
 .tablewrite-message-content code {
-  background: rgba(0, 0, 0, 0.1);
-  padding: 0.1rem 0.25rem;
-  border-radius: 2px;
+  background: rgba(139, 90, 43, 0.15);
+  padding: 0.15rem 0.35rem;
+  border-radius: 3px;
   font-family: var(--font-mono, monospace);
+  font-size: 0.9em;
+  color: #5a3d2b;
 }
 
 /* Strong/bold text */
