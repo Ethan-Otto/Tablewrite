@@ -486,6 +486,97 @@ class TestCreateSceneFromMap:
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
+class TestParallelDetection:
+    """Test that wall and grid detection run in parallel."""
+
+    async def test_wall_and_grid_detection_run_in_parallel(self, tmp_path):
+        """Test that wall detection and grid detection execute concurrently.
+
+        Uses timing to verify both tasks start before either finishes.
+        If sequential, total time would be >= 0.2s (0.1s + 0.1s).
+        If parallel, total time should be ~0.1s.
+        """
+        import asyncio
+        import time
+        from scenes.orchestrate import create_scene_from_map
+        from scenes.models import GridDetectionResult
+
+        test_image = tmp_path / "parallel_test.png"
+        test_image.write_bytes(create_minimal_png(100, 100))
+
+        # Track call times
+        call_log = []
+
+        async def slow_redline_walls(*args, **kwargs):
+            """Mock wall detection that takes 100ms."""
+            call_log.append(('walls_start', time.time()))
+            await asyncio.sleep(0.1)
+            call_log.append(('walls_end', time.time()))
+            # Create the walls JSON file
+            walls_json = tmp_path / "walls" / "06_foundry_walls.json"
+            walls_json.parent.mkdir(parents=True, exist_ok=True)
+            walls_json.write_text(json.dumps({
+                "walls": [{"c": [0, 0, 100, 100], "move": 0, "sense": 0, "door": 0, "ds": 0}],
+                "image_dimensions": {"width": 100, "height": 100},
+                "total_walls": 1
+            }))
+            return {'foundry_walls_json': walls_json}
+
+        async def slow_detect_gridlines(*args, **kwargs):
+            """Mock grid detection that takes 100ms."""
+            call_log.append(('grid_start', time.time()))
+            await asyncio.sleep(0.1)
+            call_log.append(('grid_end', time.time()))
+            return GridDetectionResult(has_grid=True, grid_size=70, confidence=0.95)
+
+        mock_upload_result = {"success": True, "path": "worlds/test/parallel_test.png"}
+        mock_scene_result = {"success": True, "uuid": "Scene.parallel", "name": "Parallel Test"}
+
+        mock_client = MagicMock()
+        mock_client.files.upload_file = MagicMock(return_value=mock_upload_result)
+        mock_client.scenes.create_scene = MagicMock(return_value=mock_scene_result)
+
+        with patch("scenes.orchestrate.redline_walls", side_effect=slow_redline_walls), \
+             patch("scenes.orchestrate.detect_gridlines", side_effect=slow_detect_gridlines):
+
+            start_time = time.time()
+            result = await create_scene_from_map(
+                image_path=test_image,
+                output_dir_base=tmp_path,
+                foundry_client=mock_client
+            )
+            total_time = time.time() - start_time
+
+        # Verify both functions were called
+        assert any(event[0] == 'walls_start' for event in call_log), "Wall detection should start"
+        assert any(event[0] == 'grid_start' for event in call_log), "Grid detection should start"
+        assert any(event[0] == 'walls_end' for event in call_log), "Wall detection should end"
+        assert any(event[0] == 'grid_end' for event in call_log), "Grid detection should end"
+
+        # Extract timestamps
+        walls_start = next(t for name, t in call_log if name == 'walls_start')
+        walls_end = next(t for name, t in call_log if name == 'walls_end')
+        grid_start = next(t for name, t in call_log if name == 'grid_start')
+        grid_end = next(t for name, t in call_log if name == 'grid_end')
+
+        # Key assertion: Both tasks should start before either finishes
+        # This proves they run in parallel
+        first_end = min(walls_end, grid_end)
+        assert walls_start < first_end, "Wall detection should start before first task ends"
+        assert grid_start < first_end, "Grid detection should start before first task ends"
+
+        # Timing assertion: Should complete in ~0.1s (parallel), not ~0.2s (sequential)
+        # Allow some buffer for test overhead
+        assert total_time < 0.18, f"Tasks should run in parallel (~0.1s), but took {total_time:.3f}s"
+
+        # Verify result is correct
+        assert result.uuid == "Scene.parallel"
+        assert result.grid_size == 70
+        assert result.wall_count == 1
+
+
+@pytest.mark.unit
 class TestCreateSceneFromMapSync:
     """Test the synchronous wrapper function."""
 

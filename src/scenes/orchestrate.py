@@ -109,62 +109,91 @@ async def create_scene_from_map(
         image_width, image_height = img.size
     image_dimensions = {"width": image_width, "height": image_height}
 
-    # Step 3: Run wall detection unless skipped
+    # Steps 3 & 4: Run wall detection and grid detection in parallel
     walls = []
     debug_artifacts: Dict[str, Path] = {}
     wall_count = 0
+    grid_size: Optional[int] = None
 
-    if not skip_wall_detection:
-        logger.info("Step 3: Running wall detection...")
-        wall_result = await redline_walls(
+    # Determine what tasks to run
+    run_wall_detection = not skip_wall_detection
+    run_grid_detection = not skip_grid_detection and grid_size_override is None
+
+    # Build list of parallel tasks
+    async def wall_detection_task():
+        """Run wall detection and return result."""
+        logger.info("Running wall detection...")
+        return await redline_walls(
             input_image=image_path,
             save_dir=output_dir / "walls",
             make_run=False
         )
 
-        # Load walls from JSON
-        if 'foundry_walls_json' in wall_result:
-            walls_json_path = wall_result['foundry_walls_json']
-            with open(walls_json_path, 'r') as f:
-                walls_data = json.load(f)
-            walls = walls_data.get('walls', [])
-            wall_count = len(walls)
-            # Update image dimensions from walls data if available
-            if 'image_dimensions' in walls_data:
-                image_dimensions = walls_data['image_dimensions']
+    async def grid_detection_task():
+        """Run grid detection and return result."""
+        logger.info("Running grid detection...")
+        return await detect_gridlines(image_path)
 
-        # Store debug artifacts
-        for key in ['grayscale', 'redlined', 'overlay', 'foundry_walls_json']:
-            if key in wall_result:
-                debug_artifacts[key] = wall_result[key]
+    # Run tasks in parallel
+    tasks = []
+    task_names = []
 
-        logger.info(f"Wall detection complete: {wall_count} walls")
-    else:
-        logger.info("Step 3: Skipping wall detection")
+    if run_wall_detection:
+        tasks.append(wall_detection_task())
+        task_names.append('walls')
+    if run_grid_detection:
+        tasks.append(grid_detection_task())
+        task_names.append('grid')
 
-    # Step 4: Detect grid (or use fallback/override)
-    grid_size: Optional[int] = None
+    if tasks:
+        logger.info(f"Step 3-4: Running {' and '.join(task_names)} detection in parallel...")
+        results = await asyncio.gather(*tasks)
+
+        # Process results based on what was run
+        result_idx = 0
+        if run_wall_detection:
+            wall_result = results[result_idx]
+            result_idx += 1
+
+            # Load walls from JSON
+            if 'foundry_walls_json' in wall_result:
+                walls_json_path = wall_result['foundry_walls_json']
+                with open(walls_json_path, 'r') as f:
+                    walls_data = json.load(f)
+                walls = walls_data.get('walls', [])
+                wall_count = len(walls)
+                # Update image dimensions from walls data if available
+                if 'image_dimensions' in walls_data:
+                    image_dimensions = walls_data['image_dimensions']
+
+            # Store debug artifacts
+            for key in ['grayscale', 'redlined', 'overlay', 'foundry_walls_json']:
+                if key in wall_result:
+                    debug_artifacts[key] = wall_result[key]
+
+            logger.info(f"Wall detection complete: {wall_count} walls")
+
+        if run_grid_detection:
+            grid_result = results[result_idx]
+
+            if grid_result.has_grid and grid_result.grid_size is not None:
+                grid_size = grid_result.grid_size
+                logger.info(f"Grid detected: {grid_size}px (confidence: {grid_result.confidence})")
+            else:
+                # Fallback to estimation
+                grid_size = estimate_scene_size(image_path)
+                logger.info(f"No grid detected, estimated: {grid_size}px")
+
+    # Handle skipped/override cases
+    if skip_wall_detection:
+        logger.info("Wall detection: skipped")
 
     if grid_size_override is not None:
-        # Use override value directly
         grid_size = grid_size_override
-        logger.info(f"Step 4: Using grid size override: {grid_size}px")
+        logger.info(f"Grid size: using override {grid_size}px")
     elif skip_grid_detection:
-        # Skip detection, use estimate
         grid_size = estimate_scene_size(image_path)
-        logger.info(f"Step 4: Skipping grid detection, estimated: {grid_size}px")
-    else:
-        # Run grid detection
-        logger.info("Step 4: Detecting grid...")
-        grid_result = await detect_gridlines(image_path)
-
-        if grid_result.has_grid and grid_result.grid_size is not None:
-            grid_size = grid_result.grid_size
-            logger.info(f"Grid detected: {grid_size}px (confidence: {grid_result.confidence})")
-        else:
-            # Fallback to estimation
-            grid_size = estimate_scene_size(image_path)
-            logger.info(f"No grid detected, estimated: {grid_size}px")
+        logger.info(f"Grid detection: skipped, estimated {grid_size}px")
 
     # Step 5: Upload image to Foundry
     logger.info("Step 5: Uploading image to Foundry...")
