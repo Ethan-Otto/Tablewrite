@@ -22,8 +22,16 @@ const mockNotifications = {
   error: vi.fn()
 };
 
+// Mock game.settings
+const mockSettings = {
+  get: vi.fn((moduleId: string, key: string) => {
+    if (key === 'backendUrl') return 'http://localhost:8000';
+    return undefined;
+  })
+};
+
 // @ts-ignore
-globalThis.game = { i18n: mockI18n };
+globalThis.game = { i18n: mockI18n, settings: mockSettings };
 // @ts-ignore
 globalThis.ui = { notifications: mockNotifications };
 
