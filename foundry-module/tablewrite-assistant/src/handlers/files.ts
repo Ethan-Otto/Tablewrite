@@ -60,6 +60,8 @@ export async function handleFileUpload(data: {
   try {
     const { filename, content, destination } = data;
 
+    console.log('[Tablewrite] Starting file upload:', filename, 'to', destination);
+
     // Decode base64 to binary
     const binaryString = atob(content);
     const bytes = new Uint8Array(binaryString.length);
@@ -69,10 +71,30 @@ export async function handleFileUpload(data: {
     const blob = new Blob([bytes]);
     const file = new File([blob], filename);
 
+    console.log('[Tablewrite] Created file blob, size:', blob.size, 'bytes');
+
     // Construct target path: worlds/<current-world>/<destination>/
     const worldPath = `worlds/${game.world.id}/${destination}`;
+    console.log('[Tablewrite] Target path:', worldPath);
 
-    // Upload using FilePicker (creates folder if needed)
+    // Ensure each directory level exists (createDirectory is not in types but exists in Foundry)
+    const pathParts = destination.split('/');
+    let currentPath = `worlds/${game.world.id}`;
+    for (const part of pathParts) {
+      currentPath = `${currentPath}/${part}`;
+      try {
+        await (FilePicker as any).createDirectory("data", currentPath);
+        console.log('[Tablewrite] Created directory:', currentPath);
+      } catch (dirError: any) {
+        // Directory may already exist, which is fine - EEXIST error
+        const errStr = String(dirError);
+        if (!errStr.includes('EEXIST') && !errStr.includes('already exists')) {
+          console.log('[Tablewrite] Directory creation note for', currentPath, ':', errStr);
+        }
+      }
+    }
+
+    // Upload using FilePicker
     const response = await FilePicker.upload(
       "data",
       worldPath,
@@ -80,15 +102,20 @@ export async function handleFileUpload(data: {
       {}
     );
 
-    if (!response.path) {
-      throw new Error("Upload failed: no path returned");
+    console.log('[Tablewrite] FilePicker.upload response:', JSON.stringify(response));
+
+    // Handle various response formats
+    const uploadedPath = response?.path || (response as any)?.result?.path;
+
+    if (!uploadedPath) {
+      throw new Error(`Upload failed: no path in response. Full response: ${JSON.stringify(response)}`);
     }
 
-    console.log('[Tablewrite] Uploaded file:', response.path);
+    console.log('[Tablewrite] Uploaded file:', uploadedPath);
 
     return {
       success: true,
-      path: response.path
+      path: uploadedPath
     };
   } catch (error) {
     console.error('[Tablewrite] Failed to upload file:', error);

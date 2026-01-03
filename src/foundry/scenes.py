@@ -56,10 +56,14 @@ class SceneManager:
             "name": name,
             "width": width,
             "height": height,
+            "padding": 0,  # No padding so walls align with (0,0) origin
+            "tokenVision": True,  # Enable token vision for battle maps
+            "globalLight": True,  # Global illumination so tokens can see without light sources
         }
 
         if background_image:
             scene_data["background"] = {"src": background_image}
+            scene_data["thumb"] = background_image  # Use background as thumbnail
 
         if grid_size is not None:
             scene_data["grid"] = {"size": grid_size, "type": 1}

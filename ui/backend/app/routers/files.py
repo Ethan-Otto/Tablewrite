@@ -1,6 +1,7 @@
 """File serving and upload router."""
 
 import base64
+import logging
 import re
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
@@ -8,6 +9,8 @@ from fastapi.responses import FileResponse
 
 from app.config import settings
 from app.websocket.push import upload_file
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(prefix="/api", tags=["files"])
@@ -158,13 +161,18 @@ async def upload_file_endpoint(
     # Encode content for WebSocket transmission
     content_b64 = base64.b64encode(content).decode('utf-8')
 
+    logger.debug(f"Sending file upload: {safe_filename} to {validated_destination}")
+
     result = await upload_file(
         filename=safe_filename,
         content=content_b64,
         destination=validated_destination
     )
 
+    logger.debug(f"Upload result: success={result.success}, path={result.path}, error={result.error}")
+
     if not result.success:
+        logger.error(f"File upload failed: {result.error}")
         # Check for connection-related errors and return 503
         if result.error and ("not connected" in result.error.lower() or "timeout" in result.error.lower()):
             raise HTTPException(status_code=503, detail=result.error)

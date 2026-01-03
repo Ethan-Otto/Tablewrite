@@ -10,11 +10,12 @@ import type { CreateResult, GetResult, DeleteResult } from './index.js';
 
 export async function handleSceneCreate(data: Record<string, unknown>): Promise<CreateResult> {
   try {
-    // Extract the scene data from the message
-    const sceneData = data.scene as Record<string, unknown>;
-    if (!sceneData) {
-      console.error('[Tablewrite] No scene data in message:', data);
-      ui.notifications?.error('Failed to create scene: No scene data received');
+    // The data IS the scene data directly (not wrapped in {scene: ...})
+    // This matches the WebSocket message format: {type: "scene", data: scene_data}
+    const sceneData = data;
+    if (!sceneData || !sceneData.name) {
+      console.error('[Tablewrite] Invalid scene data in message:', data);
+      ui.notifications?.error('Failed to create scene: Invalid scene data received');
       return {
         success: false,
         error: 'No scene data in message'
