@@ -3,11 +3,14 @@
  */
 
 import { chatService, ChatMessage } from './chat-service.js';
+import { BattleMapUpload } from './BattleMapUpload.js';
+import { getBackendUrl } from '../settings.js';
 
 export class TablewriteTab {
   private container: HTMLElement;
   private messages: ChatMessage[] = [];
   private isLoading: boolean = false;
+  private battleMapUpload: BattleMapUpload | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -15,16 +18,39 @@ export class TablewriteTab {
 
   render(): void {
     this.container.innerHTML = `
-      <div class="tablewrite-chat">
-        <div class="tablewrite-messages"></div>
-        <form class="tablewrite-input-form">
-          <textarea
-            class="tablewrite-input"
-            placeholder="${game.i18n.localize('TABLEWRITE_ASSISTANT.Placeholder')}"
-          ></textarea>
-        </form>
+      <div class="tablewrite-container">
+        <div class="tablewrite-tabs">
+          <button class="tab-btn active" data-tab="chat">Chat</button>
+          <button class="tab-btn" data-tab="battlemap">Battle Map</button>
+        </div>
+
+        <div class="tab-content" id="chat-tab">
+          <div class="tablewrite-chat">
+            <div class="tablewrite-messages"></div>
+            <form class="tablewrite-input-form">
+              <textarea
+                class="tablewrite-input"
+                placeholder="${game.i18n.localize('TABLEWRITE_ASSISTANT.Placeholder')}"
+              ></textarea>
+            </form>
+          </div>
+        </div>
+
+        <div class="tab-content" id="battlemap-tab" style="display: none">
+          <!-- BattleMapUpload renders here -->
+        </div>
       </div>
     `;
+
+    // Initialize BattleMapUpload
+    const battlemapContainer = this.container.querySelector('#battlemap-tab') as HTMLElement;
+    this.battleMapUpload = new BattleMapUpload(battlemapContainer, getBackendUrl());
+    this.battleMapUpload.render();
+
+    // Attach tab switching listeners
+    this.attachTabListeners();
+
+    // Existing chat setup
     this.activateListeners();
   }
 
@@ -64,6 +90,24 @@ export class TablewriteTab {
         // TODO: Handle file upload
         ui.notifications?.info(`File upload coming soon: ${files[0].name}`);
       }
+    });
+  }
+
+  private attachTabListeners(): void {
+    const tabBtns = this.container.querySelectorAll('.tab-btn');
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tabId = (btn as HTMLElement).dataset.tab;
+
+        // Update active tab button
+        tabBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        // Show/hide tab content
+        this.container.querySelectorAll('.tab-content').forEach(c => {
+          (c as HTMLElement).style.display = c.id === `${tabId}-tab` ? 'block' : 'none';
+        });
+      });
     });
   }
 
