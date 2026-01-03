@@ -17,11 +17,12 @@ The project provides a clean public API for external applications (chat UI, CLI 
 **Key Functions:**
 
 ```python
-from api import create_actor, extract_maps, process_pdf_to_journal, APIError
+from api import create_actor, extract_maps, process_pdf_to_journal, create_scene, APIError
 
 result = create_actor("A kobold scout", challenge_rating=0.5)  # → ActorCreationResult
 maps = extract_maps("data/pdfs/module.pdf", chapter="Chapter 1")  # → MapExtractionResult
 journal = process_pdf_to_journal("module.pdf", "Module Name")  # → JournalCreationResult
+scene = create_scene("maps/castle.webp")  # → SceneCreationResult
 # All raise APIError on failure
 ```
 
@@ -30,6 +31,7 @@ journal = process_pdf_to_journal("module.pdf", "Module Name")  # → JournalCrea
 - `ActorCreationResult`: UUID, name, CR, output_dir, timestamp
 - `MapExtractionResult`: maps list, output_dir, total_maps, timestamp
 - `JournalCreationResult`: UUID, name, output_dir, chapter_count, timestamp
+- `SceneCreationResult`: UUID, name, wall_count, grid_size, timestamp
 
 **Configuration:**
 
@@ -506,6 +508,47 @@ results = create_actors_batch_sync(["dragon", "goblin"], challenge_ratings=[2.0,
 
 **Output**: `output/runs/<timestamp>/actors/` with `01_raw_stat_block.txt`, `02_stat_block.json`, `03_parsed_actor_data.json`, `04_foundry_actor.json`
 
+### Scene Creation Pipeline
+
+**NEW**: Complete pipeline for creating FoundryVTT scenes from battle map images.
+
+**Module**: `src/scenes/orchestrate.py`
+
+**Workflow**:
+```
+Battle Map Image
+    ↓
+Wall Detection (redline_walls)
+    ↓
+Grid Detection (detect_gridlines / estimate_scene_size)
+    ↓
+Upload Image to Foundry
+    ↓
+Create Scene with Walls
+    ↓
+SceneCreationResult
+```
+
+**Usage**:
+
+```python
+from api import create_scene
+
+# Create scene with automatic wall and grid detection
+result = create_scene("maps/castle.webp")
+print(f"Created: {result.uuid} with {result.wall_count} walls")
+
+# Skip wall detection for art scenes
+result = create_scene("art/chapter_splash.webp", skip_wall_detection=True)
+```
+
+**Key Modules**:
+- `src/scenes/orchestrate.py` - Main pipeline
+- `src/scenes/detect_gridlines.py` - AI grid detection
+- `src/scenes/estimate_scene_size.py` - Fallback grid estimation
+- `src/scenes/models.py` - SceneCreationResult, GridDetectionResult
+- `src/foundry/files.py` - FileManager for uploads
+
 ### Backend API & WebSocket Architecture
 
 The backend provides both REST API endpoints and WebSocket communication for FoundryVTT integration.
@@ -529,6 +572,10 @@ cd ui/backend && uvicorn app.main:app --reload --port 8000
 | `/api/foundry/actors` | GET | List all world actors |
 | `/api/foundry/journal` | POST | Create journal entry |
 | `/api/foundry/journal/{uuid}` | DELETE | Delete journal entry |
+| `/api/foundry/scene` | POST | Create scene with walls and grid |
+| `/api/foundry/scene/{uuid}` | GET | Fetch scene by UUID |
+| `/api/foundry/scene/{uuid}` | DELETE | Delete scene by UUID |
+| `/api/foundry/files/upload` | POST | Upload file to Foundry world |
 | `/api/foundry/search` | GET | Search compendiums |
 | `/api/foundry/compendium` | GET | List all compendium items |
 | `/api/foundry/files` | GET | List files in Foundry |

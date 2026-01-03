@@ -7,9 +7,11 @@ from api import (
     ActorCreationResult,
     MapExtractionResult,
     JournalCreationResult,
+    SceneCreationResult,
     create_actor,
     extract_maps,
     process_pdf_to_journal,
+    create_scene,
     BACKEND_URL,
 )
 
@@ -225,3 +227,74 @@ def test_backend_url_from_env():
     if 'BACKEND_URL' in os.environ:
         del os.environ['BACKEND_URL']
     importlib.reload(api)
+
+
+@pytest.mark.unit
+@patch('api.create_scene_from_map_sync')
+def test_create_scene_api(mock_create_scene):
+    """Test create_scene API function wraps orchestrator correctly."""
+    import tempfile
+    from PIL import Image
+
+    # Create a temporary test image
+    with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp:
+        img = Image.new('RGB', (100, 100), color='white')
+        img.save(tmp.name)
+        test_image_path = tmp.name
+
+    try:
+        # Use SceneCreationResult from top-level import (re-exported from api module)
+        mock_result = SceneCreationResult(
+            uuid="Scene.abc123",
+            name="Test Battle Map",
+            output_dir=Path("output/runs/test/scenes/test_battle_map"),
+            timestamp="20241102_143022",
+            foundry_image_path="worlds/test/uploaded-maps/test_battle_map.webp",
+            grid_size=100,
+            wall_count=50,
+            image_dimensions={"width": 1000, "height": 800},
+            debug_artifacts={}
+        )
+        mock_create_scene.return_value = mock_result
+
+        # Call the API function
+        result = create_scene(
+            image_path=test_image_path,
+            name="Test Battle Map",
+            skip_wall_detection=True,
+            grid_size=100
+        )
+
+        # Verify it called the orchestrator with correct args
+        mock_create_scene.assert_called_once()
+        call_kwargs = mock_create_scene.call_args[1]
+        assert str(call_kwargs['image_path']) == test_image_path
+        assert call_kwargs['name'] == "Test Battle Map"
+        assert call_kwargs['skip_wall_detection'] is True
+        assert call_kwargs['grid_size_override'] == 100
+
+        # Verify result is the SceneCreationResult
+        assert result.uuid == "Scene.abc123"
+        assert result.name == "Test Battle Map"
+        assert result.grid_size == 100
+        assert result.wall_count == 50
+    finally:
+        # Cleanup temp file
+        import os
+        os.unlink(test_image_path)
+
+
+@pytest.mark.unit
+@patch('api.create_scene_from_map_sync')
+def test_create_scene_api_error_handling(mock_create_scene):
+    """Test create_scene wraps errors in APIError."""
+    # Import api module fresh to ensure we get the patched version
+    # (needed because test_backend_url_from_env reloads the module, which
+    # creates a new APIError class that's different from the top-level import)
+    import api as api_module
+
+    mock_create_scene.side_effect = FileNotFoundError("Image not found: /nonexistent.png")
+
+    # Use api_module.APIError to match the reloaded module's exception class
+    with pytest.raises(api_module.APIError, match="Failed to create scene"):
+        api_module.create_scene(image_path="/nonexistent.png")

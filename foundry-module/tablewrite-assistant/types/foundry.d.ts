@@ -65,11 +65,16 @@ declare global {
     uuid: string;
   }
 
+  interface World {
+    id: string;
+  }
+
   interface Game {
     settings: ClientSettings;
     i18n: Localization;
     actors: ActorCollection | null;
     packs: CompendiumCollection;
+    world: World;
   }
 
   interface ActorCollection {
@@ -125,11 +130,22 @@ declare global {
     dirs: string[];
   }
 
+  interface UploadResult {
+    path: string;
+    message?: string;
+  }
+
   const FilePicker: {
     browse(
       source: 'data' | 'public' | 's3',
       target: string,
       options?: { extensions?: string[] }
     ): Promise<BrowseResult>;
+    upload(
+      source: 'data' | 'public' | 's3',
+      path: string,
+      file: File,
+      options?: Record<string, unknown>
+    ): Promise<UploadResult>;
   };
 }

@@ -10,6 +10,7 @@ from .items.manager import ItemManager
 from .actors import ActorManager
 from .scenes import SceneManager
 from .icon_cache import IconCache
+from .files import FileManager
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,7 @@ class FoundryClient:
         self.items = ItemManager(backend_url=self.backend_url)
         self.actors = ActorManager(backend_url=self.backend_url)
         self.scenes = SceneManager(backend_url=self.backend_url)
+        self.files = FileManager(backend_url=self.backend_url)
         self.icons = IconCache()
 
         logger.info(f"Initialized FoundryClient with backend at {self.backend_url}")
@@ -105,26 +107,22 @@ class FoundryClient:
         """Get an item by UUID."""
         return self.items.get_item(item_uuid)
 
-    # File operations (require backend endpoints - not yet implemented)
+    # File operations (delegated to FileManager)
 
-    def upload_file(self, local_path: str, target_path: str, overwrite: bool = True) -> Dict[str, Any]:
+    def upload_file(self, local_path: str, destination: str = "uploaded-maps") -> Dict[str, Any]:
         """
-        Upload a file to FoundryVTT.
-
-        NOTE: This functionality requires a backend endpoint that is not yet implemented.
+        Upload a file to FoundryVTT world folder.
 
         Args:
             local_path: Path to local file
-            target_path: Target path in FoundryVTT (e.g., "worlds/my-world/assets/image.png")
-            overwrite: Whether to overwrite existing files (default: True)
+            destination: Subdirectory in world folder (default: "uploaded-maps")
 
-        Raises:
-            NotImplementedError: Backend file upload endpoint not yet implemented
+        Returns:
+            {"success": True, "path": "worlds/.../filename"} on success
+            {"success": False, "error": "..."} on failure
         """
-        raise NotImplementedError(
-            "File upload via WebSocket backend not yet implemented. "
-            "Add POST /api/foundry/upload endpoint to backend."
-        )
+        from pathlib import Path
+        return self.files.upload_file(Path(local_path), destination)
 
     def download_file(self, target_path: str, local_path: str) -> None:
         """

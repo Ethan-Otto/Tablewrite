@@ -88,10 +88,10 @@ describe('handleSceneCreate', () => {
     expect(mockNotifications.error).toHaveBeenCalled();
   });
 
-  it('returns error when no scene data in message', async () => {
+  it('returns error when scene data is invalid (missing name)', async () => {
     const { handleSceneCreate } = await import('../../src/handlers/scene');
 
-    const result = await handleSceneCreate({ name: 'Cave Entrance' }); // Missing 'scene' property
+    const result = await handleSceneCreate({ width: 1000 }); // Missing 'name' property
 
     expect(result.success).toBe(false);
     expect(result.error).toBe('No scene data in message');

@@ -19,9 +19,11 @@ RESPONSE_TYPES = {
     "scene_error",
     # Fetch responses
     "actor_data",
+    "scene_data",
     # Delete responses
     "actor_deleted",
     "journal_deleted",
+    "scene_deleted",
     # List responses
     "actors_list",
     # Search responses
@@ -32,9 +34,11 @@ RESPONSE_TYPES = {
     # Compendium list responses (efficient bulk fetch)
     "compendium_items_list",
     "compendium_items_error",
-    # File listing responses
+    # File operations responses
     "files_list",
     "files_error",
+    "file_uploaded",
+    "file_error",
 }
 
 

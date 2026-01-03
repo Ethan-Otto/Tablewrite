@@ -198,8 +198,8 @@ def convert_to_foundry_format(
                     round(x2 * scale_x, 2),
                     round(y2 * scale_y, 2)
                 ],
-                "move": 0,  # 0 = wall blocks movement
-                "sense": 0,  # 0 = wall blocks all senses
+                "move": 20,  # CONST.WALL_MOVEMENT_TYPES.NORMAL
+                "sense": 20,  # CONST.WALL_SENSE_TYPES.NORMAL
                 "door": 0,  # 0 = not a door
                 "ds": 0     # door state (0 = closed)
             }
@@ -299,6 +299,15 @@ async def redline_walls(
         temperature=temperature,
         model=model
     )
+
+    # Step 3.5: Resize redlined image to match original dimensions
+    # The AI may output at a different size/aspect ratio, causing coordinate shift
+    original_cv = cv2.imread(str(original_png))
+    redlined_cv = cv2.imread(str(redlined_path))
+    if redlined_cv.shape[:2] != original_cv.shape[:2]:
+        logger.info(f"Resizing redlined image from {redlined_cv.shape[:2]} to {original_cv.shape[:2]}")
+        redlined_cv = cv2.resize(redlined_cv, (original_cv.shape[1], original_cv.shape[0]))
+        cv2.imwrite(str(redlined_path), redlined_cv)
 
     # Step 4: Polygonize
     logger.info("Step 4: Extracting vector lines...")
