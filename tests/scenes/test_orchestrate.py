@@ -3,7 +3,7 @@
 Tests the create_scene_from_map pipeline that orchestrates:
 1. Scene name derivation from filename
 2. Wall detection via redline_walls
-3. Grid detection via detect_gridlines (with fallback to estimate_scene_size)
+3. Grid detection via detect_grid (with fallback to estimate_scene_size)
 4. Image upload to Foundry
 5. Scene creation with walls
 """
@@ -88,7 +88,7 @@ class TestCreateSceneFromMap:
     async def test_basic_pipeline_creates_scene(self, tmp_path):
         """Test the basic pipeline flow creates a scene in Foundry."""
         from scenes.orchestrate import create_scene_from_map
-        from scenes.models import SceneCreationResult, GridDetectionResult
+        from scenes.models import SceneCreationResult
 
         # Create a real test image
         test_image = tmp_path / "test_castle.png"
@@ -111,7 +111,7 @@ class TestCreateSceneFromMap:
         }))
         mock_redline_result['foundry_walls_json'] = walls_json
 
-        mock_grid_result = GridDetectionResult(has_grid=True, grid_size=70, confidence=0.95)
+        mock_grid_result = {'grid_size': 70, 'x_offset': 0, 'y_offset': 0, 'snr': 0.95}
 
         mock_upload_result = {
             "success": True,
@@ -129,7 +129,7 @@ class TestCreateSceneFromMap:
         mock_client.scenes.create_scene = MagicMock(return_value=mock_scene_result)
 
         with patch("scenes.orchestrate.redline_walls", new_callable=AsyncMock) as mock_redline, \
-             patch("scenes.orchestrate.detect_gridlines", new_callable=AsyncMock) as mock_detect_grid:
+             patch("scenes.orchestrate.detect_grid") as mock_detect_grid:
             mock_redline.return_value = mock_redline_result
             mock_detect_grid.return_value = mock_grid_result
 
@@ -155,13 +155,13 @@ class TestCreateSceneFromMap:
     async def test_skip_wall_detection(self, tmp_path):
         """Test that wall detection can be skipped."""
         from scenes.orchestrate import create_scene_from_map
-        from scenes.models import SceneCreationResult, GridDetectionResult
+        from scenes.models import SceneCreationResult
 
         # Create a valid test image
         test_image = tmp_path / "no_walls_map.png"
         test_image.write_bytes(create_minimal_png(100, 100))
 
-        mock_grid_result = GridDetectionResult(has_grid=False, grid_size=None, confidence=0.9)
+        mock_grid_result = {'grid_size': None, 'x_offset': 0, 'y_offset': 0, 'snr': 0.9}
 
         mock_upload_result = {
             "success": True,
@@ -179,7 +179,7 @@ class TestCreateSceneFromMap:
         mock_client.scenes.create_scene = MagicMock(return_value=mock_scene_result)
 
         with patch("scenes.orchestrate.redline_walls", new_callable=AsyncMock) as mock_redline, \
-             patch("scenes.orchestrate.detect_gridlines", new_callable=AsyncMock) as mock_detect_grid, \
+             patch("scenes.orchestrate.detect_grid") as mock_detect_grid, \
              patch("scenes.orchestrate.estimate_scene_size") as mock_estimate:
             mock_detect_grid.return_value = mock_grid_result
             mock_estimate.return_value = 100  # Fallback grid size
@@ -224,7 +224,7 @@ class TestCreateSceneFromMap:
         mock_client.scenes.create_scene = MagicMock(return_value=mock_scene_result)
 
         with patch("scenes.orchestrate.redline_walls", new_callable=AsyncMock) as mock_redline, \
-             patch("scenes.orchestrate.detect_gridlines", new_callable=AsyncMock) as mock_detect_grid, \
+             patch("scenes.orchestrate.detect_grid") as mock_detect_grid, \
              patch("scenes.orchestrate.estimate_scene_size") as mock_estimate:
             mock_redline.return_value = mock_redline_result
             mock_estimate.return_value = 80
@@ -270,7 +270,7 @@ class TestCreateSceneFromMap:
         mock_client.scenes.create_scene = MagicMock(return_value=mock_scene_result)
 
         with patch("scenes.orchestrate.redline_walls", new_callable=AsyncMock) as mock_redline, \
-             patch("scenes.orchestrate.detect_gridlines", new_callable=AsyncMock) as mock_detect_grid, \
+             patch("scenes.orchestrate.detect_grid") as mock_detect_grid, \
              patch("scenes.orchestrate.estimate_scene_size") as mock_estimate:
             mock_redline.return_value = mock_redline_result
 
@@ -291,7 +291,7 @@ class TestCreateSceneFromMap:
     async def test_custom_scene_name(self, tmp_path):
         """Test that custom name parameter overrides filename-derived name."""
         from scenes.orchestrate import create_scene_from_map
-        from scenes.models import SceneCreationResult, GridDetectionResult
+        from scenes.models import SceneCreationResult
 
         test_image = tmp_path / "map_001.png"
         test_image.write_bytes(create_minimal_png(100, 100))
@@ -301,7 +301,7 @@ class TestCreateSceneFromMap:
             "walls": [], "image_dimensions": {"width": 100, "height": 100}, "total_walls": 0
         }))
 
-        mock_grid_result = GridDetectionResult(has_grid=True, grid_size=70, confidence=0.9)
+        mock_grid_result = {'grid_size': 70, 'x_offset': 0, 'y_offset': 0, 'snr': 0.9}
         mock_upload_result = {"success": True, "path": "worlds/test/map_001.png"}
         mock_scene_result = {"success": True, "uuid": "Scene.named", "name": "Dragon's Lair"}
 
@@ -310,7 +310,7 @@ class TestCreateSceneFromMap:
         mock_client.scenes.create_scene = MagicMock(return_value=mock_scene_result)
 
         with patch("scenes.orchestrate.redline_walls", new_callable=AsyncMock) as mock_redline, \
-             patch("scenes.orchestrate.detect_gridlines", new_callable=AsyncMock) as mock_detect_grid:
+             patch("scenes.orchestrate.detect_grid") as mock_detect_grid:
             mock_redline.return_value = mock_redline_result
             mock_detect_grid.return_value = mock_grid_result
 
@@ -353,7 +353,7 @@ class TestCreateSceneFromMap:
         mock_client.files.upload_file = MagicMock(return_value=mock_upload_result)
 
         with patch("scenes.orchestrate.redline_walls", new_callable=AsyncMock) as mock_redline, \
-             patch("scenes.orchestrate.detect_gridlines", new_callable=AsyncMock) as mock_detect_grid, \
+             patch("scenes.orchestrate.detect_grid") as mock_detect_grid, \
              patch("scenes.orchestrate.estimate_scene_size") as mock_estimate:
             mock_redline.return_value = mock_redline_result
             mock_estimate.return_value = 100
@@ -386,7 +386,7 @@ class TestCreateSceneFromMap:
         mock_client.scenes.create_scene = MagicMock(return_value=mock_scene_result)
 
         with patch("scenes.orchestrate.redline_walls", new_callable=AsyncMock) as mock_redline, \
-             patch("scenes.orchestrate.detect_gridlines", new_callable=AsyncMock) as mock_detect_grid, \
+             patch("scenes.orchestrate.detect_grid") as mock_detect_grid, \
              patch("scenes.orchestrate.estimate_scene_size") as mock_estimate:
             mock_redline.return_value = mock_redline_result
             mock_estimate.return_value = 100
@@ -402,7 +402,6 @@ class TestCreateSceneFromMap:
     async def test_output_directory_structure(self, tmp_path):
         """Test that output directory is created with correct structure."""
         from scenes.orchestrate import create_scene_from_map
-        from scenes.models import GridDetectionResult
 
         test_image = tmp_path / "struct_test.png"
         test_image.write_bytes(create_minimal_png(100, 100))
@@ -416,7 +415,7 @@ class TestCreateSceneFromMap:
             "walls": [], "image_dimensions": {"width": 100, "height": 100}, "total_walls": 0
         }))
 
-        mock_grid_result = GridDetectionResult(has_grid=True, grid_size=50, confidence=0.8)
+        mock_grid_result = {'grid_size': 50, 'x_offset': 0, 'y_offset': 0, 'snr': 0.8}
         mock_upload_result = {"success": True, "path": "worlds/test/struct_test.png"}
         mock_scene_result = {"success": True, "uuid": "Scene.struct", "name": "Struct Test"}
 
@@ -425,7 +424,7 @@ class TestCreateSceneFromMap:
         mock_client.scenes.create_scene = MagicMock(return_value=mock_scene_result)
 
         with patch("scenes.orchestrate.redline_walls", new_callable=AsyncMock) as mock_redline, \
-             patch("scenes.orchestrate.detect_gridlines", new_callable=AsyncMock) as mock_detect_grid:
+             patch("scenes.orchestrate.detect_grid") as mock_detect_grid:
             mock_redline.return_value = mock_redline_result
             mock_detect_grid.return_value = mock_grid_result
 
@@ -443,9 +442,8 @@ class TestCreateSceneFromMap:
             assert result.timestamp[8] == '_'
 
     async def test_falls_back_to_estimate_when_no_grid_detected(self, tmp_path):
-        """Test that estimate_scene_size is called when detect_gridlines finds no grid."""
+        """Test that estimate_scene_size is called when detect_grid finds no grid."""
         from scenes.orchestrate import create_scene_from_map
-        from scenes.models import GridDetectionResult
 
         test_image = tmp_path / "no_grid.png"
         test_image.write_bytes(create_minimal_png(1000, 800))
@@ -456,7 +454,7 @@ class TestCreateSceneFromMap:
         }))
 
         # Grid detection returns no grid
-        mock_grid_result = GridDetectionResult(has_grid=False, grid_size=None, confidence=0.9)
+        mock_grid_result = {'grid_size': None, 'x_offset': 0, 'y_offset': 0, 'snr': 0.9}
         mock_upload_result = {"success": True, "path": "worlds/test/no_grid.png"}
         mock_scene_result = {"success": True, "uuid": "Scene.nogrid", "name": "No Grid"}
 
@@ -465,7 +463,7 @@ class TestCreateSceneFromMap:
         mock_client.scenes.create_scene = MagicMock(return_value=mock_scene_result)
 
         with patch("scenes.orchestrate.redline_walls", new_callable=AsyncMock) as mock_redline, \
-             patch("scenes.orchestrate.detect_gridlines", new_callable=AsyncMock) as mock_detect_grid, \
+             patch("scenes.orchestrate.detect_grid") as mock_detect_grid, \
              patch("scenes.orchestrate.estimate_scene_size") as mock_estimate:
             mock_redline.return_value = mock_redline_result
             mock_detect_grid.return_value = mock_grid_result
@@ -500,7 +498,6 @@ class TestParallelDetection:
         import asyncio
         import time
         from scenes.orchestrate import create_scene_from_map
-        from scenes.models import GridDetectionResult
 
         test_image = tmp_path / "parallel_test.png"
         test_image.write_bytes(create_minimal_png(100, 100))
@@ -523,12 +520,13 @@ class TestParallelDetection:
             }))
             return {'foundry_walls_json': walls_json}
 
-        async def slow_detect_gridlines(*args, **kwargs):
-            """Mock grid detection that takes 100ms."""
-            call_log.append(('grid_start', time.time()))
-            await asyncio.sleep(0.1)
-            call_log.append(('grid_end', time.time()))
-            return GridDetectionResult(has_grid=True, grid_size=70, confidence=0.95)
+        def slow_detect_grid(*args, **kwargs):
+            """Mock grid detection that takes 100ms (sync, wrapped in asyncio.to_thread)."""
+            import time as time_module
+            call_log.append(('grid_start', time_module.time()))
+            time_module.sleep(0.1)  # Sync sleep since this runs in thread
+            call_log.append(('grid_end', time_module.time()))
+            return {'grid_size': 70, 'x_offset': 0, 'y_offset': 0, 'snr': 0.95}
 
         mock_upload_result = {"success": True, "path": "worlds/test/parallel_test.png"}
         mock_scene_result = {"success": True, "uuid": "Scene.parallel", "name": "Parallel Test"}
@@ -538,7 +536,7 @@ class TestParallelDetection:
         mock_client.scenes.create_scene = MagicMock(return_value=mock_scene_result)
 
         with patch("scenes.orchestrate.redline_walls", side_effect=slow_redline_walls), \
-             patch("scenes.orchestrate.detect_gridlines", side_effect=slow_detect_gridlines):
+             patch("scenes.orchestrate.detect_grid", side_effect=slow_detect_grid):
 
             start_time = time.time()
             result = await create_scene_from_map(
@@ -583,7 +581,7 @@ class TestCreateSceneFromMapSync:
     def test_sync_wrapper_calls_async_function(self, tmp_path):
         """Test that sync wrapper properly calls the async function."""
         from scenes.orchestrate import create_scene_from_map_sync
-        from scenes.models import SceneCreationResult, GridDetectionResult
+        from scenes.models import SceneCreationResult
 
         test_image = tmp_path / "sync_test.png"
         test_image.write_bytes(create_minimal_png(100, 100))
@@ -595,7 +593,7 @@ class TestCreateSceneFromMapSync:
             "total_walls": 1
         }))
 
-        mock_grid_result = GridDetectionResult(has_grid=True, grid_size=50, confidence=0.9)
+        mock_grid_result = {'grid_size': 50, 'x_offset': 0, 'y_offset': 0, 'snr': 0.9}
         mock_upload_result = {"success": True, "path": "worlds/test/sync_test.png"}
         mock_scene_result = {"success": True, "uuid": "Scene.sync", "name": "Sync Test"}
 
@@ -604,7 +602,7 @@ class TestCreateSceneFromMapSync:
         mock_client.scenes.create_scene = MagicMock(return_value=mock_scene_result)
 
         with patch("scenes.orchestrate.redline_walls", new_callable=AsyncMock) as mock_redline, \
-             patch("scenes.orchestrate.detect_gridlines", new_callable=AsyncMock) as mock_detect_grid:
+             patch("scenes.orchestrate.detect_grid") as mock_detect_grid:
             mock_redline.return_value = mock_redline_result
             mock_detect_grid.return_value = mock_grid_result
 

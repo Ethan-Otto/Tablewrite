@@ -4,7 +4,7 @@ Orchestrates the full pipeline for creating a FoundryVTT scene from a battle map
 1. Derive scene name from filename
 2. Create timestamped output directory
 3. Run wall detection (redline_walls) unless skipped
-4. Detect grid (detect_gridlines) with fallback to estimate_scene_size
+4. Detect grid (detect_grid using edge SNR) with fallback to estimate_scene_size
 5. Upload image to Foundry
 6. Create scene with walls
 7. Return SceneCreationResult
@@ -19,8 +19,8 @@ from typing import Optional, Dict
 
 from PIL import Image
 
-from scenes.models import SceneCreationResult, GridDetectionResult
-from scenes.detect_gridlines import detect_gridlines
+from scenes.models import SceneCreationResult
+from scenes.detect_grid import detect_grid
 from scenes.estimate_scene_size import estimate_scene_size
 from wall_detection.redline_walls import redline_walls
 from foundry.client import FoundryClient
@@ -132,7 +132,8 @@ async def create_scene_from_map(
     async def grid_detection_task():
         """Run grid detection and return result."""
         logger.info("Running grid detection...")
-        return await detect_gridlines(image_path)
+        # Run CPU-bound grid detection in thread pool
+        return await asyncio.to_thread(detect_grid, image_path)
 
     # Run tasks in parallel
     tasks = []
@@ -176,9 +177,10 @@ async def create_scene_from_map(
         if run_grid_detection:
             grid_result = results[result_idx]
 
-            if grid_result.has_grid and grid_result.grid_size is not None:
-                grid_size = grid_result.grid_size
-                logger.info(f"Grid detected: {grid_size}px (confidence: {grid_result.confidence})")
+            if grid_result.get('grid_size') is not None:
+                grid_size = grid_result['grid_size']
+                snr = grid_result.get('snr', 0)
+                logger.info(f"Grid detected: {grid_size}px (SNR: {snr:.3f})")
             else:
                 # Fallback to estimation
                 grid_size = estimate_scene_size(image_path)
