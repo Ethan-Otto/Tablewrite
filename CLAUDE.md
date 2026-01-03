@@ -620,6 +620,25 @@ cd ui/backend && uv run pytest -v
 cd foundry-module/tablewrite-assistant && npm run build
 ```
 
+**UI Feedback (Development):**
+
+For visual feedback during UI development, use the Playwright helper in `foundry-module/tablewrite-assistant/scripts/feedback/`:
+
+```python
+from foundry_helper import FoundrySession
+
+with FoundrySession() as s:
+    s.goto_tablewrite()           # Navigate to Tablewrite tab
+    s.send_message("/help")       # Send message, wait for response
+    s.screenshot("/tmp/ui.png")   # Capture sidebar
+    print(s.get_message_html())   # Inspect rendered HTML
+    print(s.get_element_styles('.tablewrite-input'))  # Debug CSS
+```
+
+**Prerequisites:** Foundry at `localhost:30000`, "TestingGamemaster" user (no password), Playwright installed.
+
+**Key methods:** `goto_tablewrite()`, `send_message(text)`, `screenshot(path)`, `get_message_html()`, `get_element_styles(selector)`, `check_tab_switching()`
+
 ### Scene Extraction & Artwork Generation
 
 AI-powered scene extraction and artwork generation for creating visual galleries.
