@@ -1,6 +1,20 @@
 /* Tablewrite module styles - matches Foundry native chat */
 
-/* Chat container fills sidebar tab */
+/* Main container - fills sidebar tab */
+.tablewrite-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Tab content area - fills remaining space after tabs */
+.tab-content {
+  flex: 1;
+  min-height: 0;  /* Allows flex child to shrink below content size */
+  overflow: hidden;
+}
+
+/* Chat container fills tab content */
 .tablewrite-chat {
   display: flex;
   flex-direction: column;
@@ -11,6 +25,7 @@
 /* Messages area - scrollable, matches #chat-log */
 .tablewrite-messages {
   flex: 1;
+  min-height: 0;  /* Allows flex child to shrink below content size */
   overflow-y: auto;
   display: flex;
   flex-direction: column;
