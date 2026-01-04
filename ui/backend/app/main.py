@@ -1,6 +1,7 @@
 """D&D Module Assistant API."""
 
 import logging
+import os
 import sys
 
 from fastapi import FastAPI, WebSocket
@@ -44,9 +45,10 @@ app = FastAPI(
 )
 
 # CORS middleware for local development
+foundry_url = os.getenv("FOUNDRY_URL", "http://localhost:30000")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:30000"],  # Vite + Foundry
+    allow_origins=[foundry_url],  # Foundry
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

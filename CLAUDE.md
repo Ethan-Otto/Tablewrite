@@ -798,31 +798,6 @@ PYTHONPATH=src uv run python scripts/test_redline_walls.py
 - `src/wall_detection/polygonize.py` - Vector extraction
 - `src/util/parallel_image_gen.py` - Parallel image generation utility
 
-## Web UI
-
-Chat-based web UI with wax seal aesthetic for D&D Module Assistant.
-
-**For detailed UI documentation, see [`ui/CLAUDE.md`](ui/CLAUDE.md).**
-
-**Key Features:**
-- React 19 + TypeScript + Vite frontend with Tailwind CSS
-- FastAPI backend with Google Gemini API integration
-- Fixed 96vh layout with ChatWindow-only scrolling
-- Conversation history maintained across messages
-
-**Quick Start:**
-```bash
-# Backend (in ui/backend/)
-uv venv && source .venv/bin/activate && uv pip install -r requirements.txt
-echo "GEMINI_API_KEY=<your_key>" > .env
-uvicorn app.main:app --reload --port 8000
-
-# Frontend (in ui/frontend/)
-npm install && npm run dev
-```
-
-Access at http://localhost:5173
-
 ### Key Architecture Patterns
 
 **pdf_to_xml.py** (main conversion engine):
@@ -1038,4 +1013,4 @@ async def test_actor_roundtrip():
 
 - Short, imperative mood summaries
 - Group related changes
-- When creating new worktree, copy the `.env` file
+- When creating new worktree, run `git worktree list` first to check the existing convention, then copy the `.env` file
