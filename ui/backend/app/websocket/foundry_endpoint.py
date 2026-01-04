@@ -20,6 +20,8 @@ RESPONSE_TYPES = {
     # Fetch responses
     "actor_data",
     "scene_data",
+    # Update responses
+    "actor_updated",
     # Delete responses
     "actor_deleted",
     "journal_deleted",
@@ -39,6 +41,12 @@ RESPONSE_TYPES = {
     "files_error",
     "file_uploaded",
     "file_error",
+    # Custom items responses
+    "custom_items_added",
+    "custom_items_error",
+    # Give items responses
+    "items_given",
+    "give_error",
 }
 
 

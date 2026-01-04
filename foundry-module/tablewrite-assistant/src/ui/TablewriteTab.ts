@@ -2,9 +2,12 @@
  * Tablewrite sidebar tab - chat UI for AI assistant.
  */
 
-import { chatService, ChatMessage } from './chat-service.js';
+import { chatService, ChatMessage, ChatResponse } from './chat-service.js';
 import { BattleMapUpload } from './BattleMapUpload.js';
 import { getBackendUrl } from '../settings.js';
+
+// Foundry global declarations
+declare const ImagePopout: new (src: string, options?: { title?: string }) => { render(force?: boolean): void };
 
 export class TablewriteTab {
   private container: HTMLElement;
@@ -126,8 +129,20 @@ export class TablewriteTab {
     this.updateLoadingState();
 
     try {
-      const response = await chatService.send(content, historyBeforeSend);
-      this.messages.push({ role: 'assistant', content: response, timestamp: new Date() });
+      const response: ChatResponse = await chatService.send(content, historyBeforeSend);
+
+      // Handle image responses
+      const imageUrls = response.type === 'image' && response.data?.image_urls
+        ? response.data.image_urls
+        : undefined;
+
+      this.messages.push({
+        role: 'assistant',
+        content: response.message,
+        timestamp: new Date(),
+        type: response.type,
+        imageUrls
+      });
     } catch (error) {
       ui.notifications?.error(game.i18n.localize('TABLEWRITE_ASSISTANT.ChatError'));
       this.messages.push({
@@ -146,13 +161,85 @@ export class TablewriteTab {
     const container = this.container.querySelector('.tablewrite-messages');
     if (!container) return;
 
-    container.innerHTML = this.messages.map(msg => `
-      <div class="tablewrite-message tablewrite-message--${msg.role}">
-        <div class="tablewrite-message-content">${this.formatContent(msg.content)}</div>
-      </div>
-    `).join('');
+    container.innerHTML = this.messages.map(msg => {
+      let imagesHtml = '';
+      if (msg.imageUrls && msg.imageUrls.length > 0) {
+        const backendUrl = getBackendUrl();
+        imagesHtml = `
+          <div class="tablewrite-images">
+            ${msg.imageUrls.map(url => {
+              // Convert relative URL to absolute
+              const fullUrl = url.startsWith('/') ? `${backendUrl}${url}` : url;
+              return `<img src="${fullUrl}" alt="Generated image" class="tablewrite-generated-image" data-src="${fullUrl}" />`;
+            }).join('')}
+          </div>
+        `;
+      }
 
-    container.scrollTop = container.scrollHeight;
+      return `
+        <div class="tablewrite-message tablewrite-message--${msg.role}">
+          <div class="tablewrite-message-content">${this.formatContent(msg.content)}</div>
+          ${imagesHtml}
+        </div>
+      `;
+    }).join('');
+
+    // Add click handlers for image popout
+    this.attachImageClickHandlers(container);
+
+    // Add click handlers for content links (actor/item links)
+    this.attachContentLinkHandlers(container);
+
+    // Scroll to bottom after DOM update
+    this.scrollToBottom(container);
+
+    // Also scroll when images finish loading (they change container height)
+    const images = container.querySelectorAll('.tablewrite-generated-image');
+    images.forEach(img => {
+      img.addEventListener('load', () => this.scrollToBottom(container));
+    });
+  }
+
+  private scrollToBottom(container: Element): void {
+    // Use requestAnimationFrame to ensure DOM has updated
+    requestAnimationFrame(() => {
+      container.scrollTop = container.scrollHeight;
+    });
+  }
+
+  private attachImageClickHandlers(container: Element): void {
+    const images = container.querySelectorAll('.tablewrite-generated-image');
+    images.forEach(img => {
+      img.addEventListener('click', (e) => {
+        const target = e.target as HTMLImageElement;
+        const src = target.dataset.src || target.src;
+        // Use Foundry's ImagePopout to display the image
+        new ImagePopout(src, { title: 'Generated Image' }).render(true);
+      });
+    });
+  }
+
+  private attachContentLinkHandlers(container: Element): void {
+    const links = container.querySelectorAll('.content-link[data-uuid]');
+    links.forEach(link => {
+      link.addEventListener('click', async () => {
+        const uuid = (link as HTMLElement).dataset.uuid;
+        if (!uuid) return;
+
+        try {
+          // Use Foundry's fromUuid to get the document and open its sheet
+          const doc = await fromUuid(uuid);
+          if (doc && 'sheet' in doc) {
+            (doc as any).sheet.render(true);
+          } else {
+            ui.notifications?.warn(`Could not find document: ${uuid}`);
+          }
+        } catch (error) {
+          console.error('[Tablewrite] Failed to open document:', error);
+          ui.notifications?.error(`Failed to open: ${uuid}`);
+        }
+      });
+    });
   }
 
   private formatContent(content: string): string {
@@ -164,11 +251,22 @@ export class TablewriteTab {
       .replace(/"/g, '&quot;');
 
     // Then apply markdown transformations: **bold**, *italic*, `code`
-    return escaped
+    let formatted = escaped
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/`(.*?)`/g, '<code>$1</code>')
       .replace(/\n/g, '<br>');
+
+    // Convert @UUID[Type.id]{Label} to clickable spans (not <a> to avoid navigation)
+    // Match pattern: @UUID[Actor.xxx]{Name} or @UUID[Item.xxx]{Name} etc.
+    formatted = formatted.replace(
+      /@UUID\[([^\]]+)\]\{([^}]+)\}/g,
+      '<span class="content-link" data-uuid="$1" data-tooltip="Click to open">$2</span>'
+    );
+
+    // Apply code formatting for non-UUID code blocks
+    formatted = formatted.replace(/`(.*?)`/g, '<code>$1</code>');
+
+    return formatted;
   }
 
   private updateLoadingState(): void {

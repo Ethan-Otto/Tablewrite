@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List
 from io import BytesIO
 from .base import BaseTool, ToolSchema, ToolResponse
+from .image_styles import SCENE_STYLE
 from ..config import settings
 
 # Add project src to path for GeminiAPI
@@ -19,12 +20,18 @@ from google.genai import types  # noqa: E402
 class ImageGeneratorTool(BaseTool):
     """Tool for generating images using Gemini Imagen."""
 
+    # Use the same model as scene extraction for consistency
+    MODEL_NAME = "imagen-4.0-fast-generate-001"
+
+    # Default style for D&D fantasy illustrations (scenes)
+    DEFAULT_STYLE = SCENE_STYLE
+
     def __init__(self):
         """Initialize image generator."""
         self.output_dir = settings.IMAGE_OUTPUT_DIR
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.semaphore = asyncio.Semaphore(settings.IMAGEN_CONCURRENT_LIMIT)
-        self.api = GeminiAPI(model_name="imagen-3.0-generate-002")
+        self.api = GeminiAPI(model_name=self.MODEL_NAME)
 
     @property
     def name(self) -> str:
@@ -132,10 +139,13 @@ class ImageGeneratorTool(BaseTool):
             prompt: Image description
             filepath: Where to save the image
         """
+        # Enhance prompt with default D&D fantasy style
+        styled_prompt = f"{prompt}, {self.DEFAULT_STYLE}"
+
         # Generate image using Gemini Imagen
         response = self.api.client.models.generate_images(
-            model="imagen-3.0-generate-002",
-            prompt=prompt,
+            model=self.MODEL_NAME,
+            prompt=styled_prompt,
             config=types.GenerateImagesConfig(
                 number_of_images=1,
             )

@@ -2,9 +2,14 @@
 import sys
 import asyncio
 import logging
+import uuid
+from datetime import datetime
 from pathlib import Path
+from io import BytesIO
+from typing import Optional
 from dotenv import load_dotenv
 from .base import BaseTool, ToolSchema, ToolResponse
+from .image_styles import ACTOR_STYLE
 
 # Add project paths for module imports
 project_root = Path(__file__).parent.parent.parent.parent.parent
@@ -19,9 +24,129 @@ if env_path.exists():
 from actors.orchestrate import create_actor_from_description  # noqa: E402
 from foundry.actors.spell_cache import SpellCache  # noqa: E402
 from foundry.icon_cache import IconCache  # noqa: E402
-from app.websocket import push_actor, list_files, list_compendium_items  # noqa: E402
+from app.websocket import push_actor, list_files, list_compendium_items, upload_file  # noqa: E402
+from util.gemini import GeminiAPI  # noqa: E402
+from google.genai import types  # noqa: E402
+from app.config import settings  # noqa: E402
 
 logger = logging.getLogger(__name__)
+
+# Flag to disable image generation (for tests)
+_image_generation_enabled = True
+
+
+def set_image_generation_enabled(enabled: bool):
+    """Enable or disable image generation for actor creation."""
+    global _image_generation_enabled
+    _image_generation_enabled = enabled
+
+
+async def generate_actor_description(description: str) -> str:
+    """
+    Use Gemini to generate a visual description of the actor for image generation.
+
+    Args:
+        description: The user's actor description
+
+    Returns:
+        A detailed visual description suitable for image generation
+    """
+    def _generate():
+        api = GeminiAPI(model_name="gemini-2.0-flash")
+        prompt = f"""Based on this D&D creature/character description, generate a concise visual description
+suitable for AI image generation. Focus on physical appearance, clothing/armor, weapons,
+and distinctive visual features. Keep it to 2-3 sentences.
+
+Description: {description}
+
+Visual description for image generation:"""
+        response = api.generate_content(prompt)
+        return response.text.strip()
+
+    return await asyncio.to_thread(_generate)
+
+
+async def generate_actor_image(visual_description: str, upload_to_foundry: bool = True) -> tuple[Optional[str], Optional[str]]:
+    """
+    Generate an image of the actor using Imagen.
+
+    Args:
+        visual_description: Visual description of the actor
+        upload_to_foundry: Whether to upload the image to Foundry
+
+    Returns:
+        Tuple of (local_url, foundry_path):
+        - local_url: URL path for serving via backend (e.g., "/api/images/actor_xxx.png")
+        - foundry_path: Foundry-relative path for actor profile (e.g., "worlds/test/actor-portraits/actor_xxx.png")
+    """
+    import base64
+
+    try:
+        # Combine description with actor style
+        styled_prompt = f"{visual_description}, {ACTOR_STYLE}"
+        logger.info(f"[IMAGE PROMPT] {styled_prompt}")
+
+        # Generate image in thread pool to avoid blocking event loop
+        def _generate_image():
+            api = GeminiAPI(model_name="imagen-4.0-fast-generate-001")
+            return api.client.models.generate_images(
+                model="imagen-4.0-fast-generate-001",
+                prompt=styled_prompt,
+                config=types.GenerateImagesConfig(number_of_images=1)
+            )
+
+        response = await asyncio.to_thread(_generate_image)
+
+        if response.generated_images:
+            # Save image locally
+            output_dir = settings.IMAGE_OUTPUT_DIR
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            unique_id = uuid.uuid4().hex[:8]
+            filename = f"actor_{timestamp}_{unique_id}.png"
+            filepath = output_dir / filename
+
+            generated_image = response.generated_images[0]
+            # Use public image_bytes API instead of private _pil_image
+            image_data = generated_image.image.image_bytes
+
+            with open(filepath, 'wb') as f:
+                f.write(image_data)
+
+            logger.info(f"Generated actor image: {filename}")
+            local_url = f"/api/images/{filename}"
+
+            # Upload to Foundry if requested
+            foundry_path = None
+            if upload_to_foundry:
+                try:
+                    # Base64 encode the image data
+                    b64_content = base64.b64encode(image_data).decode('utf-8')
+
+                    # Upload to Foundry's actor-portraits folder
+                    upload_result = await upload_file(
+                        filename=filename,
+                        content=b64_content,
+                        destination="actor-portraits"
+                    )
+
+                    if upload_result.success:
+                        foundry_path = upload_result.path
+                        logger.info(f"Uploaded actor image to Foundry: {foundry_path}")
+                    else:
+                        logger.warning(f"Failed to upload actor image to Foundry: {upload_result.error}")
+
+                except Exception as e:
+                    logger.warning(f"Foundry upload failed (non-fatal): {e}")
+
+            return local_url, foundry_path
+
+        return None, None
+
+    except Exception as e:
+        logger.warning(f"Actor image generation failed: {e}")
+        return None, None
 
 
 async def list_compendium_items_with_retry(
@@ -207,9 +332,31 @@ class ActorCreatorTool(BaseTool):
             icon_cache.load_from_data(files_result.files or [])
             logger.info(f"✓ IconCache loaded with {icon_cache.icon_count} icons")
 
+            # Generate actor image BEFORE actor creation (if enabled)
+            # This allows us to set the profile image on the actor
+            image_url = None
+            foundry_image_path = None
+            if _image_generation_enabled:
+                logger.info(f"Generating actor image for: {description[:50]}...")
+                try:
+                    visual_desc = await generate_actor_description(description)
+                    logger.info(f"Generated visual description: {visual_desc[:100]}...")
+                    image_url, foundry_image_path = await generate_actor_image(visual_desc)
+                    if image_url:
+                        logger.info(f"Actor image generated: {image_url}")
+                    if foundry_image_path:
+                        logger.info(f"Actor image uploaded to Foundry: {foundry_image_path}")
+                except Exception as e:
+                    logger.warning(f"Image generation failed (non-fatal): {e}")
+
             # WebSocket-based actor upload function with retry
             async def ws_actor_upload(actor_data: dict, spell_uuids: list) -> str:
                 """Upload actor via WebSocket instead of relay."""
+                # Set profile image if available
+                if foundry_image_path:
+                    actor_data["img"] = foundry_image_path
+                    logger.info(f"Setting actor profile image: {foundry_image_path}")
+
                 # Log spell_uuids being sent
                 logger.info(f"📤 Uploading actor '{actor_data.get('name')}' with {len(spell_uuids)} spell UUIDs")
                 if spell_uuids:
@@ -260,16 +407,29 @@ class ActorCreatorTool(BaseTool):
 
             logger.info(f"Created actor '{actor_name}' (CR {actor_cr}) with UUID {result.foundry_uuid}")
 
+            # Create FoundryVTT content link format
+            actor_link = f"@UUID[{result.foundry_uuid}]{{{actor_name}}}"
+
             message = (
                 f"Created **{actor_name}** (CR {actor_cr})!\n\n"
                 f"UUID: `{result.foundry_uuid}`\n"
+                f"**Link:** `{actor_link}`\n"
                 f"The actor has been created in FoundryVTT."
             )
+
+            # Return with image if available
+            response_data = {"uuid": result.foundry_uuid, "name": actor_name, "cr": actor_cr}
+            if image_url:
+                return ToolResponse(
+                    type="image",
+                    message=message,
+                    data={**response_data, "image_urls": [image_url]}
+                )
 
             return ToolResponse(
                 type="text",
                 message=message,
-                data={"uuid": result.foundry_uuid, "name": actor_name, "cr": actor_cr}
+                data=response_data
             )
 
         except Exception as e:

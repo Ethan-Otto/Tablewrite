@@ -155,6 +155,8 @@ Keep it concise (2-3 sentences) and evocative."""
         """Build prompt with context and conversation history."""
         prompt = """You are a helpful D&D Module Assistant. You help users work with D&D module content, generate scenes, and manage actors.
 
+IMPORTANT: When the user asks you to generate, create, draw, or show an image, you MUST call the generate_images tool immediately. Do not ask clarifying questions about where to save the image or any other details - just call the tool with the user's description as the prompt. The tool handles all file management automatically.
+
 Available commands:
 - /generate-scene [description] - Generate a new scene
 - /list-scenes [chapter] - List scenes in a chapter

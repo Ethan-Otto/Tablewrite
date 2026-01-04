@@ -94,6 +94,53 @@ async def push_actor(actor_data: Dict[str, Any], timeout: float = 30.0) -> PushR
         )
 
 
+async def update_actor(
+    uuid: str,
+    updates: Dict[str, Any],
+    timeout: float = 30.0
+) -> PushResult:
+    """
+    Update an existing actor in Foundry via WebSocket.
+
+    Args:
+        uuid: Actor UUID (e.g., "Actor.abc123")
+        updates: Dictionary of updates to apply (can use nested paths like "system.abilities.str.value")
+        timeout: Maximum seconds to wait for Foundry response
+
+    Returns:
+        PushResult with UUID if successful, error if failed
+    """
+    response = await foundry_manager.broadcast_and_wait(
+        {"type": "update_actor", "data": {"uuid": uuid, "updates": updates}},
+        timeout=timeout
+    )
+
+    if response is None:
+        return PushResult(
+            success=False,
+            error="No Foundry client connected or timeout waiting for response"
+        )
+
+    if response.get("type") == "actor_updated":
+        data = response.get("data", {})
+        return PushResult(
+            success=True,
+            uuid=data.get("uuid"),
+            id=data.get("id"),
+            name=data.get("name")
+        )
+    elif response.get("type") == "actor_error":
+        return PushResult(
+            success=False,
+            error=response.get("error", "Unknown error from Foundry")
+        )
+    else:
+        return PushResult(
+            success=False,
+            error=f"Unexpected response type: {response.get('type')}"
+        )
+
+
 async def push_journal(journal_data: Dict[str, Any], timeout: float = 30.0) -> PushResult:
     """
     Push a journal entry to all connected Foundry clients and wait for creation result.
@@ -762,6 +809,83 @@ async def list_files(
         )
     else:
         return FileListResult(
+            success=False,
+            error=f"Unexpected response type: {response.get('type')}"
+        )
+
+
+@dataclass
+class CustomItemDef:
+    """Definition of a custom item to add to an actor."""
+    name: str
+    type: str  # 'weapon' or 'feat'
+    description: str
+    damage_formula: Optional[str] = None  # e.g., "2d6+3"
+    damage_type: Optional[str] = None  # e.g., "psychic"
+    attack_bonus: Optional[int] = None
+    range: Optional[int] = None
+    activation: Optional[str] = None  # "action", "bonus", "reaction", "passive"
+    save_dc: Optional[int] = None
+    save_ability: Optional[str] = None  # "dex", "con", "wis", etc.
+
+
+@dataclass
+class AddCustomItemsResult:
+    """Result of adding custom items to an actor."""
+    success: bool
+    items_added: Optional[int] = None
+    error: Optional[str] = None
+
+
+async def add_custom_items(
+    actor_uuid: str,
+    items: List[dict],
+    timeout: float = 30.0
+) -> AddCustomItemsResult:
+    """
+    Add custom items (attacks, feats) to an actor via WebSocket.
+
+    Unlike give_items which fetches from compendiums, this creates new items
+    with custom properties.
+
+    Args:
+        actor_uuid: The actor UUID (e.g., "Actor.abc123")
+        items: List of item definitions with name, type, description, etc.
+        timeout: Maximum seconds to wait for response
+
+    Returns:
+        AddCustomItemsResult with items_added count if successful
+    """
+    if not items:
+        return AddCustomItemsResult(
+            success=True,
+            items_added=0
+        )
+
+    response = await foundry_manager.broadcast_and_wait(
+        {"type": "add_custom_items", "data": {"actor_uuid": actor_uuid, "items": items}},
+        timeout=timeout
+    )
+
+    if response is None:
+        return AddCustomItemsResult(
+            success=False,
+            error="No Foundry client connected or timeout waiting for response"
+        )
+
+    if response.get("type") == "custom_items_added":
+        data = response.get("data", {})
+        return AddCustomItemsResult(
+            success=True,
+            items_added=data.get("items_added")
+        )
+    elif response.get("type") == "custom_items_error":
+        return AddCustomItemsResult(
+            success=False,
+            error=response.get("error", "Unknown error from Foundry")
+        )
+    else:
+        return AddCustomItemsResult(
             success=False,
             error=f"Unexpected response type: {response.get('type')}"
         )

@@ -1,5 +1,8 @@
 """D&D Module Assistant API."""
 
+import logging
+import sys
+
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
@@ -8,6 +11,21 @@ from dotenv import load_dotenv
 from app.routers import actors, chat, files, health, journals, scenes, search
 from app.routers.scenes import scene_upload_router
 from app.websocket import foundry_websocket_endpoint
+
+
+# Configure logging - show all INFO and above from app modules
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(name)s] %(levelname)s: %(message)s',
+    datefmt='%H:%M:%S',
+    stream=sys.stdout,
+    force=True  # Override any existing config
+)
+
+# Ensure app.tools loggers are set to INFO
+logging.getLogger('app.tools').setLevel(logging.INFO)
+logging.getLogger('app.tools.actor_creator').setLevel(logging.INFO)
+logging.getLogger('app.tools.image_generator').setLevel(logging.INFO)
 
 
 # Load environment variables from project root .env

@@ -100,6 +100,55 @@ export async function handleGetActor(uuid: string): Promise<GetResult> {
 }
 
 /**
+ * Handle update actor request - update an actor's data by UUID.
+ *
+ * Message format: {uuid: string, updates: Record<string, unknown>}
+ * Updates can include nested paths like "system.abilities.str.value"
+ */
+export async function handleUpdateActor(data: {
+  uuid: string;
+  updates: Record<string, unknown>;
+}): Promise<CreateResult> {
+  try {
+    const { uuid, updates } = data;
+
+    if (!uuid || !updates) {
+      return {
+        success: false,
+        error: 'Missing uuid or updates'
+      };
+    }
+
+    // Get the actor
+    const actor = await fromUuid(uuid) as FoundryDocument | null;
+    if (!actor) {
+      return {
+        success: false,
+        error: `Actor not found: ${uuid}`
+      };
+    }
+
+    // Apply updates (cast to any to access update method)
+    await (actor as any).update(updates);
+    console.log('[Tablewrite] Updated actor:', actor.name, uuid, 'with:', updates);
+    ui.notifications?.info(`Updated actor: ${actor.name}`);
+
+    return {
+      success: true,
+      id: actor.id,
+      uuid: uuid,
+      name: actor.name ?? undefined
+    };
+  } catch (error) {
+    console.error('[Tablewrite] Failed to update actor:', error);
+    return {
+      success: false,
+      error: String(error)
+    };
+  }
+}
+
+/**
  * Handle delete actor request - delete an actor by UUID.
  */
 export async function handleDeleteActor(uuid: string): Promise<DeleteResult> {
@@ -249,6 +298,276 @@ export async function handleGiveItems(data: {
     };
   } catch (error) {
     console.error('[Tablewrite] Failed to give items:', error);
+    return {
+      success: false,
+      error: String(error)
+    };
+  }
+}
+
+/**
+ * Add custom items (attacks, feats) to an existing actor.
+ * Unlike handleGiveItems which pulls from compendiums, this creates new items.
+ */
+export async function handleAddCustomItems(data: {
+  actor_uuid: string;
+  items: Array<{
+    name: string;
+    type: 'weapon' | 'feat';
+    description: string;
+    damage_formula?: string;  // e.g., "2d6+3"
+    damage_type?: string;     // e.g., "psychic"
+    attack_bonus?: number;
+    range?: number;
+    activation?: string;      // "action", "bonus", "reaction", "passive"
+    save_dc?: number;
+    save_ability?: string;    // "dex", "con", "wis", etc.
+    // AOE fields
+    aoe_type?: string;        // "cone", "sphere", "line", "cube", "cylinder"
+    aoe_size?: number;        // size in feet (e.g., 60 for 60-foot cone)
+    on_save?: string;         // "half", "none" - what happens on successful save
+  }>;
+}): Promise<{ success: boolean; items_added?: number; error?: string }> {
+  try {
+    const { actor_uuid, items } = data;
+
+    // Get the actor
+    const actor = await fromUuid(actor_uuid) as FoundryDocument | null;
+    if (!actor) {
+      return {
+        success: false,
+        error: `Actor not found: ${actor_uuid}`
+      };
+    }
+
+    const itemsToAdd: Record<string, unknown>[] = [];
+
+    for (const itemDef of items) {
+      // Generate unique ID for this item
+      const itemId = foundry.utils.randomID(16);
+
+      if (itemDef.type === 'weapon') {
+        // Parse damage formula (e.g., "2d6+3" -> number=2, denomination=6, bonus=3)
+        let damageNumber = 1;
+        let damageDenom = 6;
+        let damageBonus = "";
+
+        if (itemDef.damage_formula) {
+          const match = itemDef.damage_formula.match(/(\d+)?d(\d+)([+-]\d+)?/i);
+          if (match) {
+            damageNumber = parseInt(match[1] || "1");
+            damageDenom = parseInt(match[2]);
+            damageBonus = match[3] || "";
+          }
+        }
+
+        // Create attack activity
+        const activityId = foundry.utils.randomID(16);
+        const activity = {
+          _id: activityId,
+          type: "attack",
+          name: "",
+          sort: 0,
+          activation: {
+            type: itemDef.activation || "action",
+            value: null,
+            override: false,
+            condition: ""
+          },
+          attack: {
+            ability: "",
+            bonus: itemDef.attack_bonus ? String(itemDef.attack_bonus) : "",
+            critical: { threshold: null },
+            flat: false,
+            type: { value: "melee", classification: "weapon" }
+          },
+          consumption: { targets: [], scaling: { allowed: false, max: "" }, spellSlot: true },
+          damage: { critical: { bonus: "" }, includeBase: true, parts: [] },
+          duration: { units: "inst", concentration: false, override: false },
+          effects: [],
+          range: { override: false },
+          target: { template: { contiguous: false, type: "", size: "", units: "ft" }, affects: { count: "", type: "", choice: false, special: "" }, override: false },
+          uses: { spent: 0, recovery: [], max: "" }
+        };
+
+        const weaponItem = {
+          _id: itemId,
+          name: itemDef.name,
+          type: "weapon",
+          img: "icons/skills/melee/hand-grip-sword-orange.webp",
+          system: {
+            description: { value: itemDef.description || "" },
+            activities: { [activityId]: activity },
+            damage: {
+              base: {
+                number: damageNumber,
+                denomination: damageDenom,
+                bonus: damageBonus.replace("+", ""),
+                types: [itemDef.damage_type || "bludgeoning"],
+                custom: { enabled: false, formula: "" },
+                scaling: { mode: "", number: null, formula: "" }
+              }
+            },
+            range: {
+              value: itemDef.range || 5,
+              long: null,
+              reach: itemDef.range || 5,
+              units: "ft"
+            },
+            type: { value: "natural", baseItem: "" },
+            properties: [],
+            uses: { spent: 0, recovery: [], max: "" }
+          }
+        };
+        itemsToAdd.push(weaponItem);
+
+      } else if (itemDef.type === 'feat') {
+        // Create activity based on whether it's a save or utility
+        const activityId = foundry.utils.randomID(16);
+        let activity: Record<string, unknown>;
+
+        if (itemDef.save_dc && itemDef.save_ability) {
+          // Save-based feat (like breath weapon)
+          // Determine if this is an AOE attack
+          const isAoe = itemDef.aoe_type && itemDef.aoe_size;
+
+          // For AOE attacks, range is "self" (originates from creature)
+          // For non-AOE save abilities, use provided range or default
+          const rangeConfig = isAoe
+            ? { override: false, units: "self", special: "" }
+            : { override: false, units: itemDef.range ? "ft" : "", value: itemDef.range || null };
+
+          // Target template for AOE
+          const targetTemplate = isAoe
+            ? {
+                contiguous: false,
+                units: "ft",
+                type: itemDef.aoe_type,
+                size: String(itemDef.aoe_size),
+                count: "",
+                width: itemDef.aoe_type === "line" ? "5" : ""
+              }
+            : { contiguous: false, type: "", size: "", units: "ft" };
+
+          activity = {
+            _id: activityId,
+            type: "save",
+            name: "",
+            sort: 0,
+            activation: {
+              type: itemDef.activation || "action",
+              value: null,
+              override: false,
+              condition: ""
+            },
+            save: {
+              ability: [itemDef.save_ability],
+              dc: { calculation: "", formula: String(itemDef.save_dc) }
+            },
+            consumption: { targets: [], scaling: { allowed: false, max: "" }, spellSlot: true },
+            damage: {
+              critical: { bonus: "" },
+              includeBase: true,
+              parts: [],
+              onSave: itemDef.on_save || "half"
+            },
+            duration: { units: "inst", concentration: false, override: false },
+            effects: [],
+            range: rangeConfig,
+            target: {
+              template: targetTemplate,
+              affects: { count: "", type: "creature", choice: false, special: "" },
+              override: false,
+              prompt: true
+            },
+            uses: { spent: 0, recovery: [], max: "" }
+          };
+
+          // Add damage if specified
+          if (itemDef.damage_formula) {
+            // Parse damage formula for proper structure
+            let damageNumber = 1;
+            let damageDenom = 6;
+            let damageBonus = "";
+
+            const match = itemDef.damage_formula.match(/(\d+)?d(\d+)([+-]\d+)?/i);
+            if (match) {
+              damageNumber = parseInt(match[1] || "1");
+              damageDenom = parseInt(match[2]);
+              damageBonus = match[3]?.replace("+", "") || "";
+            }
+
+            (activity.damage as Record<string, unknown>).parts = [{
+              number: damageNumber,
+              denomination: damageDenom,
+              bonus: damageBonus,
+              types: [itemDef.damage_type || "fire"],
+              custom: { enabled: false, formula: "" },
+              scaling: { mode: "", number: 1 }
+            }];
+          }
+        } else {
+          // Utility/passive feat
+          activity = {
+            _id: activityId,
+            type: "utility",
+            name: "",
+            sort: 0,
+            activation: {
+              type: itemDef.activation || "passive",
+              value: null,
+              override: false,
+              condition: ""
+            },
+            consumption: { targets: [], scaling: { allowed: false, max: "" }, spellSlot: true },
+            duration: { units: "inst", concentration: false, override: false },
+            effects: [],
+            range: { override: false },
+            target: { template: { contiguous: false, type: "", size: "", units: "ft" }, affects: { count: "", type: "", choice: false, special: "" }, override: false },
+            uses: { spent: 0, recovery: [], max: "" }
+          };
+        }
+
+        const featItem = {
+          _id: itemId,
+          name: itemDef.name,
+          type: "feat",
+          img: "icons/magic/control/energy-stream-link-large-blue.webp",
+          system: {
+            description: { value: itemDef.description || "" },
+            activities: { [activityId]: activity },
+            activation: {
+              type: itemDef.activation || "passive",
+              value: null,
+              condition: ""
+            },
+            uses: {}
+          }
+        };
+        itemsToAdd.push(featItem);
+      }
+    }
+
+    if (itemsToAdd.length === 0) {
+      return {
+        success: false,
+        error: "No valid items to add"
+      };
+    }
+
+    // Add items to actor
+    const created = await actor.createEmbeddedDocuments('Item', itemsToAdd);
+    const addedCount = created?.length ?? 0;
+
+    console.log(`[Tablewrite] Added ${addedCount} custom items to actor ${actor.name}`);
+    ui.notifications?.info(`Added ${addedCount} items to ${actor.name}`);
+
+    return {
+      success: true,
+      items_added: addedCount
+    };
+  } catch (error) {
+    console.error('[Tablewrite] Failed to add custom items:', error);
     return {
       success: false,
       error: String(error)

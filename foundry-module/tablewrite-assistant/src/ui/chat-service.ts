@@ -8,12 +8,17 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp?: Date;
+  type?: string;
+  imageUrls?: string[];
 }
 
-interface ChatResponse {
+export interface ChatResponse {
   message: string;
   type: string;
-  data?: Record<string, unknown>;
+  data?: {
+    image_urls?: string[];
+    [key: string]: unknown;
+  };
 }
 
 class ChatService {
@@ -21,9 +26,9 @@ class ChatService {
    * Send a message to the backend chat endpoint.
    * @param message - The user's message
    * @param history - Previous conversation history (must NOT include the current message)
-   * @returns The assistant's response message
+   * @returns The full response object including type and image data
    */
-  async send(message: string, history: ChatMessage[]): Promise<string> {
+  async send(message: string, history: ChatMessage[]): Promise<ChatResponse> {
     const url = `${getBackendUrl()}/api/chat`;
 
     const conversationHistory = history.map(msg => ({
@@ -46,8 +51,7 @@ class ChatService {
       throw new Error(`Chat request failed: ${response.status}`);
     }
 
-    const data: ChatResponse = await response.json();
-    return data.message;
+    return await response.json();
   }
 }
 

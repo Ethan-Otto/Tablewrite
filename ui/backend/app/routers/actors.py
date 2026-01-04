@@ -100,7 +100,8 @@ async def create_actor_raw(request: dict):
     if not actor_data:
         raise HTTPException(status_code=400, detail="Missing 'actor' field in request")
 
-    result = await push_actor(actor_data, timeout=30.0)
+    # Wrap actor data for Foundry handler which expects {"actor": {...}}
+    result = await push_actor({"actor": actor_data}, timeout=30.0)
 
     if result.success:
         return {

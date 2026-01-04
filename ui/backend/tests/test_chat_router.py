@@ -31,21 +31,55 @@ def test_chat_endpoint_basic(client):
 
 
 def test_chat_endpoint_generate_scene_command(client):
-    """Test /generate-scene command."""
-    with patch('app.routers.chat.GeminiService') as mock_service:
-        mock_instance = Mock()
-        mock_instance.generate_scene_description.return_value = "A dark cave entrance"
-        mock_service.return_value = mock_instance
+    """Test /generate-scene command with image generation."""
+    from app.tools.base import ToolResponse
+    from unittest.mock import AsyncMock
 
-        response = client.post(
-            "/api/chat",
-            json={"message": "/generate-scene dark cave", "context": {}}
-        )
+    with patch('app.routers.chat.gemini_service') as mock_gemini:
+        mock_gemini.generate_scene_description.return_value = "A dark cave entrance"
 
-        assert response.status_code == 200
-        data = response.json()
-        assert data["type"] == "scene"
-        assert "cave" in data["message"].lower()
+        # Mock the image generator tool with async execute
+        with patch('app.routers.chat.registry') as mock_registry:
+            mock_tool = Mock()
+            mock_tool.execute = AsyncMock(return_value=ToolResponse(
+                type="image",
+                message="Generated image",
+                data={"image_urls": ["/api/images/test.png"], "prompt": "test"}
+            ))
+            mock_registry.tools.get.return_value = mock_tool
+
+            response = client.post(
+                "/api/chat",
+                json={"message": "/generate-scene dark cave", "context": {}}
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            # Now returns image type since it generates an image
+            assert data["type"] == "image"
+            assert "cave" in data["message"].lower()
+            assert "image_urls" in data["data"]
+
+
+def test_chat_endpoint_generate_scene_fallback(client):
+    """Test /generate-scene command falls back gracefully if image generation fails."""
+    with patch('app.routers.chat.gemini_service') as mock_gemini:
+        mock_gemini.generate_scene_description.return_value = "A dark cave entrance"
+
+        # Mock the image generator tool to return None (not found)
+        with patch('app.routers.chat.registry') as mock_registry:
+            mock_registry.tools.get.return_value = None
+
+            response = client.post(
+                "/api/chat",
+                json={"message": "/generate-scene dark cave", "context": {}}
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            # Falls back to scene type without image
+            assert data["type"] == "scene"
+            assert "cave" in data["message"].lower()
 
 
 def test_chat_endpoint_help_command(client):

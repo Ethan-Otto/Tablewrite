@@ -148,4 +148,11 @@ declare global {
       options?: Record<string, unknown>
     ): Promise<UploadResult>;
   };
+
+  // Foundry utils namespace
+  const foundry: {
+    utils: {
+      randomID(length?: number): string;
+    };
+  };
 }

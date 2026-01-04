@@ -2,19 +2,19 @@
  * Message handlers for Tablewrite.
  */
 
-export { handleActorCreate, handleGetActor, handleDeleteActor, handleListActors, handleGiveItems } from './actor.js';
+export { handleActorCreate, handleGetActor, handleUpdateActor, handleDeleteActor, handleListActors, handleGiveItems, handleAddCustomItems } from './actor.js';
 export { handleJournalCreate, handleJournalDelete } from './journal.js';
 export { handleSceneCreate, handleGetScene, handleDeleteScene } from './scene.js';
 export { handleSearchItems, handleGetItem, handleListCompendiumItems } from './items.js';
 export { handleListFiles, handleFileUpload } from './files.js';
 
-import { handleActorCreate, handleGetActor, handleDeleteActor, handleListActors, handleGiveItems } from './actor.js';
+import { handleActorCreate, handleGetActor, handleUpdateActor, handleDeleteActor, handleListActors, handleGiveItems, handleAddCustomItems } from './actor.js';
 import { handleJournalCreate, handleJournalDelete } from './journal.js';
 import { handleSceneCreate, handleGetScene, handleDeleteScene } from './scene.js';
 import { handleSearchItems, handleGetItem, handleListCompendiumItems } from './items.js';
 import { handleListFiles, handleFileUpload } from './files.js';
 
-export type MessageType = 'actor' | 'journal' | 'delete_journal' | 'scene' | 'get_scene' | 'delete_scene' | 'get_actor' | 'delete_actor' | 'list_actors' | 'give_items' | 'search_items' | 'get_item' | 'list_compendium_items' | 'list_files' | 'upload_file' | 'connected' | 'pong';
+export type MessageType = 'actor' | 'journal' | 'delete_journal' | 'scene' | 'get_scene' | 'delete_scene' | 'get_actor' | 'update_actor' | 'delete_actor' | 'list_actors' | 'give_items' | 'add_custom_items' | 'search_items' | 'get_item' | 'list_compendium_items' | 'list_files' | 'upload_file' | 'connected' | 'pong';
 
 export interface TablewriteMessage {
   type: MessageType;
@@ -213,6 +213,24 @@ export async function handleMessage(message: TablewriteMessage): Promise<Message
         request_id: message.request_id,
         error: 'Missing uuid for get_actor'
       };
+    case 'update_actor':
+      if (message.data) {
+        const result = await handleUpdateActor(message.data as {
+          uuid: string;
+          updates: Record<string, unknown>;
+        });
+        return {
+          responseType: result.success ? 'actor_updated' : 'actor_error',
+          request_id: message.request_id,
+          data: result,
+          error: result.error
+        };
+      }
+      return {
+        responseType: 'actor_error',
+        request_id: message.request_id,
+        error: 'Missing data for update_actor'
+      };
     case 'delete_actor':
       if (message.data?.uuid) {
         const result = await handleDeleteActor(message.data.uuid as string);
@@ -254,6 +272,38 @@ export async function handleMessage(message: TablewriteMessage): Promise<Message
         responseType: 'give_error',
         request_id: message.request_id,
         error: 'Missing data for give_items'
+      };
+    case 'add_custom_items':
+      if (message.data) {
+        const result = await handleAddCustomItems(message.data as {
+          actor_uuid: string;
+          items: Array<{
+            name: string;
+            type: 'weapon' | 'feat';
+            description: string;
+            damage_formula?: string;
+            damage_type?: string;
+            attack_bonus?: number;
+            range?: number;
+            activation?: string;
+            save_dc?: number;
+            save_ability?: string;
+            aoe_type?: string;
+            aoe_size?: number;
+            on_save?: string;
+          }>;
+        });
+        return {
+          responseType: result.success ? 'custom_items_added' : 'custom_items_error',
+          request_id: message.request_id,
+          data: result,
+          error: result.error
+        };
+      }
+      return {
+        responseType: 'custom_items_error',
+        request_id: message.request_id,
+        error: 'Missing data for add_custom_items'
       };
     case 'search_items':
       if (message.data) {

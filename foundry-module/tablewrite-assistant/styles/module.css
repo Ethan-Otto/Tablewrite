@@ -12,23 +12,24 @@
   flex: 1;
   min-height: 0;  /* Allows flex child to shrink below content size */
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Chat container fills tab content */
 .tablewrite-chat {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
+  min-height: 0;  /* Critical: allows flex child to shrink and enable scrolling */
   padding: 0;
 }
 
 /* Messages area - scrollable, matches #chat-log */
 .tablewrite-messages {
-  flex: 1;
+  flex: 1 1 0;  /* Explicit flex-basis: 0 to enable proper shrinking */
   min-height: 0;  /* Allows flex child to shrink below content size */
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
   padding: 0;
 }
 
@@ -257,4 +258,54 @@
 
 #reset-btn:hover {
   background: #666;
+}
+
+/* Generated images in chat */
+.tablewrite-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.tablewrite-generated-image {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.tablewrite-generated-image:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Content links (actor/item links) */
+.tablewrite-message-content .content-link {
+  color: #4b8b3b;
+  text-decoration: none;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 1px dotted #4b8b3b;
+  transition: all 0.15s ease;
+}
+
+.tablewrite-message-content .content-link:hover {
+  color: #2d5a23;
+  border-bottom-style: solid;
+  text-shadow: 0 0 4px rgba(75, 139, 59, 0.3);
+}
+
+/* UUID link variant (was in code block) */
+.tablewrite-message-content .uuid-link {
+  background: rgba(75, 139, 59, 0.15);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: var(--font-primary, "Signika", sans-serif);
+}
+
+.tablewrite-message-content .uuid-link:hover {
+  background: rgba(75, 139, 59, 0.25);
 }

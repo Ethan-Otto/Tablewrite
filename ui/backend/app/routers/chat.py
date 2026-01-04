@@ -118,10 +118,36 @@ async def _handle_generate_scene(args: str, context: dict) -> ChatResponse:
     # Generate scene description
     description = gemini_service.generate_scene_description(args)
 
-    # TODO: In future, also generate scene image and save to database
-    # For now, just return the description
+    # Generate scene image using the image generator tool
+    image_tool = registry.tools.get("generate_images")
+    if image_tool:
+        # Create an enhanced prompt for D&D scene artwork
+        image_prompt = f"Fantasy D&D scene illustration: {description}. Dramatic lighting, detailed environment, no text or words in the image."
+        try:
+            image_response = await image_tool.execute(prompt=image_prompt, count=1)
 
-    response_message = f"**Generated Scene**\n\n{description}\n\n_Note: Scene image generation coming soon!_"
+            if image_response.type == "image" and image_response.data:
+                image_urls = image_response.data.get("image_urls", [])
+                response_message = f"**Generated Scene**\n\n{description}"
+
+                return ChatResponse(
+                    message=response_message,
+                    type="image",
+                    data={
+                        "description": description,
+                        "request": args,
+                        "image_urls": image_urls,
+                        "prompt": image_prompt
+                    }
+                )
+            else:
+                # Log the failed response for debugging
+                print(f"[DEBUG] Image generation returned non-image response: {image_response}")
+        except Exception as e:
+            print(f"[DEBUG] Image generation exception: {e}")
+
+    # Fallback if image generation fails
+    response_message = f"**Generated Scene**\n\n{description}\n\n_Image generation failed, showing description only._"
 
     return ChatResponse(
         message=response_message,
