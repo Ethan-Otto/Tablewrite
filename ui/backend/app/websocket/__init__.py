@@ -3,16 +3,20 @@ from .connection_manager import ConnectionManager
 from .foundry_endpoint import foundry_websocket_endpoint, foundry_manager
 from .push import (
     push_actor, push_journal, push_scene, PushResult,
-    fetch_actor, FetchResult,
-    update_actor,
+    fetch_actor, fetch_journal, FetchResult,
+    update_actor, update_journal,
     delete_actor, delete_journal, DeleteResult,
     list_actors, ListResult, ActorInfo,
+    list_journals, JournalListResult, JournalInfo,
     search_items, SearchResult, SearchResultItem,
     list_compendium_items, CompendiumListResult,
     list_files, FileListResult,
     give_items, GiveItemsResult,
     upload_file, FileUploadResult,
-    add_custom_items, AddCustomItemsResult
+    add_custom_items, AddCustomItemsResult,
+    get_or_create_folder, FolderResult,
+    list_folders, ListFoldersResult, FolderInfo,
+    delete_folder, DeleteFolderResult
 )
 
 __all__ = [
@@ -24,14 +28,19 @@ __all__ = [
     'push_scene',
     'PushResult',
     'fetch_actor',
+    'fetch_journal',
     'FetchResult',
     'update_actor',
+    'update_journal',
     'delete_actor',
     'delete_journal',
     'DeleteResult',
     'list_actors',
     'ListResult',
     'ActorInfo',
+    'list_journals',
+    'JournalListResult',
+    'JournalInfo',
     'search_items',
     'SearchResult',
     'SearchResultItem',
@@ -44,5 +53,12 @@ __all__ = [
     'upload_file',
     'FileUploadResult',
     'add_custom_items',
-    'AddCustomItemsResult'
+    'AddCustomItemsResult',
+    'get_or_create_folder',
+    'FolderResult',
+    'list_folders',
+    'ListFoldersResult',
+    'FolderInfo',
+    'delete_folder',
+    'DeleteFolderResult'
 ]

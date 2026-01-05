@@ -54,6 +54,19 @@ async def chat(request: ChatRequest) -> ChatResponse:
                 for msg in request.conversation_history
             ]
 
+            # Check if this is a rules question
+            if gemini_service.is_rules_question(request.message):
+                print("[DEBUG] Detected rules question, using thinking mode")
+                response_text = gemini_service.generate_with_thinking(
+                    message=request.message,
+                    conversation_history=history_dicts
+                )
+                return ChatResponse(
+                    message=response_text,
+                    type="text",
+                    data={"thinking_mode": True}
+                )
+
             # Get all available tool schemas
             tool_schemas = registry.get_schemas()
             print(f"[DEBUG] Available tools: {[t.name for t in tool_schemas]}")

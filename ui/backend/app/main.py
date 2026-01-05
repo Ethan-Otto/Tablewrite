@@ -1,5 +1,6 @@
 """D&D Module Assistant API."""
 
+import asyncio
 import logging
 import os
 import sys
@@ -9,9 +10,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 from dotenv import load_dotenv
 
-from app.routers import actors, chat, files, health, journals, scenes, search
+from app.routers import actors, chat, files, folders, health, journals, modules, scenes, search
 from app.routers.scenes import scene_upload_router
 from app.websocket import foundry_websocket_endpoint
+from app.websocket.push import set_main_loop
 
 
 # Configure logging - show all INFO and above from app modules
@@ -59,8 +61,10 @@ app.include_router(health.router)
 app.include_router(chat.router)
 app.include_router(actors.router)
 app.include_router(journals.router)
+app.include_router(modules.router)
 app.include_router(search.router)
 app.include_router(files.router)
+app.include_router(folders.router)
 app.include_router(scenes.router)
 app.include_router(scene_upload_router)
 
@@ -71,3 +75,7 @@ async def websocket_foundry(websocket: WebSocket):
     await foundry_websocket_endpoint(websocket)
 
 
+@app.on_event("startup")
+async def startup_event():
+    """Store main event loop reference for cross-thread progress broadcasts."""
+    set_main_loop(asyncio.get_event_loop())

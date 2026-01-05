@@ -466,6 +466,86 @@ class TestListContent:
         assert "</ol>" in html
 
 
+class TestBoxedTextContent:
+    """Test boxed_text content parsing, especially with nested elements."""
+
+    def test_simple_boxed_text_parsing(self):
+        """Test parsing simple boxed text from XML."""
+        xml_string = """<Chapter_01>
+    <page number="1">
+        <boxed_text>
+            <p>This is boxed text content.</p>
+        </boxed_text>
+    </page>
+</Chapter_01>"""
+
+        doc = XMLDocument.from_xml(xml_string)
+        assert len(doc.pages[0].content) == 1
+        content = doc.pages[0].content[0]
+        assert content.type == "boxed_text"
+        assert "This is boxed text content." in content.data
+
+    def test_boxed_text_with_nested_list(self):
+        """Test boxed_text with nested list extracts all item text.
+
+        This is a regression test for the NPC Party Members sidebar bug
+        where nested <list><item> content was not being extracted.
+        """
+        xml_string = """<Chapter_01>
+    <page number="1">
+        <boxed_text>
+            <section>NPC PARTY MEMBERS</section>
+            <p>An NPC might join the party. Here are some tips:</p>
+            <list>
+                <item>Let the characters make the important decisions.</item>
+                <item>An NPC won't deliberately put himself in harm's way.</item>
+                <item>Keep the NPC's actions simple in combat.</item>
+            </list>
+        </boxed_text>
+    </page>
+</Chapter_01>"""
+
+        doc = XMLDocument.from_xml(xml_string)
+        content = doc.pages[0].content[0]
+        assert content.type == "boxed_text"
+
+        # Verify all nested content is extracted
+        assert "NPC PARTY MEMBERS" in content.data
+        assert "An NPC might join the party" in content.data
+        # Critical: verify the list items are extracted (this was the bug)
+        assert "Let the characters make the important decisions" in content.data
+        assert "An NPC won't deliberately put himself in harm's way" in content.data
+        assert "Keep the NPC's actions simple in combat" in content.data
+
+    def test_boxed_text_with_deeply_nested_content(self):
+        """Test boxed_text with multiple levels of nesting."""
+        xml_string = """<Chapter_01>
+    <page number="1">
+        <boxed_text>
+            <section>SIDEBAR TITLE</section>
+            <p>Introduction text.</p>
+            <list>
+                <item>First bullet point with <em>emphasis</em>.</item>
+                <item>Second bullet point.</item>
+            </list>
+            <p>Conclusion text.</p>
+        </boxed_text>
+    </page>
+</Chapter_01>"""
+
+        doc = XMLDocument.from_xml(xml_string)
+        content = doc.pages[0].content[0]
+        assert content.type == "boxed_text"
+
+        # Verify all text at all levels is extracted
+        assert "SIDEBAR TITLE" in content.data
+        assert "Introduction text" in content.data
+        assert "First bullet point" in content.data
+        assert "emphasis" in content.data
+        assert "Second bullet point" in content.data
+        assert "Conclusion text" in content.data
+
+
 class TestDefinitionListContent:
     """Test DefinitionList and DefinitionItem for glossaries."""
 

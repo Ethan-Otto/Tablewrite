@@ -158,6 +158,7 @@ class XMLDocument(BaseModel):
         tag_mapping = {
             "p": "paragraph",
             "heading": "section",  # Legacy XML files use <heading> for sections
+            "title": "chapter_title",  # Gemini sometimes uses <title> for chapter titles
         }
         return tag_mapping.get(tag, tag)
 
@@ -217,16 +218,22 @@ class XMLDocument(BaseModel):
             return ImageRef(key=key)
 
         elif element.tag in ("boxed_text", "footer"):
-            # Nested content: concatenate all child elements
-            parts = []
-            if element.text:
-                parts.append(element.text)
-            for child in element:
-                if child.text:
-                    parts.append(child.text)
-                if child.tail:
-                    parts.append(child.tail)
-            return " ".join(parts).strip()
+            # Nested content: recursively extract all text from child elements
+            # This handles nested structures like <list><item>...</item></list>
+            def extract_all_text(elem: ET.Element) -> str:
+                """Recursively extract all text from element and descendants."""
+                parts = []
+                if elem.text:
+                    parts.append(elem.text)
+                for child in elem:
+                    # Recursively get text from child
+                    parts.append(extract_all_text(child))
+                    # Get tail text after child element
+                    if child.tail:
+                        parts.append(child.tail)
+                return " ".join(parts)
+
+            return extract_all_text(element).strip()
 
         else:
             # Simple text content for paragraph, section, etc.

@@ -4,6 +4,7 @@
 
 import { chatService, ChatMessage, ChatResponse } from './chat-service.js';
 import { BattleMapUpload } from './BattleMapUpload.js';
+import { ModuleUpload } from './ModuleUpload.js';
 import { getBackendUrl } from '../settings.js';
 
 // Foundry global declarations
@@ -14,6 +15,7 @@ export class TablewriteTab {
   private messages: ChatMessage[] = [];
   private isLoading: boolean = false;
   private battleMapUpload: BattleMapUpload | null = null;
+  private moduleUpload: ModuleUpload | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -25,6 +27,7 @@ export class TablewriteTab {
         <div class="tablewrite-tabs">
           <button class="tab-btn active" data-tab="chat">Chat</button>
           <button class="tab-btn" data-tab="battlemap">Battle Map</button>
+          <button class="tab-btn" data-tab="module">Module</button>
         </div>
 
         <div class="tab-content" id="chat-tab">
@@ -42,6 +45,10 @@ export class TablewriteTab {
         <div class="tab-content" id="battlemap-tab" style="display: none">
           <!-- BattleMapUpload renders here -->
         </div>
+
+        <div class="tab-content" id="module-tab" style="display: none">
+          <!-- ModuleUpload renders here -->
+        </div>
       </div>
     `;
 
@@ -49,6 +56,11 @@ export class TablewriteTab {
     const battlemapContainer = this.container.querySelector('#battlemap-tab') as HTMLElement;
     this.battleMapUpload = new BattleMapUpload(battlemapContainer, getBackendUrl());
     this.battleMapUpload.render();
+
+    // Initialize ModuleUpload
+    const moduleContainer = this.container.querySelector('#module-tab') as HTMLElement;
+    this.moduleUpload = new ModuleUpload(moduleContainer, getBackendUrl());
+    this.moduleUpload.render();
 
     // Attach tab switching listeners
     this.attachTabListeners();

@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 
 def process_actors_for_run(
     run_dir: str,
-    target: Literal["local", "forge"] = "local"
+    target: Literal["local", "forge"] = "local",
+    folder_id: str = None
 ) -> Dict[str, Any]:
     """
     Process all actors for a run directory.
@@ -27,6 +28,7 @@ def process_actors_for_run(
     Args:
         run_dir: Path to run directory (contains documents/ folder)
         target: FoundryVTT target environment
+        folder_id: Optional folder ID to place created actors in
 
     Returns:
         Dict with processing statistics
@@ -56,7 +58,8 @@ def process_actors_for_run(
         "stat_blocks_reused": 0,
         "npcs_found": 0,
         "npcs_created": 0,
-        "errors": []
+        "errors": [],
+        "created_actors": [],  # List of {uuid, name} for all created actors
     }
 
     # Step 1: Extract and parse stat blocks from all XML files
@@ -75,6 +78,21 @@ def process_actors_for_run(
 
     stats["stat_blocks_found"] = len(all_stat_blocks)
     logger.info(f"Total stat blocks found: {len(all_stat_blocks)}")
+
+    # Deduplicate stat blocks by name (keep first occurrence)
+    seen_stat_block_names = set()
+    unique_stat_blocks = []
+    for sb in all_stat_blocks:
+        sb_key = sb.name.lower()
+        if sb_key not in seen_stat_block_names:
+            seen_stat_block_names.add(sb_key)
+            unique_stat_blocks.append(sb)
+        else:
+            logger.debug(f"Skipping duplicate stat block: {sb.name}")
+
+    if len(unique_stat_blocks) < len(all_stat_blocks):
+        logger.info(f"Deduplicated stat blocks: {len(all_stat_blocks)} -> {len(unique_stat_blocks)}")
+    all_stat_blocks = unique_stat_blocks
 
     # Step 2: Extract NPCs from all XML files
     logger.info("Step 2: Extracting NPCs from XML files")
@@ -95,11 +113,28 @@ def process_actors_for_run(
     stats["npcs_found"] = len(all_npcs)
     logger.info(f"Total NPCs found: {len(all_npcs)}")
 
+    # Deduplicate NPCs by name (keep first occurrence)
+    seen_npc_names = set()
+    unique_npcs = []
+    for npc in all_npcs:
+        npc_key = npc.name.lower()
+        if npc_key not in seen_npc_names:
+            seen_npc_names.add(npc_key)
+            unique_npcs.append(npc)
+        else:
+            logger.debug(f"Skipping duplicate NPC: {npc.name}")
+
+    if len(unique_npcs) < len(all_npcs):
+        logger.info(f"Deduplicated NPCs: {len(all_npcs)} -> {len(unique_npcs)}")
+    all_npcs = unique_npcs
+
     # Step 3: Create/lookup creature actors
     logger.info("Step 3: Creating creature actors in FoundryVTT")
     creature_uuid_map = {}  # Map creature name (lowercase) → UUID
+    stat_block_map = {}  # Map creature name (lowercase) → StatBlock object
 
     for stat_block in all_stat_blocks:
+        stat_block_map[stat_block.name.lower()] = stat_block
         try:
             # Search compendium first
             existing_uuid = foundry_client.search_actor(stat_block.name)
@@ -124,23 +159,30 @@ def process_actors_for_run(
 
     for npc in all_npcs:
         try:
-            # Get stat block UUID if available (case-insensitive lookup)
+            # Get stat block if available (case-insensitive lookup)
+            stat_block = stat_block_map.get(npc.creature_stat_block_name.lower())
             stat_block_uuid = creature_uuid_map.get(npc.creature_stat_block_name.lower())
 
-            if not stat_block_uuid:
+            if not stat_block_uuid and not stat_block:
                 # Try searching compendium for the creature type
                 stat_block_uuid = foundry_client.search_actor(npc.creature_stat_block_name)
 
-            if not stat_block_uuid:
+            if not stat_block_uuid and not stat_block:
                 logger.warning(
                     f"NPC '{npc.name}' references unknown creature '{npc.creature_stat_block_name}', "
-                    f"creating without stat block link"
+                    f"creating without stat block"
                 )
 
-            # Create NPC actor
+            # Create NPC actor with stat block if available
             logger.info(f"Creating NPC actor: {npc.name}")
-            foundry_client.create_npc_actor(npc, stat_block_uuid=stat_block_uuid)
+            npc_uuid = foundry_client.create_npc_actor(
+                npc,
+                stat_block_uuid=stat_block_uuid,
+                stat_block=stat_block,
+                folder=folder_id
+            )
             stats["npcs_created"] += 1
+            stats["created_actors"].append({"uuid": npc_uuid, "name": npc.name})
 
         except Exception as e:
             logger.error(f"Failed to create NPC actor '{npc.name}': {e}")

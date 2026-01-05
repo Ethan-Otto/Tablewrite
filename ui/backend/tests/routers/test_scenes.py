@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, patch
 from fastapi.testclient import TestClient
 
 from app.main import app
+from tests.conftest import get_or_create_tests_folder
 
 
 client = TestClient(app)
@@ -232,6 +233,9 @@ class TestCreateSceneEndpointIntegration:
 
         Requires: Backend running + Foundry with Tablewrite module connected.
         """
+        # Get or create /tests folder for Scene
+        folder_id = await get_or_create_tests_folder("Scene")
+
         async with httpx.AsyncClient(timeout=30.0) as http_client:
             # First check connection
             status = await http_client.get(f"{BACKEND_URL}/api/foundry/status")
@@ -247,7 +251,7 @@ class TestCreateSceneEndpointIntegration:
                         "width": 1000,
                         "height": 800,
                         "grid": {"size": 50, "type": 1},
-                        "folder": "tests"
+                        "folder": folder_id
                     }
                 }
             )
@@ -266,6 +270,9 @@ class TestCreateSceneEndpointIntegration:
 
         Requires: Backend running + Foundry with Tablewrite module connected.
         """
+        # Get or create /tests folder for Scene
+        folder_id = await get_or_create_tests_folder("Scene")
+
         walls = [
             {"c": [0, 0, 100, 0], "move": 0, "sense": 0},
             {"c": [100, 0, 100, 100], "move": 0, "sense": 0},
@@ -289,7 +296,7 @@ class TestCreateSceneEndpointIntegration:
                         "height": 500,
                         "grid": {"size": 50, "type": 1},
                         "walls": walls,
-                        "folder": "tests"
+                        "folder": folder_id
                     }
                 }
             )

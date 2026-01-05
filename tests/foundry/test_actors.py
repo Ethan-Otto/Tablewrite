@@ -75,11 +75,22 @@ class TestActorManagerCreate:
         with pytest.raises(NotImplementedError, match="Raw actor creation via WebSocket backend not yet implemented"):
             manager.create_creature_actor(stat_block)
 
-    def test_create_npc_actor_raises_not_implemented(self):
-        """Test creating NPC actor raises NotImplementedError."""
+    @patch('requests.post')
+    def test_create_npc_actor_minimal(self, mock_post):
+        """Test creating NPC actor creates minimal actor with bio."""
         from src.actors.models import NPC
 
         manager = ActorManager(backend_url="http://localhost:8000")
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "success": True,
+            "uuid": "Actor.klarg123",
+            "id": "klarg123",
+            "name": "Klarg"
+        }
+        mock_post.return_value = mock_response
 
         npc = NPC(
             name="Klarg",
@@ -89,8 +100,18 @@ class TestActorManagerCreate:
             location="Cragmaw Hideout"
         )
 
-        with pytest.raises(NotImplementedError, match="Raw NPC creation via WebSocket backend not yet implemented"):
-            manager.create_npc_actor(npc, stat_block_uuid="Actor.boss123")
+        uuid = manager.create_npc_actor(npc, stat_block_uuid="Actor.boss123")
+
+        assert uuid == "Actor.klarg123"
+        mock_post.assert_called_once()
+
+        # Verify actor data contains biography
+        call_args = mock_post.call_args
+        actor_data = call_args[1]["json"]["actor"]
+        assert actor_data["name"] == "Klarg"
+        assert actor_data["type"] == "npc"
+        assert "Leader of the Cragmaw goblins" in actor_data["system"]["details"]["biography"]["value"]
+        assert "@UUID[Actor.boss123]" in actor_data["system"]["details"]["biography"]["value"]
 
     @patch('requests.post')
     def test_create_actor_success(self, mock_post):

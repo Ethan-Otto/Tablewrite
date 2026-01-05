@@ -1,6 +1,6 @@
 {
   "id": "tablewrite-assistant",
-  "title": "Tablewrite Assistant",
+  "title": "Tablewrite",
   "description": "Create D&D content through natural language. Actors, journals, and scenes appear automatically.",
   "version": "0.1.1",
   "compatibility": {

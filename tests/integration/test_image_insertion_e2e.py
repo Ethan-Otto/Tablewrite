@@ -71,22 +71,22 @@ def test_full_pipeline_with_image_insertion(tmp_path):
     from foundry.upload_journal_to_foundry import load_and_position_images
     journal = load_and_position_images(run_dir)
 
-    # Verify all images in registry
+    # Verify all images in registry (scene keys include index to match filename format)
     assert "page_005_goblin_ambush" in journal.image_registry
-    assert "scene_forest_road" in journal.image_registry
-    assert "scene_cave_entrance" in journal.image_registry
+    assert "scene_001_forest_road" in journal.image_registry
+    assert "scene_002_cave_entrance" in journal.image_registry
 
     # Verify positioned images have insert locations
     # (Note: Original image_ref elements from XML may not have positions)
     assert journal.image_registry["page_005_goblin_ambush"].insert_before_content_id is not None
-    assert journal.image_registry["scene_forest_road"].insert_before_content_id is not None
-    assert journal.image_registry["scene_cave_entrance"].insert_before_content_id is not None
+    assert journal.image_registry["scene_001_forest_road"].insert_before_content_id is not None
+    assert journal.image_registry["scene_002_cave_entrance"].insert_before_content_id is not None
 
     # Render HTML
     image_mapping = {
         "page_005_goblin_ambush": "https://example.com/map.png",
-        "scene_forest_road": "https://example.com/scene1.png",
-        "scene_cave_entrance": "https://example.com/scene2.png"
+        "scene_001_forest_road": "https://example.com/scene1.png",
+        "scene_002_cave_entrance": "https://example.com/scene2.png"
     }
 
     html = journal.to_foundry_html(image_mapping)

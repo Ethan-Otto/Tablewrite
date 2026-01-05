@@ -514,7 +514,7 @@ Respond with ONLY the number (e.g., "5"), nothing else."""
             # Generate key from scene name
             safe_name = re.sub(r'[^\w\s-]', '', scene["name"].lower())
             safe_name = re.sub(r'[-\s]+', '_', safe_name)
-            key = f"scene_{safe_name}"
+            key = f"scene_{i:03d}_{safe_name}"
 
             # Find file path (format: scene_NNN_name.png)
             file_path = None

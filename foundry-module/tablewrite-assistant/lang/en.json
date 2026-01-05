@@ -6,7 +6,7 @@
   "TABLEWRITE_ASSISTANT.CreatedActor": "Created actor: {name}",
   "TABLEWRITE_ASSISTANT.CreatedJournal": "Created journal: {name}",
   "TABLEWRITE_ASSISTANT.CreatedScene": "Created scene: {name}",
-  "TABLEWRITE_ASSISTANT.TabTooltip": "Tablewrite AI",
+  "TABLEWRITE_ASSISTANT.TabTooltip": "Tablewrite",
   "TABLEWRITE_ASSISTANT.Placeholder": "Ask me anything about D&D...",
   "TABLEWRITE_ASSISTANT.Loading": "Thinking...",
   "TABLEWRITE_ASSISTANT.ChatError": "Failed to send message",

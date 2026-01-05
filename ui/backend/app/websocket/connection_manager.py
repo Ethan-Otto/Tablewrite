@@ -62,16 +62,39 @@ class ConnectionManager:
         for client_id in disconnected:
             self.disconnect(client_id)
 
+    async def send_to_one(self, message: Dict[str, Any]) -> bool:
+        """
+        Send message to exactly one connected client.
+
+        Args:
+            message: JSON-serializable message to send
+
+        Returns:
+            True if message was sent successfully, False if no clients
+        """
+        if not self.active_connections:
+            return False
+
+        # Get first available client
+        client_id, websocket = next(iter(self.active_connections.items()))
+
+        try:
+            await websocket.send_json(message)
+            return True
+        except Exception:
+            self.disconnect(client_id)
+            return False
+
     async def broadcast_and_wait(
         self,
         message: Dict[str, Any],
         timeout: float = 30.0
     ) -> Optional[Dict[str, Any]]:
         """
-        Broadcast a message and wait for a response from any client.
+        Send a message to one client and wait for a response.
 
         Args:
-            message: JSON-serializable message to broadcast
+            message: JSON-serializable message to send
             timeout: Maximum seconds to wait for response
 
         Returns:
@@ -90,8 +113,10 @@ class ConnectionManager:
         self._pending_requests[request_id] = future
 
         try:
-            # Broadcast the message
-            await self.broadcast(message)
+            # Send to ONE client only (not broadcast to all)
+            sent = await self.send_to_one(message)
+            if not sent:
+                return None
 
             # Wait for response with timeout
             try:

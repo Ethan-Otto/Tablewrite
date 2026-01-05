@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-Full pipeline orchestration: PDF → XML → Scene Art → Actors → FoundryVTT → Export
+Full pipeline orchestration: PDF → XML → Scene Art → Maps → Actors → FoundryVTT → Export
 
 This script coordinates the complete workflow:
 1. Split PDF into chapter PDFs (split_pdf.py)
 2. Generate XML from chapters using Gemini (pdf_to_xml.py)
 2.5. Generate scene artwork from XML (generate_scene_art.py)
+2.6. Extract map assets from PDF (extract_map_assets.py)
 3. Process actors and NPCs (process_actors.py)
 4. Upload XML to FoundryVTT (upload_to_foundry.py)
 5. Export journal from FoundryVTT to HTML (export_from_foundry.py)
@@ -13,11 +14,13 @@ This script coordinates the complete workflow:
 Each step can be skipped with flags for resuming interrupted runs.
 """
 
+import asyncio
 import os
 import sys
 import subprocess
 import logging
 from pathlib import Path
+from typing import Optional
 from dotenv import load_dotenv
 
 # Add parent directory to path for imports
@@ -239,6 +242,94 @@ def run_scene_artwork_generation(
         raise RuntimeError(f"Scene artwork generation failed: {e}") from e
 
 
+def run_map_extraction(
+    run_dir: Path,
+    pdf_path: Optional[str] = None,
+    chapter_name: Optional[str] = None,
+    continue_on_error: bool = False
+) -> dict:
+    """
+    Extract map assets from PDF using AI-powered detection and segmentation.
+
+    Args:
+        run_dir: Run directory where map_assets/ folder will be created
+        pdf_path: Path to source PDF file. If None, looks for PDF in data/pdfs/
+        chapter_name: Optional chapter name for metadata
+        continue_on_error: Continue processing if extraction fails
+
+    Returns:
+        Dict with extraction statistics:
+        - maps_extracted: Number of maps extracted
+        - pymupdf_count: Maps extracted via PyMuPDF
+        - imagen_count: Maps segmented via Imagen
+        - errors: List of error messages (if any)
+    """
+    logger.info("=" * 60)
+    logger.info("STEP 2.6: Extracting map assets")
+    logger.info("=" * 60)
+
+    # Import here to avoid circular dependencies
+    from src.pdf_processing.image_asset_processing.extract_map_assets import (
+        extract_maps_from_pdf,
+        save_metadata
+    )
+
+    # Ensure run_dir is a Path object
+    run_dir = Path(run_dir)
+    output_dir = run_dir / "map_assets"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Find PDF path if not provided
+    if not pdf_path:
+        project_root = Path(__file__).parent.parent
+        pdf_dir = project_root / "data" / "pdfs"
+
+        if pdf_dir.exists():
+            pdf_files = list(pdf_dir.glob("*.pdf"))
+            if pdf_files:
+                pdf_path = str(pdf_files[0])
+                logger.info(f"Using PDF: {pdf_path}")
+            else:
+                logger.warning("No PDF files found in data/pdfs/")
+                return {"maps_extracted": 0, "errors": ["No PDF files found"]}
+        else:
+            logger.warning("PDF directory not found: data/pdfs/")
+            return {"maps_extracted": 0, "errors": ["PDF directory not found"]}
+
+    try:
+        # Run async extraction in event loop
+        maps = asyncio.run(
+            extract_maps_from_pdf(pdf_path, str(output_dir), chapter_name)
+        )
+
+        if maps:
+            # Save metadata to maps_metadata.json
+            save_metadata(maps, str(output_dir))
+
+            pymupdf_count = sum(1 for m in maps if m.source == "extracted")
+            imagen_count = sum(1 for m in maps if m.source == "segmented")
+
+            logger.info(f"  Total maps extracted: {len(maps)}")
+            logger.info(f"  PyMuPDF extraction: {pymupdf_count}")
+            logger.info(f"  Imagen segmentation: {imagen_count}")
+
+            return {
+                "maps_extracted": len(maps),
+                "pymupdf_count": pymupdf_count,
+                "imagen_count": imagen_count,
+                "output_dir": str(output_dir)
+            }
+        else:
+            logger.warning("No maps were extracted from PDF")
+            return {"maps_extracted": 0}
+
+    except Exception as e:
+        logger.error(f"Map extraction failed: {e}")
+        if continue_on_error:
+            return {"maps_extracted": 0, "errors": [str(e)]}
+        raise RuntimeError(f"Map extraction failed: {e}") from e
+
+
 def upload_to_foundry(run_dir: Path, target: str = "local", journal_name: str = None) -> dict:
     """
     Upload XML files to FoundryVTT.
@@ -402,6 +493,11 @@ def main():
         help="Skip scene artwork generation"
     )
     parser.add_argument(
+        "--skip-maps",
+        action="store_true",
+        help="Skip map asset extraction"
+    )
+    parser.add_argument(
         "--actors-only",
         action="store_true",
         help="Only process actors (skip PDF splitting, XML generation, upload)"
@@ -515,6 +611,18 @@ def main():
             except Exception as e:
                 logger.error(f"Scene artwork generation failed: {e}")
                 logger.warning("Continuing with pipeline despite scene generation failure")
+
+        # Step 2.6: Extract map assets (optional)
+        if args.skip_maps:
+            logger.info("Skipping map extraction (--skip-maps)")
+        else:
+            try:
+                map_stats = run_map_extraction(run_dir, continue_on_error=True)
+                if map_stats.get("errors"):
+                    logger.warning("Map extraction had errors, continuing...")
+            except Exception as e:
+                logger.error(f"Map extraction failed: {e}")
+                logger.warning("Continuing with pipeline despite map extraction failure")
 
         # Step 3: Process actors and NPCs
         if args.skip_actors:

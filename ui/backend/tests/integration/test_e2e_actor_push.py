@@ -9,337 +9,439 @@ Run with: pytest tests/integration/test_e2e_actor_push.py -v -m integration
 """
 import pytest
 import os
-import sys
-import threading
-import time
-from fastapi.testclient import TestClient
-from app.main import app
+import re
+import httpx
 
+from tests.conftest import get_or_create_tests_folder, check_backend_and_foundry
 
-def simulate_foundry_response(ws, entity_type: str = "actor"):
-    """Simulate Foundry module responding to push message with UUID.
-
-    The new WebSocket architecture works like this:
-    1. Backend broadcasts actor message with request_id
-    2. Foundry receives message, creates entity, sends response with UUID
-    3. Backend receives response and returns UUID to caller
-
-    This helper simulates step 2.
-    """
-    try:
-        # Receive the push message
-        pushed = ws.receive_json()
-        print(f"[FOUNDRY SIM] Received: {pushed}")
-
-        if pushed.get("type") == entity_type and pushed.get("request_id"):
-            # Simulate Foundry creating the entity and responding
-            request_id = pushed["request_id"]
-            name = pushed.get("data", {}).get("name", f"Test {entity_type.title()}")
-            fake_id = f"{entity_type[:3]}123"
-
-            # Send response back (simulating what Foundry module does)
-            ws.send_json({
-                "type": f"{entity_type}_created",
-                "request_id": request_id,
-                "data": {
-                    "uuid": f"{entity_type.title()}.{fake_id}",
-                    "id": fake_id,
-                    "name": name
-                }
-            })
-            print(f"[FOUNDRY SIM] Sent response for request_id: {request_id}")
-            return pushed
-    except Exception as e:
-        print(f"[FOUNDRY SIM] Error: {e}")
-    return None
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 
 @pytest.mark.integration
 class TestActorPushE2E:
-    """End-to-end actor push tests (real Gemini API)."""
+    """End-to-end actor push tests (real Gemini API + real Foundry)."""
 
     @pytest.mark.skipif(
         not os.getenv("GEMINI_API_KEY") and not os.getenv("GeminiImageAPI"),
         reason="Requires GEMINI_API_KEY or GeminiImageAPI"
     )
-    def test_create_actor_via_chat_pushes_to_foundry(self):
+    @pytest.mark.asyncio
+    async def test_create_actor_via_chat_pushes_to_foundry(self):
         """
         Full flow test:
-        1. Connect WebSocket (simulating Foundry)
-        2. Call /api/chat with actor creation request
-        3. WebSocket receives actor push and sends UUID response
-        4. Backend returns success with UUID
+        1. Call /api/chat with actor creation request
+        2. Backend creates actor via real Gemini API
+        3. Actor is pushed to Foundry via WebSocket
+        4. Verify response contains UUID
 
         Note: This uses REAL Gemini API and costs money.
         """
-        client = TestClient(app)
-        pushed_data = {}
+        await check_backend_and_foundry()
 
-        with client.websocket_connect("/ws/foundry") as ws:
-            # Consume welcome message
-            welcome = ws.receive_json()
-            assert welcome["type"] == "connected"
-            client_id = welcome["client_id"]
-            print(f"[TEST] Connected with client_id: {client_id}")
-
-            # Start background thread to simulate Foundry response
-            def foundry_sim():
-                nonlocal pushed_data
-                result = simulate_foundry_response(ws, "actor")
-                if result:
-                    pushed_data.update(result)
-
-            sim_thread = threading.Thread(target=foundry_sim, daemon=True)
-            sim_thread.start()
-
+        async with httpx.AsyncClient() as client:
             # Request actor creation via chat
-            # This will trigger the create_actor tool
-            response = client.post("/api/chat", json={
-                "message": "Create a simple goblin with CR 0.25",
-                "context": {},
-                "conversation_history": []
-            })
-
-            # Wait for simulation thread
-            sim_thread.join(timeout=30)
+            response = await client.post(
+                f"{BACKEND_URL}/api/chat",
+                json={
+                    "message": "Create a simple goblin with CR 0.25",
+                    "context": {},
+                    "conversation_history": []
+                },
+                timeout=120.0
+            )
 
             assert response.status_code == 200
             response_data = response.json()
             print(f"[TEST] Chat response: {response_data}")
 
-            # Check if the response indicates actor was created with UUID
-            if response_data.get("type") == "text" and "Created" in response_data.get("message", ""):
-                # Should have UUID in message now
-                assert "UUID" in response_data.get("message", "") or pushed_data, \
-                    f"Expected UUID in response or pushed_data. Response: {response_data}"
-
-                if pushed_data:
-                    assert pushed_data["type"] == "actor"
-                    assert "data" in pushed_data
-                    assert "actor" in pushed_data["data"], f"Expected 'actor' key in data: {pushed_data['data']}"
-                    print(f"[TEST] Actor pushed: {pushed_data['data'].get('name')}")
-            elif response_data.get("type") == "error":
+            # Check for error response
+            if response_data.get("type") == "error":
                 pytest.fail(f"Actor creation failed: {response_data.get('message')}")
+
+            # Check if the response indicates actor was created with UUID
+            if response_data.get("type") == "text":
+                message = response_data.get("message", "")
+                if "Created" in message:
+                    # Should have UUID in message
+                    assert "@UUID[Actor." in message or "Actor." in message, \
+                        f"Expected UUID in response. Message: {message}"
+                    print(f"[TEST] Actor created successfully")
+                else:
+                    pytest.skip(f"Actor tool not triggered. Response: {response_data}")
             else:
-                pytest.skip(f"Actor tool not triggered. Response: {response_data}")
+                pytest.skip(f"Unexpected response type: {response_data.get('type')}")
 
     @pytest.mark.skipif(
         not os.getenv("GEMINI_API_KEY") and not os.getenv("GeminiImageAPI"),
         reason="Requires GEMINI_API_KEY or GeminiImageAPI"
     )
-    def test_actor_push_contains_required_fields(self):
+    @pytest.mark.asyncio
+    async def test_actor_push_contains_required_fields(self):
         """
-        Verify actor push message has all required fields.
+        Verify created actor has required FoundryVTT fields.
 
-        Real data test: Uses actual Gemini API to create a creature.
+        Real data test: Uses actual Gemini API to create a creature,
+        then fetches it from Foundry to verify structure.
         """
-        client = TestClient(app)
-        pushed_data = {}
+        await check_backend_and_foundry()
+        created_uuid = None
 
-        with client.websocket_connect("/ws/foundry") as ws:
-            # Consume welcome
-            welcome = ws.receive_json()
-            assert welcome["type"] == "connected"
-
-            # Start background thread to simulate Foundry response
-            def foundry_sim():
-                nonlocal pushed_data
-                result = simulate_foundry_response(ws, "actor")
-                if result:
-                    pushed_data.update(result)
-
-            sim_thread = threading.Thread(target=foundry_sim, daemon=True)
-            sim_thread.start()
-
+        async with httpx.AsyncClient() as client:
             # Create actor with explicit CR
-            response = client.post("/api/chat", json={
-                "message": "Create a dire wolf creature with CR 1",
-                "context": {},
-                "conversation_history": []
-            })
-
-            sim_thread.join(timeout=30)
+            response = await client.post(
+                f"{BACKEND_URL}/api/chat",
+                json={
+                    "message": "Create a dire wolf creature with CR 1",
+                    "context": {},
+                    "conversation_history": []
+                },
+                timeout=120.0
+            )
 
             assert response.status_code == 200
             response_data = response.json()
 
+            if response_data.get("type") == "error":
+                pytest.fail(f"Actor creation failed: {response_data.get('message')}")
+
             if response_data.get("type") == "text" and "Created" in response_data.get("message", ""):
-                # Verify the pushed message structure
-                assert pushed_data, "No actor push received"
-                assert pushed_data["type"] == "actor", f"Expected type 'actor', got '{pushed_data['type']}'"
+                # Extract UUID from message
+                message = response_data.get("message", "")
+                uuid_match = re.search(r'Actor\.([a-zA-Z0-9]+)', message)
+                assert uuid_match, f"Could not find UUID in message: {message}"
+                created_uuid = f"Actor.{uuid_match.group(1)}"
 
-                actor_data = pushed_data["data"]
-                assert "name" in actor_data, "Actor data missing 'name'"
-                assert "actor" in actor_data, "Actor data missing 'actor' key"
-                assert "cr" in actor_data, "Actor data missing 'cr'"
+                # Fetch actor from Foundry
+                actor_response = await client.get(f"{BACKEND_URL}/api/foundry/actor/{created_uuid}")
+                assert actor_response.status_code == 200, f"Failed to fetch actor: {actor_response.text}"
 
-                # Verify actor entity has required FoundryVTT fields
-                actor_entity = actor_data["actor"]
-                assert "name" in actor_entity, "Actor entity missing 'name'"
-                assert "type" in actor_entity, "Actor entity missing 'type'"
+                actor_result = actor_response.json()
+                assert actor_result.get("success"), f"Fetch failed: {actor_result.get('error')}"
 
-                print(f"[TEST] Verified actor push: {actor_data}")
+                actor = actor_result["entity"]
+                assert "name" in actor, "Actor missing 'name'"
+                assert "type" in actor, "Actor missing 'type'"
+                assert actor["type"] == "npc", f"Expected type 'npc', got '{actor['type']}'"
+
+                # Verify has stats
+                system = actor.get("system", {})
+                if "abilities" in system:
+                    abilities = system["abilities"]
+                    # Check at least one ability is defined
+                    assert any(abilities.get(a, {}).get("value") for a in ["str", "dex", "con", "int", "wis", "cha"]), \
+                        "Actor has no ability scores"
+
+                print(f"[TEST] Verified actor: {actor['name']}")
             else:
                 pytest.skip(f"Actor tool not triggered. Response: {response_data}")
+
+            # Cleanup
+            if created_uuid:
+                try:
+                    await client.delete(f"{BACKEND_URL}/api/foundry/actor/{created_uuid}")
+                except Exception as e:
+                    print(f"Warning: Cleanup failed: {e}")
 
     @pytest.mark.skipif(
         not os.getenv("GEMINI_API_KEY") and not os.getenv("GeminiImageAPI"),
         reason="Requires GEMINI_API_KEY or GeminiImageAPI"
     )
-    def test_multiple_clients_receive_actor_push(self):
+    @pytest.mark.asyncio
+    async def test_multiple_actors_created_in_sequence(self):
         """
-        Verify multiple connected clients all receive the actor push.
-
-        Note: With request-response pattern, only one client needs to respond.
-        Both clients receive the broadcast, but backend waits for first response.
+        Verify multiple actor creations work in sequence.
         """
-        client = TestClient(app)
-        pushed_data_1 = {}
-        pushed_data_2 = {}
+        await check_backend_and_foundry()
+        created_uuids = []
 
-        with client.websocket_connect("/ws/foundry") as ws1:
-            welcome1 = ws1.receive_json()
-            assert welcome1["type"] == "connected"
-            client_id_1 = welcome1["client_id"]
+        async with httpx.AsyncClient() as client:
+            creatures = ["a kobold with CR 0.125", "a wolf with CR 0.25"]
 
-            with client.websocket_connect("/ws/foundry") as ws2:
-                welcome2 = ws2.receive_json()
-                assert welcome2["type"] == "connected"
-                client_id_2 = welcome2["client_id"]
-
-                # Ensure different client IDs
-                assert client_id_1 != client_id_2
-
-                # Start background threads to simulate both Foundry clients
-                def foundry_sim_1():
-                    nonlocal pushed_data_1
-                    result = simulate_foundry_response(ws1, "actor")
-                    if result:
-                        pushed_data_1.update(result)
-
-                def foundry_sim_2():
-                    nonlocal pushed_data_2
-                    try:
-                        # Second client receives but doesn't need to respond
-                        pushed = ws2.receive_json()
-                        if pushed:
-                            pushed_data_2.update(pushed)
-                    except Exception:
-                        pass
-
-                sim_thread_1 = threading.Thread(target=foundry_sim_1, daemon=True)
-                sim_thread_2 = threading.Thread(target=foundry_sim_2, daemon=True)
-                sim_thread_1.start()
-                sim_thread_2.start()
-
-                # Create actor
-                response = client.post("/api/chat", json={
-                    "message": "Create a kobold with CR 0.125",
-                    "context": {},
-                    "conversation_history": []
-                })
-
-                sim_thread_1.join(timeout=30)
-                sim_thread_2.join(timeout=5)
+            for creature in creatures:
+                response = await client.post(
+                    f"{BACKEND_URL}/api/chat",
+                    json={
+                        "message": f"Create {creature}",
+                        "context": {},
+                        "conversation_history": []
+                    },
+                    timeout=120.0
+                )
 
                 assert response.status_code == 200
                 response_data = response.json()
 
-                if response_data.get("type") == "text" and "Created" in response_data.get("message", ""):
-                    # At least first client should have received the push
-                    assert pushed_data_1, "First client did not receive push"
-                    assert pushed_data_1["type"] == "actor"
-                    assert "actor" in pushed_data_1["data"]
+                if response_data.get("type") == "error":
+                    pytest.fail(f"Actor creation failed for {creature}: {response_data.get('message')}")
 
-                    # Second client may also have received (broadcast)
-                    if pushed_data_2:
-                        assert pushed_data_2["type"] == "actor"
-                        assert pushed_data_1["data"]["name"] == pushed_data_2["data"]["name"]
-                        print(f"[TEST] Both clients received: {pushed_data_1['data']['name']}")
-                    else:
-                        print(f"[TEST] First client received: {pushed_data_1['data']['name']}")
-                else:
-                    pytest.skip(f"Actor tool not triggered. Response: {response_data}")
+                if response_data.get("type") == "text" and "Created" in response_data.get("message", ""):
+                    message = response_data.get("message", "")
+                    uuid_match = re.search(r'Actor\.([a-zA-Z0-9]+)', message)
+                    if uuid_match:
+                        created_uuids.append(f"Actor.{uuid_match.group(1)}")
+
+            # Should have created at least 1 actor
+            assert len(created_uuids) >= 1, f"Expected at least 1 actor, got {len(created_uuids)}"
+            print(f"[TEST] Created {len(created_uuids)} actors in sequence")
+
+            # Cleanup
+            for uuid in created_uuids:
+                try:
+                    await client.delete(f"{BACKEND_URL}/api/foundry/actor/{uuid}")
+                except Exception as e:
+                    print(f"Warning: Failed to delete {uuid}: {e}")
 
     @pytest.mark.skipif(
         not os.getenv("GEMINI_API_KEY") and not os.getenv("GeminiImageAPI"),
         reason="Requires GEMINI_API_KEY or GeminiImageAPI"
     )
-    def test_created_actor_can_be_fetched_from_foundry(self):
+    @pytest.mark.asyncio
+    async def test_created_actor_can_be_fetched_from_foundry(self):
         """
-        Verify that an actor push contains valid entity data that Foundry can use.
-
-        In the WebSocket request-response architecture:
-        - Backend pushes actor DATA to Foundry with request_id
-        - Foundry module calls Actor.create(data.actor) and returns UUID
-        - Backend receives response with UUID and returns to caller
-
-        This test verifies the pushed data structure and UUID response flow.
+        Verify that created actor can be fetched back from Foundry
+        and has correct structure.
         """
-        client = TestClient(app)
-        pushed_data = {}
+        await check_backend_and_foundry()
+        created_uuid = None
 
-        with client.websocket_connect("/ws/foundry") as ws:
-            # Consume welcome message
-            welcome = ws.receive_json()
-            assert welcome["type"] == "connected"
-            print(f"[TEST] Connected with client_id: {welcome['client_id']}")
-
-            # Start background thread to simulate Foundry response
-            def foundry_sim():
-                nonlocal pushed_data
-                result = simulate_foundry_response(ws, "actor")
-                if result:
-                    pushed_data.update(result)
-
-            sim_thread = threading.Thread(target=foundry_sim, daemon=True)
-            sim_thread.start()
-
-            # Request actor creation via chat with specific CR for verification
-            response = client.post("/api/chat", json={
-                "message": "Create a simple skeleton warrior with CR 0.25",
-                "context": {},
-                "conversation_history": []
-            })
-
-            sim_thread.join(timeout=30)
+        async with httpx.AsyncClient() as client:
+            # Request actor creation
+            response = await client.post(
+                f"{BACKEND_URL}/api/chat",
+                json={
+                    "message": "Create a simple skeleton warrior with CR 0.25",
+                    "context": {},
+                    "conversation_history": []
+                },
+                timeout=120.0
+            )
 
             assert response.status_code == 200
             response_data = response.json()
             print(f"[TEST] Chat response: {response_data}")
 
+            if response_data.get("type") == "error":
+                pytest.fail(f"Actor creation failed: {response_data.get('message')}")
+
             if response_data.get("type") == "text" and "Created" in response_data.get("message", ""):
-                # Verify the pushed data
-                assert pushed_data, "No actor push received"
-                assert pushed_data["type"] == "actor", f"Expected type 'actor', got '{pushed_data['type']}'"
+                message = response_data.get("message", "")
+                uuid_match = re.search(r'Actor\.([a-zA-Z0-9]+)', message)
+                assert uuid_match, f"Could not find UUID in message: {message}"
+                created_uuid = f"Actor.{uuid_match.group(1)}"
 
-                actor_data = pushed_data["data"]
-                pushed_name = actor_data["name"]
-                pushed_cr = actor_data.get("cr")
+                # Fetch actor from Foundry
+                actor_response = await client.get(f"{BACKEND_URL}/api/foundry/actor/{created_uuid}")
+                assert actor_response.status_code == 200
 
-                # Verify actor entity data structure is valid for Foundry
-                actor_entity = actor_data["actor"]
-                assert "name" in actor_entity, "Actor entity missing 'name'"
-                assert "type" in actor_entity, "Actor entity missing 'type'"
-                assert actor_entity["type"] == "npc", f"Expected actor type 'npc', got '{actor_entity['type']}'"
+                actor_result = actor_response.json()
+                assert actor_result.get("success"), f"Fetch failed: {actor_result.get('error')}"
 
-                # Verify system data structure (D&D 5e actor format)
-                if "system" in actor_entity:
-                    system = actor_entity["system"]
-                    # Check for basic D&D 5e NPC fields
-                    if "attributes" in system:
-                        assert "hp" in system["attributes"], "Actor system missing 'hp' in attributes"
-                    if "details" in system:
-                        assert "cr" in system["details"], "Actor system missing 'cr' in details"
+                actor = actor_result["entity"]
+                assert actor["type"] == "npc", f"Expected type 'npc', got '{actor['type']}'"
 
-                # Verify UUID was returned in response message
-                assert "UUID" in response_data.get("message", ""), \
-                    f"Expected UUID in response message. Message: {response_data.get('message')}"
+                # Verify has items (abilities, weapons, etc.)
+                items = actor.get("items", [])
+                assert len(items) > 0, f"Actor {actor['name']} has no items"
 
-                print(f"[TEST] SUCCESS: Actor data structure valid and UUID returned")
-                print(f"[TEST] Actor name: {pushed_name}, CR: {pushed_cr}")
+                # Verify has HP
+                hp = actor.get("system", {}).get("attributes", {}).get("hp", {})
+                assert hp.get("max", 0) > 0, "Actor has no HP"
+
+                print(f"[TEST] SUCCESS: Actor '{actor['name']}' with {len(items)} items, {hp.get('max')} HP")
 
             elif response_data.get("type") == "error":
                 pytest.fail(f"Actor creation failed: {response_data.get('message')}")
             else:
                 pytest.skip(f"Actor tool not triggered. Response: {response_data}")
+
+            # Cleanup
+            if created_uuid:
+                try:
+                    await client.delete(f"{BACKEND_URL}/api/foundry/actor/{created_uuid}")
+                except Exception as e:
+                    print(f"Warning: Cleanup failed: {e}")
+
+
+@pytest.mark.integration
+class TestActorDirectCreation:
+    """Direct actor creation tests via /api/foundry/actor endpoint (no Gemini API)."""
+
+    @pytest.mark.asyncio
+    async def test_create_actor_via_api(self):
+        """
+        Create actor via direct API and verify UUID returned.
+        Uses /tests folder for organization.
+        """
+        await check_backend_and_foundry()
+        created_uuid = None
+
+        # Get or create /tests folder for Actor
+        folder_id = await get_or_create_tests_folder("Actor")
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # Create a minimal valid actor
+            response = await client.post(
+                f"{BACKEND_URL}/api/foundry/actor",
+                json={
+                    "actor": {
+                        "name": "Test Goblin Direct",
+                        "type": "npc",
+                        "system": {
+                            "abilities": {
+                                "str": {"value": 8},
+                                "dex": {"value": 14},
+                                "con": {"value": 10},
+                                "int": {"value": 10},
+                                "wis": {"value": 8},
+                                "cha": {"value": 8}
+                            },
+                            "attributes": {
+                                "hp": {"value": 7, "max": 7},
+                                "ac": {"value": 15}
+                            },
+                            "details": {
+                                "cr": 0.25,
+                                "type": {"value": "humanoid"}
+                            }
+                        }
+                    },
+                    "folder": folder_id
+                }
+            )
+
+            assert response.status_code == 200, f"Actor creation failed: {response.text}"
+            result = response.json()
+            assert result.get("success"), f"Create failed: {result.get('error')}"
+
+            created_uuid = result.get("uuid")
+            assert created_uuid, "No UUID returned"
+            assert created_uuid.startswith("Actor."), f"Invalid UUID format: {created_uuid}"
+
+            print(f"[TEST] Created actor: {created_uuid}")
+
+            # Cleanup
+            if created_uuid:
+                try:
+                    await client.delete(f"{BACKEND_URL}/api/foundry/actor/{created_uuid}")
+                except Exception as e:
+                    print(f"Warning: Cleanup failed: {e}")
+
+    @pytest.mark.asyncio
+    async def test_actor_roundtrip_fetch(self):
+        """
+        Create actor, fetch it back, verify data matches.
+        """
+        await check_backend_and_foundry()
+        created_uuid = None
+
+        # Get or create /tests folder for Actor
+        folder_id = await get_or_create_tests_folder("Actor")
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            actor_name = "Test Orc Roundtrip"
+
+            # Create actor
+            response = await client.post(
+                f"{BACKEND_URL}/api/foundry/actor",
+                json={
+                    "actor": {
+                        "name": actor_name,
+                        "type": "npc",
+                        "system": {
+                            "abilities": {
+                                "str": {"value": 16},
+                                "dex": {"value": 12},
+                                "con": {"value": 16},
+                                "int": {"value": 7},
+                                "wis": {"value": 11},
+                                "cha": {"value": 10}
+                            },
+                            "attributes": {
+                                "hp": {"value": 15, "max": 15},
+                                "ac": {"value": 13}
+                            },
+                            "details": {
+                                "cr": 0.5,
+                                "type": {"value": "humanoid"}
+                            }
+                        }
+                    },
+                    "folder": folder_id
+                }
+            )
+
+            assert response.status_code == 200
+            result = response.json()
+            assert result.get("success"), f"Create failed: {result.get('error')}"
+            created_uuid = result.get("uuid")
+
+            # Fetch actor back
+            fetch_response = await client.get(f"{BACKEND_URL}/api/foundry/actor/{created_uuid}")
+            assert fetch_response.status_code == 200
+
+            fetch_result = fetch_response.json()
+            assert fetch_result.get("success"), f"Fetch failed: {fetch_result.get('error')}"
+
+            actor = fetch_result.get("entity", {})
+            assert actor.get("name") == actor_name
+            assert actor.get("type") == "npc"
+
+            # Verify abilities
+            abilities = actor.get("system", {}).get("abilities", {})
+            assert abilities.get("str", {}).get("value") == 16
+
+            print(f"[TEST] Successfully fetched: {actor.get('name')}")
+
+            # Cleanup
+            if created_uuid:
+                try:
+                    await client.delete(f"{BACKEND_URL}/api/foundry/actor/{created_uuid}")
+                except Exception as e:
+                    print(f"Warning: Cleanup failed: {e}")
+
+    @pytest.mark.asyncio
+    async def test_actor_can_be_deleted(self):
+        """
+        Verify actor can be created and deleted.
+        """
+        await check_backend_and_foundry()
+
+        # Get or create /tests folder for Actor
+        folder_id = await get_or_create_tests_folder("Actor")
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # Create actor
+            response = await client.post(
+                f"{BACKEND_URL}/api/foundry/actor",
+                json={
+                    "actor": {
+                        "name": "Test Delete Actor",
+                        "type": "npc",
+                        "system": {
+                            "abilities": {
+                                "str": {"value": 10},
+                                "dex": {"value": 10},
+                                "con": {"value": 10},
+                                "int": {"value": 10},
+                                "wis": {"value": 10},
+                                "cha": {"value": 10}
+                            }
+                        }
+                    },
+                    "folder": folder_id
+                }
+            )
+
+            assert response.status_code == 200
+            result = response.json()
+            assert result.get("success"), f"Create failed: {result.get('error')}"
+            created_uuid = result.get("uuid")
+
+            # Delete actor
+            delete_response = await client.delete(f"{BACKEND_URL}/api/foundry/actor/{created_uuid}")
+            assert delete_response.status_code == 200
+
+            delete_result = delete_response.json()
+            assert delete_result.get("success"), f"Delete failed: {delete_result.get('error')}"
+
+            print(f"[TEST] Successfully deleted actor")

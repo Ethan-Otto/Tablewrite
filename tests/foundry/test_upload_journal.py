@@ -252,7 +252,7 @@ class TestJournalBasedUpload:
         # Should have one page for the chapter
         assert len(pages) == 1
         assert pages[0]['name'] == "Chapter_1"
-        assert "<h1>Introduction</h1>" in pages[0]['content']
+        assert "<h1>Introduction</h1>" in pages[0]['text']['content']
 
         # Verify result
         assert result['uploaded'] == 1
@@ -280,7 +280,7 @@ class TestJournalBasedUpload:
         # Get the HTML content that was uploaded
         call_args = mock_client.create_or_replace_journal.call_args
         pages = call_args.kwargs['pages']
-        html = pages[0]['content']
+        html = pages[0]['text']['content']
 
         # Verify semantic structure (sections spanning pages)
         # Should have chapter title, section, and subsection
@@ -383,4 +383,4 @@ def test_load_and_position_uses_scene_metadata(tmp_path):
     journal = load_and_position_images(run_dir)
 
     # Verify scene was positioned using metadata
-    assert "scene_forest_ambush" in journal.image_registry
+    assert "scene_001_forest_ambush" in journal.image_registry

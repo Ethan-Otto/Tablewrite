@@ -5,7 +5,6 @@ import logging
 import uuid
 from datetime import datetime
 from pathlib import Path
-from io import BytesIO
 from typing import Optional
 from dotenv import load_dotenv
 from .base import BaseTool, ToolSchema, ToolResponse
@@ -24,9 +23,8 @@ if env_path.exists():
 from actors.orchestrate import create_actor_from_description  # noqa: E402
 from foundry.actors.spell_cache import SpellCache  # noqa: E402
 from foundry.icon_cache import IconCache  # noqa: E402
-from app.websocket import push_actor, list_files, list_compendium_items, upload_file  # noqa: E402
+from app.websocket import push_actor, list_files, list_compendium_items, upload_file, get_or_create_folder  # noqa: E402
 from util.gemini import GeminiAPI  # noqa: E402
-from google.genai import types  # noqa: E402
 from app.config import settings  # noqa: E402
 
 logger = logging.getLogger(__name__)
@@ -88,16 +86,24 @@ async def generate_actor_image(visual_description: str, upload_to_foundry: bool 
 
         # Generate image in thread pool to avoid blocking event loop
         def _generate_image():
-            api = GeminiAPI(model_name="imagen-4.0-fast-generate-001")
-            return api.client.models.generate_images(
-                model="imagen-4.0-fast-generate-001",
-                prompt=styled_prompt,
-                config=types.GenerateImagesConfig(number_of_images=1)
+            # Using Gemini for image generation (can switch back to imagen-4.0-fast-generate-001)
+            api = GeminiAPI(model_name="gemini-2.5-flash-image")
+            return api.client.models.generate_content(
+                model="gemini-2.5-flash-image",
+                contents=styled_prompt
             )
 
         response = await asyncio.to_thread(_generate_image)
 
-        if response.generated_images:
+        # Extract image from Gemini response
+        image_data = None
+        if response.candidates and response.candidates[0].content.parts:
+            for part in response.candidates[0].content.parts:
+                if hasattr(part, 'inline_data') and part.inline_data:
+                    image_data = part.inline_data.data
+                    break
+
+        if image_data:
             # Save image locally
             output_dir = settings.IMAGE_OUTPUT_DIR
             output_dir.mkdir(parents=True, exist_ok=True)
@@ -106,10 +112,6 @@ async def generate_actor_image(visual_description: str, upload_to_foundry: bool 
             unique_id = uuid.uuid4().hex[:8]
             filename = f"actor_{timestamp}_{unique_id}.png"
             filepath = output_dir / filename
-
-            generated_image = response.generated_images[0]
-            # Use public image_bytes API instead of private _pil_image
-            image_data = generated_image.image.image_bytes
 
             with open(filepath, 'wb') as f:
                 f.write(image_data)
@@ -231,6 +233,81 @@ async def list_files_with_retry(
     return last_result
 
 
+async def load_caches() -> tuple[SpellCache, IconCache]:
+    """
+    Load SpellCache and IconCache via WebSocket.
+
+    Returns:
+        Tuple of (SpellCache, IconCache)
+
+    Raises:
+        RuntimeError: If cache loading fails
+    """
+    # HARD FAIL: SpellCache MUST load successfully
+    spell_cache = SpellCache()
+    logger.info("Fetching spells from compendium via WebSocket (with retry)...")
+    spells_result = await list_compendium_items_with_retry(
+        document_type="Item",
+        sub_type="spell",
+        max_retries=3,
+        initial_delay=1.0
+    )
+
+    if not spells_result.success:
+        error_msg = f"❌ SpellCache FAILED to load: {spells_result.error}"
+        logger.error(error_msg)
+        raise RuntimeError(error_msg)
+
+    if not spells_result.results or len(spells_result.results) == 0:
+        error_msg = "❌ SpellCache FAILED: No spells returned from compendium"
+        logger.error(error_msg)
+        raise RuntimeError(error_msg)
+
+    # Convert SearchResultItem objects to dicts for load_from_data
+    spell_dicts = [
+        {
+            "name": r.name,
+            "uuid": r.uuid,
+            "type": r.type,
+            "img": r.img,
+            "pack": r.pack,
+        }
+        for r in spells_result.results
+    ]
+    spell_cache.load_from_data(spell_dicts)
+    logger.info(f"✓ SpellCache loaded with {spell_cache.spell_count} spells")
+
+    # Verify critical spells exist
+    test_uuid = spell_cache.get_spell_uuid("Fire Bolt")
+    if not test_uuid:
+        error_msg = "❌ SpellCache FAILED: 'Fire Bolt' not found - cache may be incomplete"
+        logger.error(error_msg)
+        raise RuntimeError(error_msg)
+    logger.info(f"✓ Test lookup 'Fire Bolt' -> {test_uuid}")
+
+    # HARD FAIL: IconCache MUST load successfully
+    icon_cache = IconCache()
+    logger.info("Fetching icons via WebSocket (with retry)...")
+    files_result = await list_files_with_retry(
+        path="icons",
+        source="public",
+        recursive=True,
+        extensions=[".webp", ".png", ".jpg", ".svg"],
+        max_retries=3,
+        initial_delay=1.0
+    )
+
+    if not files_result.success:
+        error_msg = f"❌ IconCache FAILED to load: {files_result.error}"
+        logger.error(error_msg)
+        raise RuntimeError(error_msg)
+
+    icon_cache.load_from_data(files_result.files or [])
+    logger.info(f"✓ IconCache loaded with {icon_cache.icon_count} icons")
+
+    return spell_cache, icon_cache
+
+
 class ActorCreatorTool(BaseTool):
     """Tool for creating D&D actors from descriptions via WebSocket."""
 
@@ -270,67 +347,7 @@ class ActorCreatorTool(BaseTool):
         try:
             # Pre-fetch spells and icons via WebSocket (avoids HTTP self-deadlock)
             # Uses retry logic to wait for WebSocket reconnection after hot reload
-            # HARD FAIL: SpellCache MUST load successfully - spells won't work without it
-            spell_cache = SpellCache()
-            logger.info("Fetching spells from compendium via WebSocket (with retry)...")
-            spells_result = await list_compendium_items_with_retry(
-                document_type="Item",
-                sub_type="spell",
-                max_retries=3,
-                initial_delay=1.0
-            )
-
-            if not spells_result.success:
-                error_msg = f"❌ SpellCache FAILED to load: {spells_result.error}"
-                logger.error(error_msg)
-                raise RuntimeError(error_msg)
-
-            if not spells_result.results or len(spells_result.results) == 0:
-                error_msg = "❌ SpellCache FAILED: No spells returned from compendium"
-                logger.error(error_msg)
-                raise RuntimeError(error_msg)
-
-            # Convert SearchResultItem objects to dicts for load_from_data
-            spell_dicts = [
-                {
-                    "name": r.name,
-                    "uuid": r.uuid,
-                    "type": r.type,
-                    "img": r.img,
-                    "pack": r.pack,
-                }
-                for r in spells_result.results
-            ]
-            spell_cache.load_from_data(spell_dicts)
-            logger.info(f"✓ SpellCache loaded with {spell_cache.spell_count} spells")
-
-            # Verify critical spells exist
-            test_uuid = spell_cache.get_spell_uuid("Fire Bolt")
-            if not test_uuid:
-                error_msg = "❌ SpellCache FAILED: 'Fire Bolt' not found - cache may be incomplete"
-                logger.error(error_msg)
-                raise RuntimeError(error_msg)
-            logger.info(f"✓ Test lookup 'Fire Bolt' -> {test_uuid}")
-
-            # HARD FAIL: IconCache MUST load successfully
-            icon_cache = IconCache()
-            logger.info("Fetching icons via WebSocket (with retry)...")
-            files_result = await list_files_with_retry(
-                path="icons",
-                source="public",
-                recursive=True,
-                extensions=[".webp", ".png", ".jpg", ".svg"],
-                max_retries=3,
-                initial_delay=1.0
-            )
-
-            if not files_result.success:
-                error_msg = f"❌ IconCache FAILED to load: {files_result.error}"
-                logger.error(error_msg)
-                raise RuntimeError(error_msg)
-
-            icon_cache.load_from_data(files_result.files or [])
-            logger.info(f"✓ IconCache loaded with {icon_cache.icon_count} icons")
+            spell_cache, icon_cache = await load_caches()
 
             # Generate actor image BEFORE actor creation (if enabled)
             # This allows us to set the profile image on the actor
@@ -352,6 +369,16 @@ class ActorCreatorTool(BaseTool):
             # WebSocket-based actor upload function with retry
             async def ws_actor_upload(actor_data: dict, spell_uuids: list) -> str:
                 """Upload actor via WebSocket instead of relay."""
+                # Ensure Tablewrite folder exists and set it on the actor
+                try:
+                    folder_result = await get_or_create_folder("Tablewrite", "Actor")
+                    if folder_result.success and folder_result.folder_id:
+                        actor_data["folder"] = folder_result.folder_id
+                        logger.info(f"Set actor folder to Tablewrite: {folder_result.folder_id}")
+                except Exception as e:
+                    logger.warning(f"Failed to get/create Tablewrite folder: {e}")
+                    # Continue without folder - actor will be created at root
+
                 # Set profile image if available
                 if foundry_image_path:
                     actor_data["img"] = foundry_image_path

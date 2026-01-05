@@ -183,6 +183,46 @@ async def push_journal(journal_data: Dict[str, Any], timeout: float = 30.0) -> P
         )
 
 
+async def fetch_journal(uuid: str, timeout: float = 30.0) -> FetchResult:
+    """
+    Fetch a journal from Foundry by UUID.
+
+    Args:
+        uuid: The journal UUID (e.g., "JournalEntry.abc123")
+        timeout: Maximum seconds to wait for Foundry response
+
+    Returns:
+        FetchResult with entity data if successful, error if failed
+    """
+    response = await foundry_manager.broadcast_and_wait(
+        {"type": "get_journal", "data": {"uuid": uuid}},
+        timeout=timeout
+    )
+
+    if response is None:
+        return FetchResult(
+            success=False,
+            error="No Foundry client connected or timeout waiting for response"
+        )
+
+    if response.get("type") == "journal_data":
+        data = response.get("data", {})
+        return FetchResult(
+            success=True,
+            entity=data.get("entity")
+        )
+    elif response.get("type") == "journal_error":
+        return FetchResult(
+            success=False,
+            error=response.get("error", "Unknown error from Foundry")
+        )
+    else:
+        return FetchResult(
+            success=False,
+            error=f"Unexpected response type: {response.get('type')}"
+        )
+
+
 async def delete_journal(uuid: str, timeout: float = 10.0) -> DeleteResult:
     """
     Delete a journal entry from Foundry via WebSocket.
@@ -219,6 +259,117 @@ async def delete_journal(uuid: str, timeout: float = 10.0) -> DeleteResult:
         )
     else:
         return DeleteResult(
+            success=False,
+            error=f"Unexpected response type: {response.get('type')}"
+        )
+
+
+@dataclass
+class JournalInfo:
+    """Basic journal information."""
+    uuid: str
+    id: str
+    name: str
+    folder: Optional[str]
+
+
+@dataclass
+class JournalListResult:
+    """Result of listing journals from Foundry."""
+    success: bool
+    journals: Optional[List[JournalInfo]] = None
+    error: Optional[str] = None
+
+
+async def list_journals(timeout: float = 30.0) -> JournalListResult:
+    """
+    List all world journals from Foundry.
+
+    Args:
+        timeout: Maximum seconds to wait for Foundry response
+
+    Returns:
+        JournalListResult with list of journals if successful
+    """
+    response = await foundry_manager.broadcast_and_wait(
+        {"type": "list_journals", "data": {}},
+        timeout=timeout
+    )
+
+    if response is None:
+        return JournalListResult(
+            success=False,
+            error="No Foundry client connected or timeout waiting for response"
+        )
+
+    if response.get("type") == "journals_list":
+        data = response.get("data", {})
+        journals_data = data.get("journals", [])
+        journals = [
+            JournalInfo(
+                uuid=j.get("uuid", ""),
+                id=j.get("id", ""),
+                name=j.get("name", ""),
+                folder=j.get("folder")
+            )
+            for j in journals_data
+            if j.get("uuid") and j.get("id") and j.get("name")
+        ]
+        return JournalListResult(success=True, journals=journals)
+    elif response.get("type") == "journal_error":
+        return JournalListResult(
+            success=False,
+            error=response.get("error", "Unknown error from Foundry")
+        )
+    else:
+        return JournalListResult(
+            success=False,
+            error=f"Unexpected response type: {response.get('type')}"
+        )
+
+
+async def update_journal(
+    uuid: str,
+    updates: Dict[str, Any],
+    timeout: float = 30.0
+) -> PushResult:
+    """
+    Update an existing journal in Foundry via WebSocket.
+
+    Args:
+        uuid: Journal UUID (e.g., "JournalEntry.abc123")
+        updates: Dictionary of updates to apply
+        timeout: Maximum seconds to wait for Foundry response
+
+    Returns:
+        PushResult with UUID if successful, error if failed
+    """
+    response = await foundry_manager.broadcast_and_wait(
+        {"type": "update_journal", "data": {"uuid": uuid, "updates": updates}},
+        timeout=timeout
+    )
+
+    if response is None:
+        return PushResult(
+            success=False,
+            error="No Foundry client connected or timeout waiting for response"
+        )
+
+    if response.get("type") == "journal_updated":
+        data = response.get("data", {})
+        return PushResult(
+            success=True,
+            uuid=data.get("uuid"),
+            id=data.get("id"),
+            name=data.get("name")
+        )
+    elif response.get("type") == "journal_error":
+        return PushResult(
+            success=False,
+            error=response.get("error", "Unknown error from Foundry")
+        )
+    else:
+        return PushResult(
             success=False,
             error=f"Unexpected response type: {response.get('type')}"
         )
@@ -815,6 +966,33 @@ async def list_files(
 
 
 @dataclass
+class FolderResult:
+    """Result of getting or creating a folder."""
+    success: bool
+    folder_id: Optional[str] = None
+    folder_uuid: Optional[str] = None
+    name: Optional[str] = None
+    error: Optional[str] = None
+
+
+@dataclass
+class FolderInfo:
+    """Information about a folder."""
+    id: str
+    name: str
+    type: str
+    parent: Optional[str]
+
+
+@dataclass
+class ListFoldersResult:
+    """Result of listing folders."""
+    success: bool
+    folders: Optional[List[FolderInfo]] = None
+    error: Optional[str] = None
+
+
+@dataclass
 class CustomItemDef:
     """Definition of a custom item to add to an actor."""
     name: str
@@ -889,3 +1067,267 @@ async def add_custom_items(
             success=False,
             error=f"Unexpected response type: {response.get('type')}"
         )
+
+
+async def get_or_create_folder(
+    name: str,
+    folder_type: str,
+    parent: Optional[str] = None,
+    timeout: float = 5.0
+) -> FolderResult:
+    """
+    Get or create a folder in Foundry.
+
+    Args:
+        name: Folder name (e.g., "Tablewrite")
+        folder_type: Document type ("Actor", "Scene", "JournalEntry", "Item")
+        parent: Optional parent folder ID for nested folders
+        timeout: Maximum seconds to wait for response
+
+    Returns:
+        FolderResult with folder_id on success
+    """
+    data = {
+        "name": name,
+        "type": folder_type
+    }
+    if parent:
+        data["parent"] = parent
+
+    response = await foundry_manager.broadcast_and_wait(
+        {
+            "type": "get_or_create_folder",
+            "data": data
+        },
+        timeout=timeout
+    )
+
+    if response is None:
+        return FolderResult(
+            success=False,
+            error="No Foundry client connected or timeout waiting for response"
+        )
+
+    if response.get("type") == "folder_result":
+        data = response.get("data", {})
+        return FolderResult(
+            success=True,
+            folder_id=data.get("folder_id"),
+            folder_uuid=data.get("folder_uuid"),
+            name=data.get("name")
+        )
+    elif response.get("type") == "folder_error":
+        return FolderResult(
+            success=False,
+            error=response.get("error", "Unknown error from Foundry")
+        )
+    else:
+        return FolderResult(
+            success=False,
+            error=f"Unexpected response type: {response.get('type')}"
+        )
+
+
+async def list_folders(
+    folder_type: Optional[str] = None,
+    timeout: float = 5.0
+) -> ListFoldersResult:
+    """
+    List all folders in Foundry, optionally filtered by type.
+
+    Args:
+        folder_type: Optional document type ("Actor", "Scene", "JournalEntry", "Item")
+        timeout: Maximum seconds to wait for response
+
+    Returns:
+        ListFoldersResult with list of folders
+    """
+    data = {}
+    if folder_type:
+        data["type"] = folder_type
+
+    response = await foundry_manager.broadcast_and_wait(
+        {
+            "type": "list_folders",
+            "data": data
+        },
+        timeout=timeout
+    )
+
+    if response is None:
+        return ListFoldersResult(
+            success=False,
+            error="No Foundry client connected or timeout waiting for response"
+        )
+
+    if response.get("type") == "folders_list":
+        resp_data = response.get("data", {})
+        folders = [
+            FolderInfo(
+                id=f["id"],
+                name=f["name"],
+                type=f["type"],
+                parent=f.get("parent")
+            )
+            for f in resp_data.get("folders", [])
+        ]
+        return ListFoldersResult(
+            success=True,
+            folders=folders
+        )
+    elif response.get("type") == "folder_error":
+        return ListFoldersResult(
+            success=False,
+            error=response.get("error", "Unknown error from Foundry")
+        )
+    else:
+        return ListFoldersResult(
+            success=False,
+            error=f"Unexpected response type: {response.get('type')}"
+        )
+
+
+@dataclass
+class DeleteFolderResult:
+    """Result of deleting a folder."""
+    success: bool
+    deleted_count: Optional[int] = None
+    folder_name: Optional[str] = None
+    error: Optional[str] = None
+
+
+async def delete_folder(
+    folder_id: str,
+    delete_contents: bool = True,
+    timeout: float = 30.0
+) -> DeleteFolderResult:
+    """
+    Delete a folder from Foundry, optionally with all its contents.
+
+    Args:
+        folder_id: The folder ID to delete
+        delete_contents: If True, delete all documents in the folder first (default: True)
+        timeout: Maximum seconds to wait for response
+
+    Returns:
+        DeleteFolderResult with deleted_count if successful
+    """
+    data = {
+        "folder_id": folder_id,
+        "delete_contents": delete_contents
+    }
+
+    response = await foundry_manager.broadcast_and_wait(
+        {
+            "type": "delete_folder",
+            "data": data
+        },
+        timeout=timeout
+    )
+
+    if response is None:
+        return DeleteFolderResult(
+            success=False,
+            error="No Foundry client connected or timeout waiting for response"
+        )
+
+    if response.get("type") == "folder_deleted":
+        resp_data = response.get("data", {})
+        return DeleteFolderResult(
+            success=True,
+            deleted_count=resp_data.get("deleted_count"),
+            folder_name=resp_data.get("folder_name")
+        )
+    elif response.get("type") == "folder_error":
+        return DeleteFolderResult(
+            success=False,
+            error=response.get("error", "Unknown error from Foundry")
+        )
+    else:
+        return DeleteFolderResult(
+            success=False,
+            error=f"Unexpected response type: {response.get('type')}"
+        )
+
+
+async def broadcast_progress(
+    stage: str,
+    message: str,
+    progress: Optional[int] = None,
+    module_name: Optional[str] = None
+) -> None:
+    """
+    Broadcast a progress update to all connected Foundry clients.
+
+    Fire-and-forget - does not wait for a response.
+
+    Args:
+        stage: Current processing stage (e.g., "splitting_pdf", "extracting_actors")
+        message: Human-readable progress message
+        progress: Optional progress percentage (0-100)
+        module_name: Optional module name being processed
+    """
+    data: Dict[str, Any] = {
+        "stage": stage,
+        "message": message
+    }
+    if progress is not None:
+        data["progress"] = progress
+    if module_name is not None:
+        data["module_name"] = module_name
+
+    await foundry_manager.broadcast({
+        "type": "module_progress",
+        "data": data
+    })
+
+
+import asyncio
+import concurrent.futures
+
+# Store reference to main event loop for cross-thread communication
+_main_loop: Optional[asyncio.AbstractEventLoop] = None
+
+
+def set_main_loop(loop: asyncio.AbstractEventLoop) -> None:
+    """Store reference to main event loop for sync-to-async calls."""
+    global _main_loop
+    _main_loop = loop
+
+
+def broadcast_progress_sync(
+    stage: str,
+    message: str,
+    progress: Optional[int] = None,
+    module_name: Optional[str] = None
+) -> None:
+    """
+    Synchronous version of broadcast_progress for use from thread pools.
+
+    Schedules the async broadcast on the main event loop using
+    run_coroutine_threadsafe.
+
+    Args:
+        stage: Current processing stage
+        message: Human-readable progress message
+        progress: Optional progress percentage (0-100)
+        module_name: Optional module name being processed
+    """
+    global _main_loop
+    if _main_loop is None:
+        logger.warning("Main loop not set, cannot broadcast progress")
+        return
+
+    try:
+        future = asyncio.run_coroutine_threadsafe(
+            broadcast_progress(stage, message, progress, module_name),
+            _main_loop
+        )
+        # Don't wait for result - fire and forget
+        # But set a short timeout to catch immediate errors
+        try:
+            future.result(timeout=0.1)
+        except concurrent.futures.TimeoutError:
+            pass  # Expected - we don't want to block
+    except Exception as e:
+        logger.warning(f"Failed to broadcast progress: {e}")

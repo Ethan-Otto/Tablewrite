@@ -69,10 +69,16 @@ declare global {
     id: string;
   }
 
+  interface FolderCollection {
+    find(fn: (folder: FoundryDocument) => boolean): FoundryDocument | undefined;
+    map<T>(fn: (folder: FoundryDocument) => T): T[];
+  }
+
   interface Game {
     settings: ClientSettings;
     i18n: Localization;
     actors: ActorCollection | null;
+    folders: FolderCollection | null;
     packs: CompendiumCollection;
     world: World;
   }
@@ -102,6 +108,10 @@ declare global {
   };
 
   const Scene: {
+    create(data: Record<string, unknown>): Promise<{ id: string; name: string } | null>;
+  };
+
+  const Folder: {
     create(data: Record<string, unknown>): Promise<{ id: string; name: string } | null>;
   };
 

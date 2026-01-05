@@ -210,8 +210,9 @@ class TestActorOperations:
         with pytest.raises(NotImplementedError):
             mock_client.create_creature_actor(stat_block)
 
-    def test_client_create_npc_actor_raises_not_implemented(self, mock_client):
-        """Test client.create_npc_actor raises NotImplementedError (not yet ported)."""
+    @pytest.mark.integration
+    def test_client_create_npc_actor_success(self, mock_client):
+        """Test client.create_npc_actor creates minimal NPC actor (requires backend)."""
         from src.actors.models import NPC
 
         npc = NPC(
@@ -221,8 +222,10 @@ class TestActorOperations:
             plot_relevance="Guards supplies"
         )
 
-        with pytest.raises(NotImplementedError):
-            mock_client.create_npc_actor(npc, stat_block_uuid="Actor.boss123")
+        # create_npc_actor should succeed and return a UUID
+        uuid = mock_client.create_npc_actor(npc, stat_block_uuid="Actor.boss123")
+        assert uuid is not None
+        assert uuid.startswith("Actor.")
 
     def test_foundry_client_has_icon_cache(self, mock_client):
         """Test FoundryClient exposes icon cache."""

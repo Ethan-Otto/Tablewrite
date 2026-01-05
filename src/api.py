@@ -275,7 +275,8 @@ def create_scene(
     image_path: str,
     name: Optional[str] = None,
     skip_wall_detection: bool = False,
-    grid_size: Optional[int] = None
+    grid_size: Optional[int] = None,
+    folder: Optional[str] = None
 ) -> SceneCreationResult:
     """
     Create a FoundryVTT scene from a battle map image.
@@ -291,6 +292,7 @@ def create_scene(
         name: Optional custom scene name (defaults to filename-derived name)
         skip_wall_detection: If True, create scene without walls (default: False)
         grid_size: Grid size in pixels (auto-detected if None)
+        folder: Optional folder ID to place the scene in
 
     Returns:
         SceneCreationResult with scene UUID, name, wall count, and output paths
@@ -312,7 +314,8 @@ def create_scene(
             image_path=Path(image_path),
             name=name,
             skip_wall_detection=skip_wall_detection,
-            grid_size_override=grid_size
+            grid_size_override=grid_size,
+            folder=folder
         )
 
         logger.info(f"Scene created: {result.name} ({result.uuid})")

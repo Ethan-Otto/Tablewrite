@@ -27,6 +27,7 @@ ALLOWED_DESTINATIONS = {
     "tiles",
     "scenes",
     "assets",
+    "scene-artwork",
 }
 
 

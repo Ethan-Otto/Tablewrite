@@ -1,10 +1,25 @@
 """FoundryVTT Actor operations via WebSocket backend."""
 
+import asyncio
 import logging
 import requests
 from typing import Optional, Dict, Any, List
 
 logger = logging.getLogger(__name__)
+
+
+def _run_async(coro):
+    """Run async coroutine from sync context."""
+    try:
+        asyncio.get_running_loop()  # Check if there's a running loop
+        # We're in an async context, use nest_asyncio or run in thread
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            future = pool.submit(asyncio.run, coro)
+            return future.result()
+    except RuntimeError:
+        # No running loop, we can use asyncio.run directly
+        return asyncio.run(coro)
 
 
 class ActorManager:
@@ -92,28 +107,154 @@ class ActorManager:
             "Use create_actor() with actor_data dict, or /api/actors/create with description."
         )
 
-    def create_npc_actor(self, npc, stat_block_uuid: Optional[str] = None) -> str:
+    def create_npc_actor(
+        self,
+        npc,
+        stat_block_uuid: Optional[str] = None,
+        stat_block: Optional[Any] = None,
+        spell_cache: Optional[Any] = None,
+        folder: Optional[str] = None
+    ) -> str:
         """
-        Create an NPC Actor with biography and optional stat block link.
+        Create an NPC Actor with biography and optional stat block stats.
 
-        NOTE: This method requires a backend endpoint for raw actor creation.
+        If a stat_block is provided, uses the full conversion pipeline to
+        create a complete actor with all stats, attacks, traits, etc.
+        Otherwise creates a minimal NPC with just biography.
 
         Args:
             npc: NPC object with description and plot info
-            stat_block_uuid: Optional UUID of creature stat block actor
+            stat_block_uuid: Optional UUID of creature stat block actor (for linking)
+            stat_block: Optional StatBlock object to use for full stats
+            spell_cache: Optional SpellCache for spell UUID resolution
+            folder: Optional folder ID to place the actor in
 
         Returns:
             Actor UUID
-
-        Raises:
-            NotImplementedError: Raw actor creation endpoint not yet implemented
         """
-        raise NotImplementedError(
-            "Raw NPC creation via WebSocket backend not yet implemented. "
-            "Use create_actor() with actor_data dict instead."
-        )
+        # Build biography HTML
+        bio_parts = []
 
-    def create_actor(self, actor_data: Dict[str, Any], spell_uuids: list[str] = None) -> str:
+        # Add stat block link if provided
+        if stat_block_uuid:
+            bio_parts.append(
+                f'<p><strong>Stat Block:</strong> @UUID[{stat_block_uuid}]</p>'
+            )
+
+        # Add description
+        if npc.description:
+            bio_parts.append(f'<p>{npc.description}</p>')
+
+        # Add plot relevance
+        if npc.plot_relevance:
+            bio_parts.append(f'<p><strong>Plot Relevance:</strong> {npc.plot_relevance}</p>')
+
+        # Add location if present
+        if hasattr(npc, 'location') and npc.location:
+            bio_parts.append(f'<p><strong>Location:</strong> {npc.location}</p>')
+
+        # Add first appearance if present
+        if hasattr(npc, 'first_appearance_section') and npc.first_appearance_section:
+            bio_parts.append(f'<p><strong>First Appearance:</strong> {npc.first_appearance_section}</p>')
+
+        biography_html = '\n'.join(bio_parts)
+
+        # If we have a stat_block_uuid but no local stat_block, fetch from Foundry
+        # This handles NPCs that reference compendium creatures (e.g., Klarg → Bugbear)
+        if stat_block is None and stat_block_uuid is not None:
+            logger.info(f"Fetching creature stats from compendium for NPC: {npc.name} ({stat_block_uuid})")
+            try:
+                creature_data = self.get_actor(stat_block_uuid)
+                if creature_data:
+                    # Create a copy of the creature's actor data
+                    actor_data = dict(creature_data)
+
+                    # Override name with NPC name
+                    actor_data["name"] = npc.name
+
+                    # Keep the creature's image/profile art
+                    # (already in actor_data from the fetch)
+
+                    # Add/update biography with NPC-specific info
+                    if "system" not in actor_data:
+                        actor_data["system"] = {}
+                    if "details" not in actor_data["system"]:
+                        actor_data["system"]["details"] = {}
+                    actor_data["system"]["details"]["biography"] = {"value": biography_html}
+
+                    # Remove _id to create a new actor (not update existing)
+                    actor_data.pop("_id", None)
+                    actor_data.pop("folder", None)  # Will be set by create_actor
+
+                    logger.info(f"Creating NPC '{npc.name}' with stats copied from '{creature_data.get('name', 'unknown')}'")
+                    return self.create_actor(actor_data, folder=folder)
+            except Exception as e:
+                logger.warning(f"Failed to fetch creature stats for {npc.name}: {e}")
+                logger.warning("Falling back to stat_block conversion or minimal creation")
+
+        # If we have a stat block, use full conversion pipeline
+        if stat_block is not None:
+            logger.info(f"Creating NPC actor with full stats: {npc.name}")
+            try:
+                # Import here to avoid circular imports
+                from foundry_converters.actors.parser import parse_stat_block_parallel
+                from foundry_converters.actors.converter import convert_to_foundry
+
+                # Parse stat block to ParsedActorData
+                parsed_actor = _run_async(
+                    parse_stat_block_parallel(stat_block, spell_cache=spell_cache)
+                )
+
+                # Convert to FoundryVTT format
+                actor_data, spell_uuids = _run_async(
+                    convert_to_foundry(parsed_actor, spell_cache=spell_cache)
+                )
+
+                # Override name with NPC name and add biography
+                actor_data["name"] = npc.name
+                if "system" not in actor_data:
+                    actor_data["system"] = {}
+                if "details" not in actor_data["system"]:
+                    actor_data["system"]["details"] = {}
+                actor_data["system"]["details"]["biography"] = {"value": biography_html}
+
+                return self.create_actor(actor_data, spell_uuids=spell_uuids, folder=folder)
+
+            except Exception as e:
+                logger.warning(f"Failed to convert stat block for {npc.name}: {e}")
+                logger.warning("Falling back to minimal NPC creation")
+                # Fall through to minimal creation
+
+        # Minimal NPC actor (no stat block or conversion failed)
+        actor_data = {
+            "name": npc.name,
+            "type": "npc",
+            "img": "icons/svg/mystery-man.svg",
+            "system": {
+                "details": {
+                    "biography": {
+                        "value": biography_html
+                    }
+                },
+                "attributes": {
+                    "hp": {
+                        "value": 4,
+                        "max": 4
+                    }
+                }
+            },
+            "items": []
+        }
+
+        logger.info(f"Creating minimal NPC actor: {npc.name}")
+        return self.create_actor(actor_data, folder=folder)
+
+    def create_actor(
+        self,
+        actor_data: Dict[str, Any],
+        spell_uuids: Optional[List[str]] = None,
+        folder: Optional[str] = None
+    ) -> str:
         """
         Create an Actor from pre-built FoundryVTT JSON format.
 
@@ -126,6 +267,7 @@ class ActorManager:
                        'system', 'items', etc.
             spell_uuids: Optional list of compendium spell UUIDs to add
                         (NOTE: not yet implemented via WebSocket)
+            folder: Optional folder ID to place the actor in
 
         Returns:
             Actor UUID
@@ -140,10 +282,15 @@ class ActorManager:
         actor_name = actor_data.get("name", "Unknown")
         logger.debug(f"Creating actor: {actor_name}")
 
+        # Build request payload
+        payload = {"actor": actor_data}
+        if folder:
+            payload["folder"] = folder
+
         try:
             response = requests.post(
                 endpoint,
-                json={"actor": actor_data},
+                json=payload,
                 timeout=60
             )
 

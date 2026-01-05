@@ -309,3 +309,298 @@
 .tablewrite-message-content .uuid-link:hover {
   background: rgba(75, 139, 59, 0.25);
 }
+
+/* ========================================
+   Module Upload Tab Styles
+   ======================================== */
+
+/* Main container */
+.module-upload {
+  padding: 10px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.module-upload h3 {
+  margin: 0 0 15px 0;
+  font-size: 14px;
+  color: #fff;
+}
+
+/* Form layout */
+.module-upload .upload-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.module-upload .form-group {
+  margin-bottom: 12px;
+}
+
+.module-upload .form-group > label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  font-size: 12px;
+  color: #ccc;
+}
+
+/* Text inputs */
+.module-upload input[type="text"] {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #333;
+  color: #fff;
+  font-size: 12px;
+}
+
+.module-upload input[type="text"]:focus {
+  border-color: #7a4;
+  outline: none;
+}
+
+/* File drop zone */
+.file-drop-zone {
+  border: 2px dashed #555;
+  border-radius: 6px;
+  padding: 24px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.file-drop-zone p {
+  margin: 0;
+  color: #888;
+  font-size: 12px;
+}
+
+.file-drop-zone:hover {
+  border-color: #777;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.file-drop-zone.dragover {
+  border-color: #7a4;
+  border-style: dashed;
+  background: rgba(122, 170, 68, 0.15);
+}
+
+.file-drop-zone.dragover p {
+  color: #7a4;
+}
+
+/* Hide actual file input */
+.file-drop-zone input[type="file"] {
+  display: none;
+}
+
+/* Selected file name display */
+.file-name-display {
+  margin-top: 8px;
+  padding: 6px 8px;
+  background: rgba(122, 170, 68, 0.2);
+  border-radius: 4px;
+  color: #7a4;
+  font-size: 11px;
+  font-weight: 500;
+  display: none;
+}
+
+/* Checkbox list */
+.checkbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+}
+
+.checkbox-item label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 12px;
+  color: #ccc;
+  font-weight: normal !important;
+}
+
+.checkbox-item input[type="checkbox"] {
+  margin-right: 8px;
+  accent-color: #7a4;
+}
+
+/* Button group */
+.button-group {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.module-upload button.primary {
+  flex: 1;
+  padding: 10px 16px;
+  background: #7a4;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.2s ease;
+}
+
+.module-upload button.primary:hover:not(:disabled) {
+  background: #8b5;
+}
+
+.module-upload button.primary:disabled {
+  background: #555;
+  color: #888;
+  cursor: not-allowed;
+}
+
+.module-upload button.secondary {
+  flex: 0 0 auto;
+  padding: 10px 16px;
+  background: #555;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.2s ease;
+}
+
+.module-upload button.secondary:hover {
+  background: #666;
+}
+
+/* Progress container (override for module tab context) */
+.module-upload .progress-container {
+  margin-top: 20px;
+  padding: 0;
+}
+
+/* Result container for module upload */
+.module-upload .result-container {
+  text-align: left;
+  padding: 0;
+  margin-top: 10px;
+}
+
+/* Result summary */
+.result-summary {
+  padding: 12px;
+  background: rgba(122, 170, 68, 0.15);
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.result-summary h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #7a4;
+}
+
+.result-summary p {
+  margin: 4px 0;
+  font-size: 12px;
+  color: #ccc;
+}
+
+.result-summary strong {
+  color: #fff;
+}
+
+/* Result details */
+.result-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Result sections (collapsible) */
+.result-section {
+  border: 1px solid #444;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.result-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #333;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: #ccc;
+  transition: background 0.2s ease;
+}
+
+.result-section-header:hover {
+  background: #3a3a3a;
+}
+
+.collapse-icon {
+  font-size: 14px;
+  font-weight: bold;
+  color: #888;
+  width: 16px;
+  text-align: center;
+}
+
+.result-section-content {
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Collapsible states */
+.collapsible.collapsed .result-section-content {
+  display: none;
+}
+
+.collapsible.expanded .result-section-content {
+  display: block;
+}
+
+.collapsible.expanded .collapse-icon {
+  color: #7a4;
+}
+
+/* Result items */
+.result-item {
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+.result-item:not(:last-child) {
+  border-bottom: 1px solid #333;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+}
+
+/* Content links in results */
+.result-container .content-link {
+  color: #4b8b3b;
+  text-decoration: none;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 1px dotted #4b8b3b;
+  transition: all 0.15s ease;
+}
+
+.result-container .content-link:hover {
+  color: #7a4;
+  border-bottom-style: solid;
+}

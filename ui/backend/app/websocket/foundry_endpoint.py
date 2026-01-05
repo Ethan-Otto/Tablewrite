@@ -14,6 +14,8 @@ RESPONSE_TYPES = {
     "actor_created",
     "journal_created",
     "scene_created",
+    # Fetch responses
+    "journal_data",
     "actor_error",
     "journal_error",
     "scene_error",
@@ -28,6 +30,9 @@ RESPONSE_TYPES = {
     "scene_deleted",
     # List responses
     "actors_list",
+    "journals_list",
+    # Journal update responses
+    "journal_updated",
     # Search responses
     "items_found",
     "search_error",
@@ -47,6 +52,11 @@ RESPONSE_TYPES = {
     # Give items responses
     "items_given",
     "give_error",
+    # Folder responses
+    "folder_result",
+    "folder_deleted",
+    "folder_error",
+    "folders_list",
 }
 
 

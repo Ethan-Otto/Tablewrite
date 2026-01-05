@@ -121,6 +121,90 @@ class GeminiService:
         response = self.api.generate_content(prompt)
         return response.text
 
+    def is_rules_question(self, message: str) -> bool:
+        """
+        Detect if message is asking about D&D rules.
+
+        Args:
+            message: User message
+
+        Returns:
+            True if this appears to be a rules question
+        """
+        prompt = f"""Is this message a QUESTION asking about D&D 5e rules, mechanics, or how something works in the game?
+
+Answer NO if the message is:
+- A request to CREATE something (actor, scene, image, etc.)
+- A command or action request
+- A greeting or casual conversation
+
+Answer YES only if the message is genuinely ASKING about rules/mechanics.
+
+Message: "{message}"
+
+Answer (YES or NO):"""
+
+        try:
+            response = self.api.generate_content(prompt)
+            answer = response.text.strip().upper()
+            return answer.startswith("YES")
+        except Exception as e:
+            print(f"[WARN] Rules detection failed: {e}, falling back to normal mode")
+            return False
+
+    def generate_with_thinking(
+        self,
+        message: str,
+        conversation_history: Optional[list] = None
+    ) -> str:
+        """
+        Generate a response using extended thinking for thorough reasoning.
+
+        Args:
+            message: User message
+            conversation_history: Previous messages
+
+        Returns:
+            Generated response with thorough reasoning
+        """
+        # Build prompt optimized for rules explanation
+        prompt = """You are an expert D&D 5e rules advisor. Answer the following question thoroughly and accurately.
+
+Include:
+- The core rule mechanics
+- Relevant page references if known (PHB, DMG, etc.)
+- Common edge cases or clarifications
+- Practical examples when helpful
+
+Think through this step by step before answering.
+
+"""
+
+        if conversation_history:
+            prompt += "\n**Conversation History:**\n"
+            for msg in conversation_history:
+                role = msg.get("role", "").upper()
+                content = msg.get("content", "")
+                if role == "SYSTEM":
+                    continue
+                prompt += f"{role}: {content}\n"
+            prompt += "\n"
+
+        prompt += f"Question: {message}\n\nAnswer:"
+
+        try:
+            # Use thinking model configuration (gemini-2.5-flash supports thinking)
+            response = self.api.client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt
+            )
+
+            return response.text
+        except Exception as e:
+            print(f"[WARN] Thinking mode failed: {e}, falling back to regular generation")
+            # Fallback to regular chat response
+            return self.generate_chat_response(message, {}, conversation_history)
+
     def generate_scene_description(self, scene_request: str) -> str:
         """
         Generate a detailed scene description.

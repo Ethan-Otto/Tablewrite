@@ -73,10 +73,32 @@ def test_add_scene_artwork_positions_at_sections():
     # Add scene artwork
     journal.add_scene_artwork(scenes, image_dir=Path("output/runs/test/scene_artwork/images"))
 
-    # Verify scenes were added to registry
-    assert "scene_forest_road_ambush" in journal.image_registry
-    assert "scene_cave_entrance" in journal.image_registry
+    # Verify scenes were added to registry (keys include index to match filename format)
+    assert "scene_001_forest_road_ambush" in journal.image_registry
+    assert "scene_002_cave_entrance" in journal.image_registry
 
     # Verify positioning: should be at subsection boundaries
-    img_meta = journal.image_registry["scene_forest_road_ambush"]
+    img_meta = journal.image_registry["scene_001_forest_road_ambush"]
     assert img_meta.insert_before_content_id is not None
+
+
+def test_scene_artwork_key_includes_index():
+    """Test that scene artwork keys include index to match filename format."""
+    xml_path = Path("tests/fixtures/sample_chapter.xml")
+    xml_doc = parse_xml_file(xml_path)
+    journal = Journal.from_xml_document(xml_doc)
+
+    scenes = [
+        {
+            "section_path": "Chapter 1: Goblin Arrows → Goblin Ambush",
+            "name": "Forest Road Ambush",
+            "description": "A dense forest path"
+        }
+    ]
+
+    journal.add_scene_artwork(scenes, image_dir=Path("output/runs/test/scene_artwork/images"))
+
+    # Key MUST include index to match filename format: scene_001_forest_road_ambush
+    assert "scene_001_forest_road_ambush" in journal.image_registry
+    # Old key format should NOT exist
+    assert "scene_forest_road_ambush" not in journal.image_registry

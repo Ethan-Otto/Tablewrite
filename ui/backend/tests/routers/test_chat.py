@@ -14,6 +14,8 @@ class TestChatWithTools:
     def test_chat_text_response(self):
         """Test chat returns text response when no tool called."""
         with patch('app.routers.chat.gemini_service') as mock_service:
+            # Mock is_rules_question to return False so we don't trigger thinking mode
+            mock_service.is_rules_question.return_value = False
             mock_service.generate_with_tools = AsyncMock(return_value={
                 "type": "text",
                 "text": "Hello there!",
@@ -36,6 +38,8 @@ class TestChatWithTools:
         with patch('app.routers.chat.gemini_service') as mock_service, \
              patch('app.routers.chat.registry') as mock_registry:
 
+            # Mock is_rules_question to return False so we don't trigger thinking mode
+            mock_service.is_rules_question.return_value = False
             mock_service.generate_with_tools = AsyncMock(return_value={
                 "type": "tool_call",
                 "tool_call": {

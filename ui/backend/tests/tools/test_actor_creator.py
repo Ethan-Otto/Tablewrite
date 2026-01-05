@@ -23,55 +23,32 @@ class TestActorCreatorPush:
         2. Foundry receives and creates entity, sends UUID response
         3. Tool receives UUID and returns success
 
-        This test mocks the push function to verify data structure.
+        This test mocks the orchestration layer to verify data flow.
         """
-        from app.tools.actor_creator import ActorCreatorTool
-        from app.websocket.push import PushResult
+        from app.tools.actor_creator import ActorCreatorTool, load_caches
+        from foundry.actors.spell_cache import SpellCache
+        from foundry.icon_cache import IconCache
 
-        # Mock the actor generation pipeline
-        mock_parsed_actor = MagicMock()
-        mock_parsed_actor.name = "Test Goblin"
-        mock_parsed_actor.challenge_rating = 0.25
-        mock_parsed_actor.model_copy = MagicMock(return_value=mock_parsed_actor)
+        # Mock the result from create_actor_from_description
+        mock_result = MagicMock()
+        mock_result.foundry_uuid = "Actor.test123"
+        mock_result.challenge_rating = 0.25
+        mock_result.stat_block = MagicMock()
+        mock_result.stat_block.name = "Test Goblin"
 
-        mock_actor_json = {
-            "name": "Test Goblin",
-            "type": "npc",
-            "system": {
-                "details": {"cr": 0.25},
-                "abilities": {"str": {"value": 10}}
-            },
-            "items": []
-        }
-        mock_spell_uuids = []
+        # Mock caches
+        mock_spell_cache = MagicMock(spec=SpellCache)
+        mock_icon_cache = MagicMock(spec=IconCache)
 
-        pushed_data = {}
+        # Mock load_caches to return mocked caches
+        async def mock_load_caches():
+            return mock_spell_cache, mock_icon_cache
 
-        async def mock_push_actor(actor_data, timeout=30.0):
-            """Mock push_actor to capture data and return simulated success."""
-            pushed_data.update(actor_data)
-            return PushResult(
-                success=True,
-                uuid="Actor.test123",
-                id="test123",
-                name=actor_data["name"]
-            )
+        # Mock create_actor_from_description
+        with patch('app.tools.actor_creator.load_caches', side_effect=mock_load_caches), \
+             patch('app.tools.actor_creator.create_actor_from_description', new_callable=AsyncMock) as mock_create:
 
-        # Mock all the pipeline steps
-        with patch('app.tools.actor_creator.generate_actor_description', new_callable=AsyncMock) as mock_gen, \
-             patch('app.tools.actor_creator.parse_raw_text_to_statblock', new_callable=AsyncMock) as mock_parse, \
-             patch('app.tools.actor_creator.parse_stat_block_parallel', new_callable=AsyncMock) as mock_detail, \
-             patch('app.tools.actor_creator.generate_actor_biography', new_callable=AsyncMock) as mock_bio, \
-             patch('app.tools.actor_creator.convert_to_foundry', new_callable=AsyncMock) as mock_convert, \
-             patch('app.tools.actor_creator.push_actor', side_effect=mock_push_actor) as mock_push, \
-             patch('app.tools.actor_creator.SpellCache') as mock_spell_cache, \
-             patch('app.tools.actor_creator.IconCache') as mock_icon_cache:
-
-            mock_gen.return_value = "Test Goblin stat block text"
-            mock_parse.return_value = MagicMock()
-            mock_detail.return_value = mock_parsed_actor
-            mock_bio.return_value = "A fierce goblin warrior."
-            mock_convert.return_value = (mock_actor_json, mock_spell_uuids)
+            mock_create.return_value = mock_result
 
             tool = ActorCreatorTool()
             result = await tool.execute(
@@ -83,14 +60,15 @@ class TestActorCreatorPush:
             assert result.type == "text"
             assert "Created" in result.message
             assert "Actor.test123" in result.message
+            assert "Test Goblin" in result.message
 
-            # Verify the pushed data structure
-            assert pushed_data["name"] == "Test Goblin"
-            assert pushed_data["cr"] == 0.25
-            assert "actor" in pushed_data
-            assert pushed_data["actor"]["name"] == "Test Goblin"
-            assert pushed_data["actor"]["type"] == "npc"
-            assert "spell_uuids" in pushed_data
+            # Verify create_actor_from_description was called with correct args
+            mock_create.assert_called_once()
+            call_kwargs = mock_create.call_args.kwargs
+            assert call_kwargs["description"] == "A goblin warrior"
+            assert call_kwargs["challenge_rating"] == 0.25
+            assert call_kwargs["spell_cache"] == mock_spell_cache
+            assert call_kwargs["icon_cache"] == mock_icon_cache
 
 
 @pytest.mark.integration
@@ -121,17 +99,34 @@ class TestActorCreatorPushIntegration:
 
         pushed_data = {}
 
-        async def mock_push_actor(actor_data, timeout=30.0):
+        async def mock_push_actor(data, timeout=30.0):
             """Capture actor data and return simulated success."""
-            pushed_data.update(actor_data)
+            pushed_data.update(data)
+            # Data structure is {"actor": {...}, "spell_uuids": [...]}
+            actor_name = data["actor"]["name"]
             return PushResult(
                 success=True,
                 uuid="Actor.realtest123",
                 id="realtest123",
-                name=actor_data["name"]
+                name=actor_name
             )
 
-        with patch('app.tools.actor_creator.push_actor', side_effect=mock_push_actor):
+        # Mock load_caches to avoid WebSocket dependency
+        mock_spell_cache = MagicMock()
+        mock_spell_cache.get_spell_uuid.return_value = None  # No spells found
+        mock_icon_cache = MagicMock()
+        mock_icon_cache.loaded = True
+        mock_icon_cache.get_icon.return_value = None
+        mock_icon_cache.get_icon_by_keywords.return_value = None
+        # IconCache has async methods that need AsyncMock
+        mock_icon_cache.get_icon_with_ai_fallback = AsyncMock(return_value="icons/svg/mystery-man.svg")
+        mock_icon_cache.get_icons_batch = AsyncMock(return_value=[])
+
+        async def mock_load_caches():
+            return mock_spell_cache, mock_icon_cache
+
+        with patch('app.tools.actor_creator.push_actor', side_effect=mock_push_actor), \
+             patch('app.tools.actor_creator.load_caches', side_effect=mock_load_caches):
             tool = ActorCreatorTool()
 
             # Real API call - creates a simple goblin
@@ -145,10 +140,112 @@ class TestActorCreatorPushIntegration:
             assert "Created" in result.message
 
             # Verify the pushed data structure (real actor data from Gemini)
-            assert "name" in pushed_data
-            assert "cr" in pushed_data
+            # Data structure is {"actor": {...}, "spell_uuids": [...]}
             assert "actor" in pushed_data
-            assert pushed_data["actor"]["type"] == "npc"
-            assert "items" in pushed_data["actor"]
             assert "spell_uuids" in pushed_data
-            print(f"[INTEGRATION] Pushed actor: {pushed_data['name']} (CR {pushed_data['cr']})")
+            actor = pushed_data["actor"]
+            assert "name" in actor
+            assert actor["type"] == "npc"
+            assert "items" in actor
+            print(f"[INTEGRATION] Pushed actor: {actor['name']}")
+
+
+class MockSpell:
+    """Mock spell object for testing (avoids MagicMock 'name' issue)."""
+    def __init__(self, name: str, uuid: str, type: str = "spell", img: str = "", pack: str = "dnd5e.spells"):
+        self.name = name
+        self.uuid = uuid
+        self.type = type
+        self.img = img
+        self.pack = pack
+
+
+class TestLoadCaches:
+    """Tests for the load_caches function."""
+
+    @pytest.mark.asyncio
+    async def test_load_caches_returns_spell_and_icon_cache(self):
+        """Test that load_caches returns both SpellCache and IconCache."""
+        from app.tools.actor_creator import load_caches
+
+        # Mock the WebSocket calls - use MockSpell to avoid MagicMock 'name' issue
+        mock_spells_result = MagicMock()
+        mock_spells_result.success = True
+        mock_spells_result.results = [
+            MockSpell(name="Fire Bolt", uuid="Compendium.dnd5e.spells.Item.abc")
+        ]
+
+        mock_files_result = MagicMock()
+        mock_files_result.success = True
+        mock_files_result.files = ["icons/magic/fire.webp"]
+
+        with patch('app.tools.actor_creator.list_compendium_items_with_retry', new_callable=AsyncMock, return_value=mock_spells_result), \
+             patch('app.tools.actor_creator.list_files_with_retry', new_callable=AsyncMock, return_value=mock_files_result):
+            spell_cache, icon_cache = await load_caches()
+
+        assert spell_cache is not None
+        assert icon_cache is not None
+        assert spell_cache.spell_count > 0
+        assert icon_cache.icon_count > 0
+
+    @pytest.mark.asyncio
+    async def test_load_caches_raises_on_spell_failure(self):
+        """Test that load_caches raises RuntimeError when spell loading fails."""
+        from app.tools.actor_creator import load_caches
+
+        mock_spells_result = MagicMock()
+        mock_spells_result.success = False
+        mock_spells_result.error = "Connection failed"
+
+        with patch('app.tools.actor_creator.list_compendium_items_with_retry', new_callable=AsyncMock, return_value=mock_spells_result):
+            with pytest.raises(RuntimeError, match="SpellCache FAILED"):
+                await load_caches()
+
+    @pytest.mark.asyncio
+    async def test_load_caches_raises_on_empty_spells(self):
+        """Test that load_caches raises RuntimeError when no spells returned."""
+        from app.tools.actor_creator import load_caches
+
+        mock_spells_result = MagicMock()
+        mock_spells_result.success = True
+        mock_spells_result.results = []
+
+        with patch('app.tools.actor_creator.list_compendium_items_with_retry', new_callable=AsyncMock, return_value=mock_spells_result):
+            with pytest.raises(RuntimeError, match="No spells returned"):
+                await load_caches()
+
+    @pytest.mark.asyncio
+    async def test_load_caches_raises_on_icon_failure(self):
+        """Test that load_caches raises RuntimeError when icon loading fails."""
+        from app.tools.actor_creator import load_caches
+
+        mock_spells_result = MagicMock()
+        mock_spells_result.success = True
+        mock_spells_result.results = [
+            MockSpell(name="Fire Bolt", uuid="Compendium.dnd5e.spells.Item.abc")
+        ]
+
+        mock_files_result = MagicMock()
+        mock_files_result.success = False
+        mock_files_result.error = "Files not found"
+
+        with patch('app.tools.actor_creator.list_compendium_items_with_retry', new_callable=AsyncMock, return_value=mock_spells_result), \
+             patch('app.tools.actor_creator.list_files_with_retry', new_callable=AsyncMock, return_value=mock_files_result):
+            with pytest.raises(RuntimeError, match="IconCache FAILED"):
+                await load_caches()
+
+    @pytest.mark.asyncio
+    async def test_load_caches_raises_on_missing_fire_bolt(self):
+        """Test that load_caches raises RuntimeError when Fire Bolt is missing."""
+        from app.tools.actor_creator import load_caches
+
+        mock_spells_result = MagicMock()
+        mock_spells_result.success = True
+        mock_spells_result.results = [
+            MockSpell(name="Magic Missile", uuid="Compendium.dnd5e.spells.Item.xyz")
+        ]
+
+        with patch('app.tools.actor_creator.list_compendium_items_with_retry',
+                   new_callable=AsyncMock, return_value=mock_spells_result):
+            with pytest.raises(RuntimeError, match="Fire Bolt.*not found"):
+                await load_caches()

@@ -193,6 +193,19 @@ class FoundryClient:
         """Create creature actor from stat block."""
         return self.actors.create_creature_actor(stat_block)
 
-    def create_npc_actor(self, npc, stat_block_uuid: Optional[str] = None) -> str:
-        """Create NPC actor with optional stat block link."""
-        return self.actors.create_npc_actor(npc, stat_block_uuid)
+    def create_npc_actor(
+        self,
+        npc,
+        stat_block_uuid: Optional[str] = None,
+        stat_block=None,
+        spell_cache=None,
+        folder: Optional[str] = None
+    ) -> str:
+        """Create NPC actor with optional stat block stats."""
+        return self.actors.create_npc_actor(
+            npc,
+            stat_block_uuid=stat_block_uuid,
+            stat_block=stat_block,
+            spell_cache=spell_cache,
+            folder=folder
+        )

@@ -225,14 +225,15 @@ def upload_scene_gallery(client: FoundryClient, run_dir: Path) -> Optional[Dict[
         image_files = list(images_dir.glob("*.png")) + list(images_dir.glob("*.jpg")) + list(images_dir.glob("*.jpeg"))
 
         for image_file in image_files:
-            # Upload to worlds/<client-id>/images/
-            target_path = f"worlds/{client.client_id}/images/{image_file.name}"
-
             try:
-                client.upload_file(str(image_file), target_path)
-                # Map local path format to FoundryVTT path
-                image_path_mapping[f"images/{image_file.name}"] = target_path
-                logger.debug(f"  Uploaded {image_file.name}")
+                # Upload to scene-artwork folder in world
+                result = client.files.upload_file(image_file, destination="scene-artwork")
+                if result.get("success") and result.get("path"):
+                    # Map local path format to FoundryVTT path
+                    image_path_mapping[f"images/{image_file.name}"] = result["path"]
+                    logger.debug(f"  Uploaded {image_file.name} -> {result['path']}")
+                else:
+                    logger.error(f"Failed to upload {image_file.name}: {result.get('error')}")
             except Exception as e:
                 logger.error(f"Failed to upload {image_file.name}: {e}")
 
@@ -258,7 +259,8 @@ def upload_scene_gallery(client: FoundryClient, run_dir: Path) -> Optional[Dict[
 def upload_run_to_foundry(
     run_dir: str,
     target: str = "local",
-    journal_name: str = None
+    journal_name: str = None,
+    folder_id: str = None
 ) -> Dict[str, Any]:
     """
     Upload XML documents from a run to FoundryVTT as a single journal with multiple pages.
@@ -275,6 +277,7 @@ def upload_run_to_foundry(
         run_dir: Path to run directory (contains documents/ with XML files)
         target: Target environment ('local' or 'forge')
         journal_name: Name for the journal entry (default: "D&D Module")
+        folder_id: Optional folder ID to put the journal in
 
     Returns:
         Dict with upload statistics
@@ -344,10 +347,11 @@ def upload_run_to_foundry(
             # Render Journal to HTML using to_foundry_html()
             html = journal.to_foundry_html(image_mapping)
 
-            # Create page dict for FoundryVTT
+            # Create page dict for FoundryVTT (v10+ format)
             pages.append({
                 "name": xml_doc.title,
-                "content": html
+                "type": "text",
+                "text": {"content": html}
             })
 
             logger.debug(f"  Converted {xml_file.name} to HTML ({len(html)} chars)")
@@ -382,7 +386,8 @@ def upload_run_to_foundry(
     try:
         result = client.create_or_replace_journal(
             name=journal_name,
-            pages=pages
+            pages=pages,
+            folder=folder_id
         )
 
         # Extract UUID from response

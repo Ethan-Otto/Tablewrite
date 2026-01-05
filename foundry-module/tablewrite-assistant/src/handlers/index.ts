@@ -3,18 +3,20 @@
  */
 
 export { handleActorCreate, handleGetActor, handleUpdateActor, handleDeleteActor, handleListActors, handleGiveItems, handleAddCustomItems } from './actor.js';
-export { handleJournalCreate, handleJournalDelete } from './journal.js';
+export { handleGetJournal, handleJournalCreate, handleJournalDelete, handleListJournals, handleUpdateJournal } from './journal.js';
 export { handleSceneCreate, handleGetScene, handleDeleteScene } from './scene.js';
 export { handleSearchItems, handleGetItem, handleListCompendiumItems } from './items.js';
 export { handleListFiles, handleFileUpload } from './files.js';
+export { handleGetOrCreateFolder, handleListFolders, handleDeleteFolder } from './folder.js';
 
 import { handleActorCreate, handleGetActor, handleUpdateActor, handleDeleteActor, handleListActors, handleGiveItems, handleAddCustomItems } from './actor.js';
-import { handleJournalCreate, handleJournalDelete } from './journal.js';
+import { handleGetJournal, handleJournalCreate, handleJournalDelete, handleListJournals, handleUpdateJournal, JournalListResult, UpdateJournalResult } from './journal.js';
 import { handleSceneCreate, handleGetScene, handleDeleteScene } from './scene.js';
 import { handleSearchItems, handleGetItem, handleListCompendiumItems } from './items.js';
 import { handleListFiles, handleFileUpload } from './files.js';
+import { handleGetOrCreateFolder, handleListFolders, handleDeleteFolder, FolderResult, ListFoldersResult, DeleteFolderResult } from './folder.js';
 
-export type MessageType = 'actor' | 'journal' | 'delete_journal' | 'scene' | 'get_scene' | 'delete_scene' | 'get_actor' | 'update_actor' | 'delete_actor' | 'list_actors' | 'give_items' | 'add_custom_items' | 'search_items' | 'get_item' | 'list_compendium_items' | 'list_files' | 'upload_file' | 'connected' | 'pong';
+export type MessageType = 'actor' | 'journal' | 'get_journal' | 'delete_journal' | 'list_journals' | 'update_journal' | 'scene' | 'get_scene' | 'delete_scene' | 'get_actor' | 'update_actor' | 'delete_actor' | 'list_actors' | 'give_items' | 'add_custom_items' | 'search_items' | 'get_item' | 'list_compendium_items' | 'list_files' | 'upload_file' | 'get_or_create_folder' | 'list_folders' | 'delete_folder' | 'module_progress' | 'connected' | 'pong';
 
 export interface TablewriteMessage {
   type: MessageType;
@@ -98,7 +100,7 @@ export interface FileUploadResult {
 export interface MessageResult {
   responseType: string;
   request_id?: string;
-  data?: CreateResult | GetResult | DeleteResult | ListResult | GiveResult | SearchResult | FileListResult | FileUploadResult;
+  data?: CreateResult | GetResult | DeleteResult | ListResult | GiveResult | SearchResult | FileListResult | FileUploadResult | FolderResult | ListFoldersResult | DeleteFolderResult | JournalListResult | UpdateJournalResult;
   error?: string;
 }
 
@@ -138,6 +140,21 @@ export async function handleMessage(message: TablewriteMessage): Promise<Message
         request_id: message.request_id,
         error: 'Missing data for journal creation'
       };
+    case 'get_journal':
+      if (message.data?.uuid) {
+        const result = await handleGetJournal(message.data.uuid as string);
+        return {
+          responseType: result.success ? 'journal_data' : 'journal_error',
+          request_id: message.request_id,
+          data: result,
+          error: result.error
+        };
+      }
+      return {
+        responseType: 'journal_error',
+        request_id: message.request_id,
+        error: 'Missing uuid for get_journal'
+      };
     case 'delete_journal':
       if (message.data?.uuid) {
         const result = await handleJournalDelete(message.data.uuid as string);
@@ -152,6 +169,33 @@ export async function handleMessage(message: TablewriteMessage): Promise<Message
         responseType: 'journal_error',
         request_id: message.request_id,
         error: 'Missing uuid for journal deletion'
+      };
+    case 'list_journals': {
+      const result = await handleListJournals();
+      return {
+        responseType: result.success ? 'journals_list' : 'journal_error',
+        request_id: message.request_id,
+        data: result,
+        error: result.error
+      };
+    }
+    case 'update_journal':
+      if (message.data) {
+        const result = await handleUpdateJournal(message.data as {
+          uuid: string;
+          updates: Record<string, unknown>;
+        });
+        return {
+          responseType: result.success ? 'journal_updated' : 'journal_error',
+          request_id: message.request_id,
+          data: result,
+          error: result.error
+        };
+      }
+      return {
+        responseType: 'journal_error',
+        request_id: message.request_id,
+        error: 'Missing data for update_journal'
       };
     case 'scene':
       if (message.data) {
@@ -390,6 +434,65 @@ export async function handleMessage(message: TablewriteMessage): Promise<Message
         request_id: message.request_id,
         error: 'Missing data for upload_file'
       };
+    case 'get_or_create_folder':
+      if (message.data) {
+        const result = await handleGetOrCreateFolder(message.data as {
+          name: string;
+          type: string;
+          parent?: string | null;
+        });
+        return {
+          responseType: result.success ? 'folder_result' : 'folder_error',
+          request_id: message.request_id,
+          data: result,
+          error: result.error
+        };
+      }
+      return {
+        responseType: 'folder_error',
+        request_id: message.request_id,
+        error: 'Missing data for get_or_create_folder'
+      };
+    case 'list_folders': {
+      const result = await handleListFolders(message.data as { type?: string } || {});
+      return {
+        responseType: result.success ? 'folders_list' : 'folder_error',
+        request_id: message.request_id,
+        data: result,
+        error: result.error
+      };
+    }
+    case 'delete_folder':
+      if (message.data?.folder_id) {
+        const result = await handleDeleteFolder(message.data as {
+          folder_id: string;
+          delete_contents?: boolean;
+        });
+        return {
+          responseType: result.success ? 'folder_deleted' : 'folder_error',
+          request_id: message.request_id,
+          data: result,
+          error: result.error
+        };
+      }
+      return {
+        responseType: 'folder_error',
+        request_id: message.request_id,
+        error: 'Missing folder_id for delete_folder'
+      };
+    case 'module_progress':
+      if (message.data) {
+        // Emit a Foundry hook for UI components to listen to
+        // Use 'on' to call all registered listeners for custom hooks
+        (Hooks as any).callAll('tablewrite.moduleProgress', {
+          stage: message.data.stage as string,
+          message: message.data.message as string,
+          progress: message.data.progress as number | undefined,
+          module_name: message.data.module_name as string | undefined
+        });
+        console.log(`[Tablewrite] Progress: ${message.data.stage} - ${message.data.message}`);
+      }
+      return null;  // No response needed
     case 'connected':
       console.log('[Tablewrite] Connected with client_id:', message.client_id);
       return null;  // No response needed

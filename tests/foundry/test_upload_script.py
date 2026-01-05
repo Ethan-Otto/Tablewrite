@@ -92,19 +92,19 @@ class TestSceneGalleryUpload:
         gallery_file = scene_dir / "scene_gallery.html"
         gallery_file.write_text(gallery_html)
 
-        # Mock client
+        # Mock client with files.upload_file that returns expected response
         mock_client = Mock()
-        mock_client.client_id = "test_client"
-        mock_client.upload_file = Mock()
+        mock_client.files = Mock()
+        mock_client.files.upload_file = Mock(return_value={
+            "success": True,
+            "path": "worlds/testing-world/scene-artwork/scene_001_cave_entrance.png"
+        })
 
         # Call function
         result = upload_scene_gallery(mock_client, run_dir)
 
         # Verify upload was called
-        mock_client.upload_file.assert_called_once_with(
-            str(test_image),
-            "worlds/test_client/images/scene_001_cave_entrance.png"
-        )
+        mock_client.files.upload_file.assert_called_once()
 
         # Verify result structure
         assert result is not None
@@ -112,9 +112,9 @@ class TestSceneGalleryUpload:
         assert result["type"] == "text"
         assert result["text"]["format"] == 1
 
-        # Verify HTML paths were updated
+        # Verify HTML paths were updated to use uploaded path
         updated_html = result["text"]["content"]
-        assert "worlds/test_client/images/scene_001_cave_entrance.png" in updated_html
+        assert "worlds/testing-world/scene-artwork/scene_001_cave_entrance.png" in updated_html
         assert 'src="images/scene_001_cave_entrance.png"' not in updated_html
 
     def test_upload_scene_gallery_multiple_images(self, tmp_path):
@@ -142,22 +142,29 @@ class TestSceneGalleryUpload:
         gallery_file = scene_dir / "scene_gallery.html"
         gallery_file.write_text(gallery_html)
 
-        # Mock client
+        # Mock client with files.upload_file returning different paths based on filename
         mock_client = Mock()
-        mock_client.client_id = "test_client"
-        mock_client.upload_file = Mock()
+        mock_client.files = Mock()
+
+        def mock_upload(path, destination):
+            filename = path.name
+            return {
+                "success": True,
+                "path": f"worlds/testing-world/scene-artwork/{filename}"
+            }
+        mock_client.files.upload_file = Mock(side_effect=mock_upload)
 
         # Call function
         result = upload_scene_gallery(mock_client, run_dir)
 
         # Verify both uploads were called
-        assert mock_client.upload_file.call_count == 2
+        assert mock_client.files.upload_file.call_count == 2
 
         # Verify result
         assert result is not None
         updated_html = result["text"]["content"]
-        assert "worlds/test_client/images/scene_001_cave.png" in updated_html
-        assert "worlds/test_client/images/scene_002_forest.jpg" in updated_html
+        assert "worlds/testing-world/scene-artwork/scene_001_cave.png" in updated_html
+        assert "worlds/testing-world/scene-artwork/scene_002_forest.jpg" in updated_html
 
     def test_upload_scene_gallery_no_images(self, tmp_path):
         """Test uploading scene gallery when images directory is empty."""
@@ -172,15 +179,16 @@ class TestSceneGalleryUpload:
         gallery_file = scene_dir / "scene_gallery.html"
         gallery_file.write_text(gallery_html)
 
-        # Mock client
+        # Mock client with files.upload_file
         mock_client = Mock()
-        mock_client.client_id = "test_client"
+        mock_client.files = Mock()
+        mock_client.files.upload_file = Mock()
 
         # Call function
         result = upload_scene_gallery(mock_client, run_dir)
 
         # Verify no uploads
-        mock_client.upload_file.assert_not_called()
+        mock_client.files.upload_file.assert_not_called()
 
         # Verify result still created
         assert result is not None

@@ -111,18 +111,10 @@ class TestUploadFileIntegration:
     @pytest.mark.asyncio
     async def test_upload_file_real(self):
         """
-        Upload a file to Foundry and verify it was created.
+        Upload a file to Foundry via REST API and verify it was created.
 
         Requires: Backend running + Foundry with Tablewrite module connected.
         """
-        import base64
-
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            # First check connection
-            status = await client.get(f"{BACKEND_URL}/api/foundry/status")
-            if status.json()["status"] != "connected":
-                pytest.fail("Foundry not connected - start backend and connect Foundry module")
-
         # Create minimal test content (a tiny PNG)
         # 1x1 red PNG pixel
         test_png = bytes([
@@ -136,15 +128,23 @@ class TestUploadFileIntegration:
             0xd4, 0xef, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45,
             0x4e, 0x44, 0xae, 0x42, 0x60, 0x82
         ])
-        content = base64.b64encode(test_png).decode()
 
-        result = await upload_file(
-            filename="test_upload_integration.png",
-            content=content,
-            destination="uploaded-maps/tests"
-        )
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # First check connection
+            status = await client.get(f"{BACKEND_URL}/api/foundry/status")
+            if status.json()["status"] != "connected":
+                pytest.fail("Foundry not connected - start backend and connect Foundry module")
 
-        assert result.success, f"Upload failed: {result.error}"
-        assert result.path is not None
-        assert "test_upload_integration.png" in result.path
-        print(f"\n[INTEGRATION] Uploaded file to: {result.path}")
+            # Upload file via REST API (use tests subdirectory for test uploads)
+            response = await client.post(
+                f"{BACKEND_URL}/api/foundry/files/upload",
+                files={"file": ("test_upload_ws_integration.png", test_png, "image/png")},
+                data={"destination": "uploaded-maps/tests"}
+            )
+
+        assert response.status_code == 200, f"Upload failed: {response.text}"
+        result = response.json()
+        assert result["success"], f"Upload failed: {result.get('error')}"
+        assert result["path"] is not None
+        assert "test_upload_ws_integration.png" in result["path"]
+        print(f"\n[INTEGRATION] Uploaded file to: {result['path']}")

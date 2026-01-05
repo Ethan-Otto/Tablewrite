@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **NOTE:** Keep this file under 900 lines. Condense or move detailed docs to separate files if needed.
+> **NOTE:** Keep this file under 1000 lines. Condense or move detailed docs to separate files if needed.
 
 ## Project Overview
 
@@ -693,7 +693,7 @@ AI-powered scene extraction and artwork generation for creating visual galleries
 **Processing Workflow:**
 1. **Context Extraction**: Analyzes chapter XML to determine environment type, lighting, terrain
 2. **Scene Identification**: Extracts physical locations, filters out NPCs/monsters
-3. **Image Generation**: Creates AI artwork using `imagen-4.0-fast-generate-001` (parallel processing)
+3. **Image Generation**: Creates AI artwork using Gemini (parallel processing)
 4. **Gallery Creation**: Generates HTML gallery with collapsible prompts
 
 **Scene Model:**
@@ -936,18 +936,43 @@ async def test_create_actor():
 2. **Fetch** the resource back from Foundry
 3. **Verify** the fetched data matches what was sent
 
-**Note:** Test resources should be created in a `/tests` folder in Foundry for organization. Cleanup is not required.
+### MANDATORY: All Test Resources Must Use /tests Folder
 
+**All integration tests that create Foundry resources MUST store them in a `/tests` folder.** This keeps test artifacts organized and separate from real content.
+
+**How to specify the folder:**
+- For actors, scenes, journals: Add `"folder": folder_id` to the request
+- For files: Use `destination="uploaded-maps/tests"` or similar `/tests` subfolder
+
+**Backend provides helpers in `ui/backend/tests/conftest.py`:**
 ```python
+# Session-scoped fixture - creates /tests folders for Actor, Scene, JournalEntry
+@pytest.fixture(scope="session")
+def test_folders(ensure_foundry_connected):
+    # Returns: {"Actor": "folder_id", "Scene": "folder_id", "JournalEntry": "folder_id"}
+
+# Helper function for async tests
+async def get_or_create_test_folder(folder_type: str) -> str:
+    # folder_type: "Actor", "Scene", or "JournalEntry"
+    # Returns folder ID
+```
+
+**Example usage:**
+```python
+from tests.conftest import get_or_create_test_folder
+
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_actor_roundtrip():
     """Create actor in /tests folder, fetch it back, verify data."""
+    # Get or create the /tests folder for actors
+    folder_id = await get_or_create_test_folder("Actor")
+
     # Create in /tests folder
     result = await create_actor({
         "name": "Test Goblin",
         "type": "npc",
-        "folder": "tests",  # Put in /tests folder
+        "folder": folder_id,  # REQUIRED: Put in /tests folder
         ...
     })
     assert result.success, f"Create failed: {result.error}"
@@ -968,6 +993,11 @@ async def test_actor_roundtrip():
 - Verifies Foundry module handles data correctly
 - Ensures items (spells, weapons, feats) have correct types
 - Prevents regressions like spells being created as feats
+
+**Why /tests folder?**
+- Keeps test artifacts separate from real game content
+- Easy to clean up manually if needed
+- Makes it clear which content is from tests
 
 ### Key Fixtures (from `conftest.py`)
 

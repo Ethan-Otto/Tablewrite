@@ -5,7 +5,6 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import List
-from io import BytesIO
 from .base import BaseTool, ToolSchema, ToolResponse
 from .image_styles import SCENE_STYLE
 from ..config import settings
@@ -14,14 +13,13 @@ from ..config import settings
 project_root = Path(__file__).parent.parent.parent.parent.parent
 sys.path.insert(0, str(project_root / "src"))
 from util.gemini import GeminiAPI  # noqa: E402
-from google.genai import types  # noqa: E402
 
 
 class ImageGeneratorTool(BaseTool):
     """Tool for generating images using Gemini Imagen."""
 
-    # Use the same model as scene extraction for consistency
-    MODEL_NAME = "imagen-4.0-fast-generate-001"
+    # Image generation model - can switch back to "imagen-4.0-fast-generate-001" if needed
+    MODEL_NAME = "gemini-2.5-flash-image"
 
     # Default style for D&D fantasy illustrations (scenes)
     DEFAULT_STYLE = SCENE_STYLE
@@ -142,23 +140,19 @@ class ImageGeneratorTool(BaseTool):
         # Enhance prompt with default D&D fantasy style
         styled_prompt = f"{prompt}, {self.DEFAULT_STYLE}"
 
-        # Generate image using Gemini Imagen
-        response = self.api.client.models.generate_images(
+        # Generate image using Gemini API
+        response = self.api.client.models.generate_content(
             model=self.MODEL_NAME,
-            prompt=styled_prompt,
-            config=types.GenerateImagesConfig(
-                number_of_images=1,
-            )
+            contents=styled_prompt
         )
 
-        # Save the generated image
-        if response.generated_images:
-            generated_image = response.generated_images[0]
-            # Extract PIL image and convert to bytes
-            image_buffer = BytesIO()
-            generated_image.image._pil_image.save(image_buffer, format='PNG')
-            image_data = image_buffer.getvalue()
+        # Extract and save the generated image
+        if response.candidates and response.candidates[0].content.parts:
+            for part in response.candidates[0].content.parts:
+                if hasattr(part, 'inline_data') and part.inline_data:
+                    image_data = part.inline_data.data
+                    with open(filepath, 'wb') as f:
+                        f.write(image_data)
+                    return
 
-            # Write to file
-            with open(filepath, 'wb') as f:
-                f.write(image_data)
+        raise RuntimeError("No image generated in response")

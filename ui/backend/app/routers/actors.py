@@ -12,9 +12,11 @@ from app.websocket import (
     delete_actor,
     list_actors,
     push_actor,
+    update_actor,
     list_compendium_items,
     list_files,
     give_items,
+    list_folders,
 )
 
 router = APIRouter(prefix="/api", tags=["actors"])
@@ -57,6 +59,36 @@ async def get_actor_by_uuid(uuid: str):
         raise HTTPException(status_code=404, detail=result.error)
 
 
+class UpdateActorRequest(BaseModel):
+    """Request body for updating an actor."""
+    updates: dict
+
+
+@router.patch("/foundry/actor/{uuid}")
+async def update_actor_by_uuid(uuid: str, request: UpdateActorRequest):
+    """
+    Update an actor in Foundry by UUID via WebSocket.
+
+    Args:
+        uuid: The actor UUID (e.g., "Actor.vKEhnoBxM7unbhAL")
+        request: UpdateActorRequest with updates dict
+
+    Returns:
+        Updated actor info
+    """
+    result = await update_actor(uuid, request.updates, timeout=10.0)
+
+    if result.success:
+        return {
+            "success": True,
+            "uuid": result.uuid,
+            "id": result.id,
+            "name": result.name,
+        }
+    else:
+        raise HTTPException(status_code=500, detail=result.error)
+
+
 @router.delete("/foundry/actor/{uuid}")
 async def delete_actor_by_uuid(uuid: str):
     """
@@ -91,7 +123,8 @@ async def create_actor_raw(request: dict):
     descriptions, use /api/actors/create instead.
 
     Args:
-        request: Dict with 'actor' key containing FoundryVTT actor data
+        request: Dict with 'actor' key containing FoundryVTT actor data,
+                 and optional 'folder' key for folder ID
 
     Returns:
         Created actor UUID and name
@@ -99,6 +132,10 @@ async def create_actor_raw(request: dict):
     actor_data = request.get("actor")
     if not actor_data:
         raise HTTPException(status_code=400, detail="Missing 'actor' field in request")
+
+    # Add folder to actor data if provided
+    if request.get("folder"):
+        actor_data["folder"] = request.get("folder")
 
     # Wrap actor data for Foundry handler which expects {"actor": {...}}
     result = await push_actor({"actor": actor_data}, timeout=30.0)
@@ -314,3 +351,75 @@ async def create_actor_endpoint(request: CreateActorRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/foundry/folders")
+async def list_all_folders(folder_type: Optional[str] = None):
+    """
+    List all folders in Foundry, optionally filtered by type.
+
+    Args:
+        folder_type: Optional document type ("Actor", "Scene", "JournalEntry", "Item")
+
+    Returns:
+        List of folders with id, name, type, and parent
+    """
+    result = await list_folders(folder_type, timeout=10.0)
+
+    if result.success:
+        return {
+            "success": True,
+            "count": len(result.folders) if result.folders else 0,
+            "folders": [
+                {
+                    "id": f.id,
+                    "name": f.name,
+                    "type": f.type,
+                    "parent": f.parent
+                }
+                for f in (result.folders or [])
+            ],
+        }
+    else:
+        raise HTTPException(status_code=500, detail=result.error)
+
+
+class CreateFolderRequest(BaseModel):
+    """Request body for folder creation."""
+
+    name: str
+    folder_type: str
+    parent: Optional[str] = None
+
+
+@router.post("/foundry/folders")
+async def create_folder(request: CreateFolderRequest):
+    """
+    Create or get a folder in Foundry.
+
+    Args:
+        name: Folder name
+        folder_type: Document type ("Actor", "Scene", "JournalEntry", "Item")
+        parent: Optional parent folder ID
+
+    Returns:
+        Created/existing folder info
+    """
+    from app.websocket import get_or_create_folder
+
+    result = await get_or_create_folder(
+        request.name,
+        request.folder_type,
+        parent=request.parent,
+        timeout=10.0
+    )
+
+    if result.success:
+        return {
+            "success": True,
+            "folder_id": result.folder_id,
+            "folder_uuid": result.folder_uuid,
+            "name": result.name
+        }
+    else:
+        raise HTTPException(status_code=500, detail=result.error)

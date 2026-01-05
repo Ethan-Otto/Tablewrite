@@ -58,7 +58,8 @@ async def create_scene_from_map(
     foundry_client: Optional[FoundryClient] = None,
     skip_wall_detection: bool = False,
     skip_grid_detection: bool = False,
-    grid_size_override: Optional[int] = None
+    grid_size_override: Optional[int] = None,
+    folder: Optional[str] = None
 ) -> SceneCreationResult:
     """
     Create a FoundryVTT scene from a battle map image.
@@ -218,7 +219,8 @@ async def create_scene_from_map(
         width=image_dimensions['width'],
         height=image_dimensions['height'],
         grid_size=grid_size,
-        walls=walls if walls else None
+        walls=walls if walls else None,
+        folder=folder
     )
 
     if not scene_result.get('success'):
@@ -252,7 +254,8 @@ def create_scene_from_map_sync(
     foundry_client: Optional[FoundryClient] = None,
     skip_wall_detection: bool = False,
     skip_grid_detection: bool = False,
-    grid_size_override: Optional[int] = None
+    grid_size_override: Optional[int] = None,
+    folder: Optional[str] = None
 ) -> SceneCreationResult:
     """
     Synchronous wrapper for create_scene_from_map.
@@ -266,5 +269,6 @@ def create_scene_from_map_sync(
         foundry_client=foundry_client,
         skip_wall_detection=skip_wall_detection,
         skip_grid_detection=skip_grid_detection,
-        grid_size_override=grid_size_override
+        grid_size_override=grid_size_override,
+        folder=folder
     ))
