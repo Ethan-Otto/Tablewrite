@@ -7,7 +7,7 @@ import tempfile
 import shutil
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from actors.orchestrate import (
+from actor_pipeline.orchestrate import (
     _create_output_directory,
     _save_intermediate_file,
     create_actor_from_description,
@@ -15,7 +15,7 @@ from actors.orchestrate import (
     create_actors_batch,
     create_actors_batch_sync
 )
-from actors.models import StatBlock, ActorCreationResult
+from actor_pipeline.models import StatBlock, ActorCreationResult
 from foundry_converters.actors.models import ParsedActorData
 
 
@@ -134,12 +134,12 @@ class TestCreateActorPipeline:
         """Test that pipeline calls all 5 steps in order."""
 
         # Mock all the async functions
-        with patch('actors.orchestrate.generate_actor_description', new_callable=AsyncMock) as mock_gen, \
-             patch('actors.orchestrate.parse_raw_text_to_statblock', new_callable=AsyncMock) as mock_parse_sb, \
-             patch('actors.orchestrate.parse_stat_block_parallel', new_callable=AsyncMock) as mock_parse_actor, \
-             patch('actors.orchestrate.convert_to_foundry') as mock_convert, \
-             patch('actors.orchestrate.FoundryClient') as mock_client_class, \
-             patch('actors.orchestrate._create_output_directory') as mock_create_dir:
+        with patch('actor_pipeline.orchestrate.generate_actor_description', new_callable=AsyncMock) as mock_gen, \
+             patch('actor_pipeline.orchestrate.parse_raw_text_to_statblock', new_callable=AsyncMock) as mock_parse_sb, \
+             patch('actor_pipeline.orchestrate.parse_stat_block_parallel', new_callable=AsyncMock) as mock_parse_actor, \
+             patch('actor_pipeline.orchestrate.convert_to_foundry') as mock_convert, \
+             patch('actor_pipeline.orchestrate.FoundryClient') as mock_client_class, \
+             patch('actor_pipeline.orchestrate._create_output_directory') as mock_create_dir:
 
             # Setup mocks
             mock_gen.return_value = "Goblin\nSmall humanoid..."
@@ -172,8 +172,11 @@ class TestCreateActorPipeline:
             mock_create_dir.return_value = tmp_path / "test_output"
             (tmp_path / "test_output").mkdir()
 
-            # Mock SpellCache
+            # Mock SpellCache and IconCache
             mock_spell_cache = MagicMock()
+            mock_icon_cache = MagicMock()
+            mock_icon_cache.loaded = True
+            mock_icon_cache.get_icon_path.return_value = "icons/default.webp"
 
             # Call the function
             result = await create_actor_from_description(
@@ -181,6 +184,7 @@ class TestCreateActorPipeline:
                 challenge_rating=0.25,
                 output_dir_base=str(tmp_path),
                 spell_cache=mock_spell_cache,
+                icon_cache=mock_icon_cache,
                 foundry_client=mock_client
             )
 
@@ -204,7 +208,7 @@ class TestSyncWrapper:
         """Test that sync wrapper properly calls the async function."""
 
         # Mock asyncio.run to capture the call
-        with patch('actors.orchestrate.asyncio.run') as mock_run:
+        with patch('actor_pipeline.orchestrate.asyncio.run') as mock_run:
             mock_result = MagicMock()
             mock_run.return_value = mock_result
 
@@ -241,10 +245,10 @@ class TestBatchCreation:
         """Test that batch creates one task per description."""
         descriptions = ["Goblin 1", "Goblin 2", "Goblin 3"]
 
-        with patch('actors.orchestrate.create_actor_from_description', new_callable=AsyncMock) as mock_create, \
-             patch('actors.orchestrate.asyncio.gather', new_callable=AsyncMock) as mock_gather, \
-             patch('actors.orchestrate.SpellCache') as mock_cache_class, \
-             patch('actors.orchestrate.FoundryClient') as mock_client_class:
+        with patch('actor_pipeline.orchestrate.create_actor_from_description', new_callable=AsyncMock) as mock_create, \
+             patch('actor_pipeline.orchestrate.asyncio.gather', new_callable=AsyncMock) as mock_gather, \
+             patch('actor_pipeline.orchestrate.SpellCache') as mock_cache_class, \
+             patch('actor_pipeline.orchestrate.FoundryClient') as mock_client_class:
 
             mock_cache = MagicMock()
             mock_cache_class.return_value = mock_cache
@@ -273,9 +277,9 @@ class TestBatchCreation:
         """Test that individual failures are captured as exceptions."""
         descriptions = ["Good", "Bad", "Ugly"]
 
-        with patch('actors.orchestrate.create_actor_from_description', new_callable=AsyncMock) as mock_create, \
-             patch('actors.orchestrate.SpellCache') as mock_cache_class, \
-             patch('actors.orchestrate.FoundryClient') as mock_client_class:
+        with patch('actor_pipeline.orchestrate.create_actor_from_description', new_callable=AsyncMock) as mock_create, \
+             patch('actor_pipeline.orchestrate.SpellCache') as mock_cache_class, \
+             patch('actor_pipeline.orchestrate.FoundryClient') as mock_client_class:
 
             # Setup mocks
             mock_cache = MagicMock()
@@ -292,7 +296,7 @@ class TestBatchCreation:
             mock_create.side_effect = [mock_result1, mock_error, mock_result3]
 
             # Manually simulate asyncio.gather behavior with exceptions
-            with patch('actors.orchestrate.asyncio.gather', new_callable=AsyncMock) as mock_gather:
+            with patch('actor_pipeline.orchestrate.asyncio.gather', new_callable=AsyncMock) as mock_gather:
                 mock_gather.return_value = [mock_result1, mock_error, mock_result3]
 
                 results = await create_actors_batch(
@@ -313,8 +317,8 @@ class TestBatchCreation:
         mock_cache = MagicMock()
         mock_client = MagicMock()
 
-        with patch('actors.orchestrate.create_actor_from_description', new_callable=AsyncMock) as mock_create, \
-             patch('actors.orchestrate.asyncio.gather', new_callable=AsyncMock) as mock_gather:
+        with patch('actor_pipeline.orchestrate.create_actor_from_description', new_callable=AsyncMock) as mock_create, \
+             patch('actor_pipeline.orchestrate.asyncio.gather', new_callable=AsyncMock) as mock_gather:
 
             mock_gather.return_value = [MagicMock(), MagicMock()]
 
@@ -338,10 +342,10 @@ class TestBatchCreation:
         """Test that batch creates resources if not provided."""
         descriptions = ["Goblin"]
 
-        with patch('actors.orchestrate.create_actor_from_description', new_callable=AsyncMock) as mock_create, \
-             patch('actors.orchestrate.asyncio.gather', new_callable=AsyncMock) as mock_gather, \
-             patch('actors.orchestrate.SpellCache') as mock_cache_class, \
-             patch('actors.orchestrate.FoundryClient') as mock_client_class:
+        with patch('actor_pipeline.orchestrate.create_actor_from_description', new_callable=AsyncMock) as mock_create, \
+             patch('actor_pipeline.orchestrate.asyncio.gather', new_callable=AsyncMock) as mock_gather, \
+             patch('actor_pipeline.orchestrate.SpellCache') as mock_cache_class, \
+             patch('actor_pipeline.orchestrate.FoundryClient') as mock_client_class:
 
             mock_cache = MagicMock()
             mock_cache_class.return_value = mock_cache
@@ -368,10 +372,10 @@ class TestBatchCreation:
         descriptions = ["Goblin", "Dragon"]
         crs = [0.25, 10.0]
 
-        with patch('actors.orchestrate.create_actor_from_description', new_callable=AsyncMock) as mock_create, \
-             patch('actors.orchestrate.asyncio.gather', new_callable=AsyncMock) as mock_gather, \
-             patch('actors.orchestrate.SpellCache') as mock_cache_class, \
-             patch('actors.orchestrate.FoundryClient') as mock_client_class:
+        with patch('actor_pipeline.orchestrate.create_actor_from_description', new_callable=AsyncMock) as mock_create, \
+             patch('actor_pipeline.orchestrate.asyncio.gather', new_callable=AsyncMock) as mock_gather, \
+             patch('actor_pipeline.orchestrate.SpellCache') as mock_cache_class, \
+             patch('actor_pipeline.orchestrate.FoundryClient') as mock_client_class:
 
             mock_cache = MagicMock()
             mock_cache_class.return_value = mock_cache
@@ -400,7 +404,7 @@ class TestBatchCreation:
         """Test synchronous batch wrapper."""
         descriptions = ["Goblin"]
 
-        with patch('actors.orchestrate.asyncio.run') as mock_run:
+        with patch('actor_pipeline.orchestrate.asyncio.run') as mock_run:
             mock_result = [MagicMock()]
             mock_run.return_value = mock_result
 

@@ -4,7 +4,7 @@ import os
 import pytest
 from pathlib import Path
 from dotenv import load_dotenv
-from src.scene_extraction import (
+from scene_extraction import (
     extract_chapter_context,
     identify_scene_locations,
     generate_scene_image,

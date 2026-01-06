@@ -2,8 +2,8 @@
 
 import pytest
 from unittest.mock import patch, MagicMock
-from src.scene_extraction.identify_scenes import identify_scene_locations
-from src.scene_extraction.models import Scene, ChapterContext
+from scene_extraction.identify_scenes import identify_scene_locations
+from scene_extraction.models import Scene, ChapterContext
 
 
 @pytest.fixture

@@ -1,7 +1,7 @@
 """Tests for Gemini Imagen segmentation."""
 import pytest
 import fitz
-from src.pdf_processing.image_asset_processing.segment_maps import (
+from pdf_processing.image_asset_processing.segment_maps import (
     segment_with_imagen,
     SegmentationError
 )

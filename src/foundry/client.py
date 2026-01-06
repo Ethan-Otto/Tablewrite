@@ -9,7 +9,6 @@ from .journals import JournalManager
 from .items.manager import ItemManager
 from .actors import ActorManager
 from .scenes import SceneManager
-from .icon_cache import IconCache
 from .files import FileManager
 
 logger = logging.getLogger(__name__)
@@ -41,6 +40,8 @@ class FoundryClient:
         self.actors = ActorManager(backend_url=self.backend_url)
         self.scenes = SceneManager(backend_url=self.backend_url)
         self.files = FileManager(backend_url=self.backend_url)
+        # Lazy import to avoid circular dependency with caches module
+        from caches import IconCache
         self.icons = IconCache()
 
         logger.info(f"Initialized FoundryClient with backend at {self.backend_url}")

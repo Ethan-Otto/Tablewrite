@@ -4,10 +4,9 @@ import os
 import pytest
 from pathlib import Path
 from dotenv import load_dotenv
+from config import PROJECT_ROOT
 
-
-# Project root and test fixture paths
-PROJECT_ROOT = Path(__file__).parent.parent.parent
+# Test fixture paths
 TEST_MAP_PATH = PROJECT_ROOT / "data" / "image_examples" / "castle.png"
 WEBP_MAP_PATH = PROJECT_ROOT / "data" / "image_examples" / "Cragmaw.webp"
 
@@ -95,7 +94,7 @@ async def test_detect_gridlines_real_api_with_webp(gemini_api_key):
     from scenes.detect_gridlines import detect_gridlines
     from scenes.models import GridDetectionResult
 
-    # Ensure test fixture exists
+    # Ensure test fixture exists - FAIL (not skip) if missing per CLAUDE.md
     assert WEBP_MAP_PATH.exists(), (
         f"Test fixture not found: {WEBP_MAP_PATH}. "
         "Expected Cragmaw.webp in data/image_examples/"

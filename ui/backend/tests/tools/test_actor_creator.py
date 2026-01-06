@@ -26,8 +26,7 @@ class TestActorCreatorPush:
         This test mocks the orchestration layer to verify data flow.
         """
         from app.tools.actor_creator import ActorCreatorTool, load_caches
-        from foundry.actors.spell_cache import SpellCache
-        from foundry.icon_cache import IconCache
+        from caches import SpellCache, IconCache
 
         # Mock the result from create_actor_from_description
         mock_result = MagicMock()

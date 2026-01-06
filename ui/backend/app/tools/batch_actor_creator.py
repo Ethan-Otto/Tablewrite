@@ -6,7 +6,6 @@ import logging
 from pathlib import Path
 from typing import List, Dict, Any
 
-from dotenv import load_dotenv
 from .base import BaseTool, ToolSchema, ToolResponse
 from .actor_creator import (
     load_caches,
@@ -15,18 +14,16 @@ from .actor_creator import (
     _image_generation_enabled,
 )
 
-# Add project paths for module imports
-project_root = Path(__file__).parent.parent.parent.parent.parent
-sys.path.insert(0, str(project_root))
-sys.path.insert(0, str(project_root / "src"))
+# Add src to path for imports (backend tools run from ui/backend)
+_src_dir = Path(__file__).parent.parent.parent.parent.parent / "src"
+if str(_src_dir) not in sys.path:
+    sys.path.insert(0, str(_src_dir))
 
-# Load environment variables from project root
-env_path = project_root / ".env"
-if env_path.exists():
-    load_dotenv(env_path)
+# Import config module for automatic .env loading (side effect)
+import config  # noqa: E402, F401
 
 from util.gemini import GeminiAPI  # noqa: E402
-from actors.orchestrate import create_actor_from_description  # noqa: E402
+from actor_pipeline.orchestrate import create_actor_from_description  # noqa: E402
 from app.websocket import push_actor, get_or_create_folder  # noqa: E402
 
 logger = logging.getLogger(__name__)

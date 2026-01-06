@@ -32,7 +32,7 @@ class IconCache:
 
     def __init__(self):
         """Initialize empty icon cache."""
-        self._icons_by_category: Dict[str, List[str]] = {}  # Full paths: "weapons/swords" → [icons...]
+        self._icons_by_category: Dict[str, List[str]] = {}  # Full paths: "weapons/swords" -> [icons...]
         self._all_icons: List[str] = []
         self._loaded = False
 
@@ -156,8 +156,8 @@ class IconCache:
         Mirrors FoundryVTT's existing structure by preserving all category levels.
 
         Example: "icons/weapons/swords/sword-steel.webp" creates:
-            - "weapons" → [path]
-            - "weapons/swords" → [path]
+            - "weapons" -> [path]
+            - "weapons/swords" -> [path]
 
         This allows matching at different specificity levels.
         """
@@ -235,7 +235,7 @@ class IconCache:
                 best_match = icon_path
 
         if best_match:
-            logger.debug(f"Matched '{search_term}' → '{best_match}' (score: {best_score:.2f})")
+            logger.debug(f"Matched '{search_term}' -> '{best_match}' (score: {best_score:.2f})")
 
         return best_match
 
@@ -289,7 +289,7 @@ class IconCache:
         display_paths = []
         for path in icon_paths:
             # Remove "icons/" prefix and file extension, keep category folders
-            # e.g., "icons/magic/lightning/bolt-blue.webp" → "magic/lightning/bolt-blue"
+            # e.g., "icons/magic/lightning/bolt-blue.webp" -> "magic/lightning/bolt-blue"
             clean_path = path.replace('icons/', '', 1).rsplit('.', 1)[0]
             display_paths.append(clean_path)
 
@@ -399,7 +399,7 @@ Your response (number only):"""
 
             # Check if ALL search words are in icon words (perfect match)
             if search_words <= icon_words:  # search_words is subset of icon_words
-                logger.info(f"Perfect word match for '{search_term}' → '{icon_path}'")
+                logger.info(f"Perfect word match for '{search_term}' -> '{icon_path}'")
                 return icon_path
 
         # No perfect match found, use Gemini

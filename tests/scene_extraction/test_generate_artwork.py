@@ -3,8 +3,8 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from pathlib import Path
-from src.scene_extraction.generate_artwork import generate_scene_image, save_scene_image
-from src.scene_extraction.models import Scene, ChapterContext
+from scene_extraction.generate_artwork import generate_scene_image, save_scene_image
+from scene_extraction.models import Scene, ChapterContext
 
 
 @pytest.fixture
@@ -34,7 +34,7 @@ class TestGenerateSceneImage:
     @pytest.mark.integration
     def test_generate_image_calls_gemini_imagen(self, sample_scene, sample_context):
         """Test that generate_scene_image calls generate_images_parallel."""
-        with patch('src.scene_extraction.generate_artwork.generate_images_parallel') as mock_generate:
+        with patch('scene_extraction.generate_artwork.generate_images_parallel') as mock_generate:
             # Mock successful generation
             mock_generate.return_value = [b"fake_image_data"]
 
@@ -45,8 +45,8 @@ class TestGenerateSceneImage:
             assert mock_generate.called
             call_args = mock_generate.call_args
 
-            # Verify model parameter is imagen-4.0-fast-generate-001
-            assert call_args.kwargs['model'] == 'imagen-4.0-fast-generate-001'
+            # Verify model parameter is gemini-2.5-flash-image
+            assert call_args.kwargs['model'] == 'gemini-2.5-flash-image'
 
             # Verify prompts were passed
             prompts = call_args.kwargs.get('prompts', call_args[0] if call_args[0] else [])
@@ -61,7 +61,7 @@ class TestGenerateSceneImage:
     def test_generate_image_constructs_prompt_with_context(self, sample_scene, sample_context):
         """Test that prompt includes scene description and chapter context."""
         # Mock generate_images_parallel from our utility
-        with patch('src.scene_extraction.generate_artwork.generate_images_parallel') as mock_generate:
+        with patch('scene_extraction.generate_artwork.generate_images_parallel') as mock_generate:
             # Mock successful generation
             mock_generate.return_value = [b"fake_image_data"]
 

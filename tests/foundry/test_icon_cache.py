@@ -1,8 +1,8 @@
-"""Test suite for FoundryVTT icon cache."""
+"""Test suite for caches.icon_cache."""
 
 import pytest
 from unittest.mock import patch, MagicMock
-from foundry.icon_cache import IconCache
+from caches import IconCache
 
 
 class TestIconCache:

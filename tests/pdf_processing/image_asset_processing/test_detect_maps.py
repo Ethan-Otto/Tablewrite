@@ -1,8 +1,8 @@
 """Tests for Gemini Vision map detection."""
 import pytest
 import asyncio
-from src.pdf_processing.image_asset_processing.detect_maps import detect_maps_async
-from src.pdf_processing.image_asset_processing.models import MapDetectionResult
+from pdf_processing.image_asset_processing.detect_maps import detect_maps_async
+from pdf_processing.image_asset_processing.models import MapDetectionResult
 
 
 @pytest.mark.map

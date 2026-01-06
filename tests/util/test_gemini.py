@@ -6,12 +6,8 @@ Basic tests for Gemini API wrapper functionality.
 
 import pytest
 from pathlib import Path
-import sys
 import os
 import tempfile
-
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from util.gemini import GeminiAPI, GeminiFileContext, configure_gemini
 

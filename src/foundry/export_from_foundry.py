@@ -8,24 +8,17 @@ Supports exporting to:
 - Individual HTML: Separate HTML file per page
 """
 
-import os
-import sys
 import json
 import argparse
 from pathlib import Path
 from datetime import datetime
 from dotenv import load_dotenv
 
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+from config import PROJECT_ROOT
 from foundry.client import FoundryClient
 from logging_config import setup_logging
 
 logger = setup_logging(__name__)
-
-# Project root is two levels up from this script (foundry -> src -> root)
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def export_to_json(journal_data: dict, output_path: str) -> None:

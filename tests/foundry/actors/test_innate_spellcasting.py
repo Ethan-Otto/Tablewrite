@@ -140,7 +140,7 @@ class TestInnateSpellcastingConversion:
     @pytest.mark.asyncio
     async def test_looks_up_spell_uuids_from_cache(self, require_foundry):
         """Should use SpellCache to get proper spell UUIDs."""
-        from foundry.actors.spell_cache import SpellCache
+        from caches import SpellCache
 
         spell_cache = SpellCache()
         spell_cache.load()

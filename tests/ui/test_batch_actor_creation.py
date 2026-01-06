@@ -54,6 +54,7 @@ def validate_actor_content(actor: dict) -> list[str]:
     return errors
 
 
+@pytest.mark.playwright
 @pytest.mark.integration
 @pytest.mark.slow
 def test_batch_actor_creation_e2e():
@@ -123,6 +124,7 @@ def test_batch_actor_creation_e2e():
                 print(f"Warning: Failed to delete {uuid}: {e}")
 
 
+@pytest.mark.playwright
 @pytest.mark.integration
 @pytest.mark.slow
 def test_batch_actor_duplicates_have_unique_names():

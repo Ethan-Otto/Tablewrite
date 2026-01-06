@@ -1,7 +1,7 @@
 """Tests for scene extraction data models."""
 
 import pytest
-from src.scene_extraction.models import Scene, ChapterContext
+from scene_extraction.models import Scene, ChapterContext
 
 
 class TestSceneModel:

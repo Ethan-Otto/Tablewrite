@@ -2,8 +2,8 @@
 
 import pytest
 from pathlib import Path
-from actors.extract_npcs import identify_npcs_with_gemini
-from actors.models import NPC
+from actor_pipeline.extract_npcs import identify_npcs_with_gemini
+from actor_pipeline.models import NPC
 
 
 @pytest.mark.integration
@@ -60,7 +60,7 @@ class TestNPCExtractionUnit:
 
     def test_function_exists(self):
         """Verify function exists with correct signature."""
-        from actors.extract_npcs import identify_npcs_with_gemini
+        from actor_pipeline.extract_npcs import identify_npcs_with_gemini
         import inspect
 
         sig = inspect.signature(identify_npcs_with_gemini)

@@ -5,10 +5,15 @@ Shared pytest fixtures for D&D Module Converter tests.
 import os
 import shutil
 import sys
+import time
+from datetime import datetime
 import pytest
 from pathlib import Path
 
 from tests.foundry_init import ensure_foundry_ready as _ensure_foundry_ready
+
+# Store session timing information
+_session_start_time = None
 
 
 def pytest_addoption(parser):
@@ -34,14 +39,28 @@ def pytest_configure(config):
     if config.getoption("--full"):
         # Only clear default marker if no explicit -m flag was provided
         # Check if markexpr is the default from pytest.ini
-        if config.option.markexpr == "(not integration and not slow) or smoke":
+        if config.option.markexpr == "smoke":
             config.option.markexpr = ""  # Run all tests
 
-    # In CI, exclude integration, slow, and requires_foundry tests
-    if is_ci and config.option.markexpr == "(not integration and not slow) or smoke":
-        # Override to exclude Foundry-dependent tests in CI
-        config.option.markexpr = "not integration and not slow and not requires_foundry"
-        print(f"\n[CI] Running with marker expression: {config.option.markexpr}")
+    # In CI, run non-integration tests (most smoke tests require Foundry)
+    if is_ci:
+        config.option.markexpr = "not integration and not slow"
+        print(f"\n[CI] Running non-integration tests")
+
+
+def pytest_sessionstart(session):
+    """Log test session start time."""
+    global _session_start_time
+    _session_start_time = time.time()
+    start_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Get worker info if running with xdist
+    worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
+
+    if worker_id == "main":
+        print(f"\n{'='*70}")
+        print(f"TEST SESSION START: {start_str}")
+        print(f"{'='*70}")
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
@@ -53,34 +72,86 @@ def pytest_runtest_makereport(item, call):
 
 
 def pytest_sessionfinish(session, exitstatus):
-    """Auto-escalate to full suite if smoke tests fail"""
-    # Check if auto-escalation is enabled
+    """Log session end time and auto-escalate to full suite if smoke tests fail."""
+    global _session_start_time
+
+    # Log session end time (only on main process)
+    worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
+    if worker_id == "main" and _session_start_time:
+        end_time = time.time()
+        duration = end_time - _session_start_time
+        end_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # Format duration nicely
+        minutes, seconds = divmod(int(duration), 60)
+        if minutes > 0:
+            duration_str = f"{minutes}m {seconds}s"
+        else:
+            duration_str = f"{duration:.1f}s"
+
+        print(f"\n{'='*70}")
+        print(f"TEST SESSION END: {end_str}")
+        print(f"TOTAL DURATION: {duration_str}")
+        print(f"{'='*70}")
+
+    # Check if auto-escalation is enabled (default: enabled, but shows errors first)
     auto_escalate = os.getenv("AUTO_ESCALATE", "true").lower() == "true"
 
     # Check if we're already running full suite or using default markers
     is_full_run = session.config.getoption("--full")
-    is_default_markers = session.config.option.markexpr == "not integration and not slow"
+    is_default_markers = session.config.option.markexpr == "smoke"
 
     # Only escalate if a SMOKE test specifically failed
-    if not is_full_run and is_default_markers and exitstatus != 0 and auto_escalate:
-        # Check if any failed tests have the "smoke" marker
-        smoke_test_failed = False
+    if not is_full_run and is_default_markers and exitstatus != 0:
+        # Collect failed smoke tests with their error details
+        failed_smoke_tests = []
         for item in session.items:
             if item.get_closest_marker("smoke"):
-                # Check if test failed (check setup, call, or teardown)
-                if (hasattr(item, "rep_setup") and item.rep_setup.failed) or \
-                   (hasattr(item, "rep_call") and item.rep_call.failed) or \
-                   (hasattr(item, "rep_teardown") and item.rep_teardown.failed):
-                    smoke_test_failed = True
-                    break
+                # Check if test failed and get the report
+                report = None
+                if hasattr(item, "rep_call") and item.rep_call.failed:
+                    report = item.rep_call
+                elif hasattr(item, "rep_setup") and item.rep_setup.failed:
+                    report = item.rep_setup
+                elif hasattr(item, "rep_teardown") and item.rep_teardown.failed:
+                    report = item.rep_teardown
 
-        if smoke_test_failed:
+                if report:
+                    failed_smoke_tests.append((item.nodeid, report))
+
+        if failed_smoke_tests:
+            # Print prominent failure summary with actual errors
             print("\n" + "="*70)
-            print("⚠️  Smoke test failed. Running full test suite (including slow/integration)...")
-            print("="*70 + "\n")
+            print("SMOKE TEST FAILURE - ERRORS SHOWN BELOW")
+            print("="*70)
 
-            # Re-run pytest with full suite
-            sys.exit(pytest.main(["--full"] + sys.argv[1:]))
+            for nodeid, report in failed_smoke_tests:
+                print(f"\n{'─'*70}")
+                print(f"FAILED: {nodeid}")
+                print(f"{'─'*70}")
+                # Show the actual error/traceback
+                if hasattr(report, 'longreprtext'):
+                    # Limit to last 30 lines to keep it readable
+                    lines = report.longreprtext.split('\n')
+                    if len(lines) > 30:
+                        print("... (truncated, showing last 30 lines)")
+                        print('\n'.join(lines[-30:]))
+                    else:
+                        print(report.longreprtext)
+
+            print("\n" + "="*70)
+
+            if auto_escalate:
+                print("AUTO_ESCALATE=true: Running full test suite in 3 seconds...")
+                print("(Set AUTO_ESCALATE=false to stop here)")
+                print("="*70 + "\n")
+                time.sleep(3)  # Give user time to see the error
+                # Re-run pytest with full suite
+                sys.exit(pytest.main(["--full"] + sys.argv[1:]))
+            else:
+                print("To run full test suite: pytest --full")
+                print("To enable auto-escalation: AUTO_ESCALATE=true pytest")
+                print("="*70)
 
 
 # Store the initialization result at module level to avoid re-running

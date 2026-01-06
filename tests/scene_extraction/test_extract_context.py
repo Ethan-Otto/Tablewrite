@@ -2,8 +2,8 @@
 
 import pytest
 from unittest.mock import patch, MagicMock
-from src.scene_extraction.extract_context import extract_chapter_context
-from src.scene_extraction.models import ChapterContext
+from scene_extraction.extract_context import extract_chapter_context
+from scene_extraction.models import ChapterContext
 
 
 @pytest.fixture

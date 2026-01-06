@@ -9,9 +9,13 @@ from .base import BaseTool, ToolSchema, ToolResponse
 from .image_styles import SCENE_STYLE
 from ..config import settings
 
-# Add project src to path for GeminiAPI
-project_root = Path(__file__).parent.parent.parent.parent.parent
-sys.path.insert(0, str(project_root / "src"))
+# Add src to path for imports (backend tools run from ui/backend)
+_src_dir = Path(__file__).parent.parent.parent.parent.parent / "src"
+if str(_src_dir) not in sys.path:
+    sys.path.insert(0, str(_src_dir))
+
+# Import config module for automatic .env loading
+from config import PROJECT_ROOT  # noqa: E402
 from util.gemini import GeminiAPI  # noqa: E402
 
 

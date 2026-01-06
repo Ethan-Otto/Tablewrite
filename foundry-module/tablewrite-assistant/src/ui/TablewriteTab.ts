@@ -118,9 +118,9 @@ export class TablewriteTab {
         tabBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
 
-        // Show/hide tab content
+        // Show/hide tab content (use 'flex' not 'block' to preserve flexbox layout)
         this.container.querySelectorAll('.tab-content').forEach(c => {
-          (c as HTMLElement).style.display = c.id === `${tabId}-tab` ? 'block' : 'none';
+          (c as HTMLElement).style.display = c.id === `${tabId}-tab` ? 'flex' : 'none';
         });
       });
     });

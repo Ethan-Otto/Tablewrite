@@ -4,7 +4,7 @@ import pytest
 from datetime import datetime
 from pathlib import Path
 from pydantic import ValidationError
-from src.actors.models import StatBlock, NPC, ActorCreationResult
+from actor_pipeline.models import StatBlock, NPC, ActorCreationResult
 
 
 @pytest.mark.unit

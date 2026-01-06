@@ -3,7 +3,7 @@ import pytest
 import numpy as np
 from PIL import Image
 import io
-from src.pdf_processing.image_asset_processing.preprocess_image import remove_existing_red_pixels
+from pdf_processing.image_asset_processing.preprocess_image import remove_existing_red_pixels
 
 
 @pytest.mark.map

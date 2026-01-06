@@ -4,7 +4,7 @@ import pytest
 import asyncio
 from unittest.mock import Mock, AsyncMock, patch
 
-from actors.models import StatBlock
+from actor_pipeline.models import StatBlock
 from foundry_converters.actors.models import (
     ParsedActorData, Attack, Trait, Multiattack,
     InnateSpellcasting, InnateSpell, DamageFormula, AttackSave
@@ -16,7 +16,7 @@ from foundry_converters.actors.parser import (
     parse_stat_block_parallel,
     parse_multiple_stat_blocks
 )
-from foundry.actors.spell_cache import SpellCache
+from caches import SpellCache
 
 
 # Test fixtures

@@ -2,7 +2,7 @@
 
 import pytest
 from unittest.mock import Mock, patch
-from src.foundry.journals import JournalManager
+from foundry.journals import JournalManager
 
 
 class TestJournalManagerInit:

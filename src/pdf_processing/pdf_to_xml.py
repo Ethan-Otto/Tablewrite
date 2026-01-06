@@ -12,15 +12,12 @@ from PIL import Image
 import pytesseract
 import json
 from collections import Counter
-import sys
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from config import PROJECT_ROOT
 from logging_config import setup_logging, get_run_logger
 from util.gemini import GeminiAPI, GeminiFileContext
 from pdf_processing.valid_xml_tags import APPROVED_XML_TAGS, get_approved_tags_text
 from models.xml_document import XMLDocument
-
-# Project root is three levels up from the script's directory (pdf_processing -> src -> root)
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Initialize logger (will be reconfigured in main() with run directory)
 logger = setup_logging(__name__)

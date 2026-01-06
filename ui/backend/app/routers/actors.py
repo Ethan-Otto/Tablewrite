@@ -276,9 +276,8 @@ async def create_actor_endpoint(request: CreateActorRequest):
     if src_path not in sys.path:
         sys.path.insert(0, src_path)
 
-    from actors.orchestrate import create_actor_from_description
-    from foundry.actors.spell_cache import SpellCache
-    from foundry.icon_cache import IconCache
+    from actor_pipeline.orchestrate import create_actor_from_description
+    from caches import SpellCache, IconCache
 
     try:
         # Pre-fetch spells and icons via direct WebSocket (avoids self-deadlock)

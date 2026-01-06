@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
-from actors.process_actors import process_actors_for_run
+from actor_pipeline.process_actors import process_actors_for_run
 
 
 @pytest.mark.unit
@@ -18,11 +18,11 @@ class TestActorProcessingWorkflow:
         xml_file = f"{run_dir}/documents/chapter_01.xml"
 
         # Mock dependencies
-        with patch('actors.process_actors.extract_and_parse_stat_blocks') as mock_extract_sb, \
-             patch('actors.process_actors.identify_npcs_with_gemini') as mock_extract_npcs, \
-             patch('actors.process_actors.FoundryClient') as mock_client_class, \
-             patch('actors.process_actors.Path') as mock_path_class, \
-             patch('actors.process_actors.GeminiAPI') as mock_gemini_api, \
+        with patch('actor_pipeline.process_actors.extract_and_parse_stat_blocks') as mock_extract_sb, \
+             patch('actor_pipeline.process_actors.identify_npcs_with_gemini') as mock_extract_npcs, \
+             patch('actor_pipeline.process_actors.FoundryClient') as mock_client_class, \
+             patch('actor_pipeline.process_actors.Path') as mock_path_class, \
+             patch('actor_pipeline.process_actors.GeminiAPI') as mock_gemini_api, \
              patch('builtins.open', create=True) as mock_open:
 
             # Setup mocks for Path
@@ -40,7 +40,7 @@ class TestActorProcessingWorkflow:
             mock_open.return_value = mock_file
 
             # Mock stat blocks
-            from actors.models import StatBlock
+            from actor_pipeline.models import StatBlock
             mock_stat_block = StatBlock(
                 name="Goblin",
                 raw_text="Goblin text",
@@ -51,7 +51,7 @@ class TestActorProcessingWorkflow:
             mock_extract_sb.return_value = [mock_stat_block]
 
             # Mock NPCs
-            from actors.models import NPC
+            from actor_pipeline.models import NPC
             mock_npc = NPC(
                 name="Klarg",
                 creature_stat_block_name="Goblin Boss",
@@ -89,11 +89,11 @@ class TestActorProcessingWorkflow:
         run_dir = "/tmp/test_run"
         xml_file = f"{run_dir}/documents/chapter_01.xml"
 
-        with patch('actors.process_actors.extract_and_parse_stat_blocks') as mock_extract_sb, \
-             patch('actors.process_actors.identify_npcs_with_gemini') as mock_extract_npcs, \
-             patch('actors.process_actors.FoundryClient') as mock_client_class, \
-             patch('actors.process_actors.Path') as mock_path_class, \
-             patch('actors.process_actors.GeminiAPI') as mock_gemini_api, \
+        with patch('actor_pipeline.process_actors.extract_and_parse_stat_blocks') as mock_extract_sb, \
+             patch('actor_pipeline.process_actors.identify_npcs_with_gemini') as mock_extract_npcs, \
+             patch('actor_pipeline.process_actors.FoundryClient') as mock_client_class, \
+             patch('actor_pipeline.process_actors.Path') as mock_path_class, \
+             patch('actor_pipeline.process_actors.GeminiAPI') as mock_gemini_api, \
              patch('builtins.open', create=True) as mock_open:
 
             # Setup mocks for Path
@@ -110,7 +110,7 @@ class TestActorProcessingWorkflow:
             mock_file.__enter__.return_value.read.return_value = "<xml>test</xml>"
             mock_open.return_value = mock_file
 
-            from actors.models import StatBlock, NPC
+            from actor_pipeline.models import StatBlock, NPC
             mock_stat_block = StatBlock(
                 name="Goblin",
                 raw_text="text",

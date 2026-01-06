@@ -1,6 +1,5 @@
 """Complete wall detection pipeline: image → grayscale → AI redline → polygonize → overlay."""
 
-import sys
 import subprocess
 import logging
 import json
@@ -11,9 +10,6 @@ from datetime import datetime
 from PIL import Image
 import cv2
 import numpy as np
-
-# Add parent to path for util import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from util.parallel_image_gen import generate_images_parallel
 

@@ -13,24 +13,18 @@ import argparse
 import asyncio
 import logging
 import os
-import sys
 from pathlib import Path
 from datetime import datetime
 import fitz
 
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from config import PROJECT_ROOT
 from logging_config import setup_logging
-
-from src.pdf_processing.image_asset_processing.detect_maps import detect_maps_async
-from src.pdf_processing.image_asset_processing.extract_maps import extract_image_with_pymupdf_async
-from src.pdf_processing.image_asset_processing.segment_maps import segment_with_imagen
-from src.pdf_processing.image_asset_processing.models import MapMetadata
+from pdf_processing.image_asset_processing.detect_maps import detect_maps_async
+from pdf_processing.image_asset_processing.extract_maps import extract_image_with_pymupdf_async
+from pdf_processing.image_asset_processing.segment_maps import segment_with_imagen
+from pdf_processing.image_asset_processing.models import MapMetadata
 
 logger = setup_logging(__name__)
-
-# Project root (3 levels up: image_asset_processing/ -> pdf_processing/ -> src/ -> root)
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 
 def _check_if_flattened(pdf_path: str, page_num: int) -> tuple[bool, str]:

@@ -490,13 +490,12 @@ class TestSceneManagerIntegration:
         # Use timestamp for unique name
         scene_name = f"Test Scene - Integration {int(time.time())}"
 
-        # 1. Create the scene
+        # 1. Create the scene (no folder - created in root)
         create_result = manager.create_scene(
             name=scene_name,
             width=1000,
             height=800,
             grid_size=50,
-            folder="tests"
         )
 
         assert create_result["success"] is True, f"Create scene failed: {create_result.get('error')}"

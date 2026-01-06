@@ -2,7 +2,7 @@
 
 import pytest
 from pathlib import Path
-from actors.parse_stat_blocks import extract_stat_blocks_from_xml_file
+from actor_pipeline.parse_stat_blocks import extract_stat_blocks_from_xml_file
 
 
 @pytest.mark.unit
@@ -51,7 +51,7 @@ class TestExtractAndParseStatBlocks:
 
     def test_full_extraction_pipeline(self, check_api_key):
         """Test complete workflow: XML → raw text → parsed StatBlock."""
-        from actors.extract_stat_blocks import extract_and_parse_stat_blocks
+        from actor_pipeline.extract_stat_blocks import extract_and_parse_stat_blocks
 
         fixture_path = Path(__file__).parent / "fixtures" / "sample_chapter_with_stat_blocks.xml"
 

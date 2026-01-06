@@ -6,23 +6,19 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
-from dotenv import load_dotenv
 from .base import BaseTool, ToolSchema, ToolResponse
 from .image_styles import ACTOR_STYLE
 
-# Add project paths for module imports
-project_root = Path(__file__).parent.parent.parent.parent.parent
-sys.path.insert(0, str(project_root))
-sys.path.insert(0, str(project_root / "src"))
+# Add src to path for imports (backend tools run from ui/backend)
+_src_dir = Path(__file__).parent.parent.parent.parent.parent / "src"
+if str(_src_dir) not in sys.path:
+    sys.path.insert(0, str(_src_dir))
 
-# Load environment variables from project root before imports
-env_path = project_root / ".env"
-if env_path.exists():
-    load_dotenv(env_path)
+# Import config module for automatic .env loading (side effect)
+import config  # noqa: E402, F401
 
-from actors.orchestrate import create_actor_from_description  # noqa: E402
-from foundry.actors.spell_cache import SpellCache  # noqa: E402
-from foundry.icon_cache import IconCache  # noqa: E402
+from actor_pipeline.orchestrate import create_actor_from_description  # noqa: E402
+from caches import SpellCache, IconCache  # noqa: E402
 from app.websocket import push_actor, list_files, list_compendium_items, upload_file, get_or_create_folder  # noqa: E402
 from util.gemini import GeminiAPI  # noqa: E402
 from app.config import settings  # noqa: E402
@@ -343,7 +339,7 @@ class ActorCreatorTool(BaseTool):
         )
 
     async def execute(self, description: str, challenge_rating: float = None) -> ToolResponse:
-        """Execute actor creation using shared logic from actors.orchestrate."""
+        """Execute actor creation using shared logic from actor_pipeline.orchestrate."""
         try:
             # Pre-fetch spells and icons via WebSocket (avoids HTTP self-deadlock)
             # Uses retry logic to wait for WebSocket reconnection after hot reload

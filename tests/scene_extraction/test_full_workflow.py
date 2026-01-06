@@ -3,7 +3,7 @@
 import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-from src.scene_extraction import (
+from scene_extraction import (
     extract_chapter_context,
     identify_scene_locations,
     generate_scene_image,

@@ -10,10 +10,10 @@ These tests use REAL Gemini API calls to verify the complete workflow:
 import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch
-from actors.extract_stat_blocks import extract_and_parse_stat_blocks
-from actors.extract_npcs import identify_npcs_with_gemini
-from actors.process_actors import process_actors_for_run
-from actors.models import StatBlock, NPC
+from actor_pipeline.extract_stat_blocks import extract_and_parse_stat_blocks
+from actor_pipeline.extract_npcs import identify_npcs_with_gemini
+from actor_pipeline.process_actors import process_actors_for_run
+from actor_pipeline.models import StatBlock, NPC
 
 
 @pytest.mark.integration
@@ -21,18 +21,14 @@ from actors.models import StatBlock, NPC
 class TestFullActorExtractionWorkflow:
     """Integration tests for complete actor extraction workflow with real Gemini API."""
 
-    def test_complete_workflow_with_sample_chapter(self, check_api_key):
+    def test_complete_workflow_with_sample_chapter(self, shared_stat_blocks, shared_npcs):
         """
         Test complete workflow: XML → stat blocks → NPCs → actor creation.
 
-        Uses real Gemini API calls for parsing and extraction.
-        Mocks only FoundryVTT API calls.
+        Uses shared fixtures that cache Gemini API results across tests.
         """
-        # Use the sample XML fixture with stat blocks and NPCs
-        fixture_path = Path(__file__).parent / "fixtures" / "sample_chapter_with_npcs.xml"
-
-        # Step 1: Extract and parse stat blocks with real Gemini API
-        stat_blocks = extract_and_parse_stat_blocks(str(fixture_path))
+        stat_blocks = shared_stat_blocks
+        npcs = shared_npcs
 
         # Verify stat blocks were extracted and parsed
         assert len(stat_blocks) >= 2, "Should extract at least 2 stat blocks (Bugbear, Human Fighter)"
@@ -51,12 +47,6 @@ class TestFullActorExtractionWorkflow:
             assert stat_block.challenge_rating >= 0
             assert stat_block.raw_text  # Original text preserved
 
-        # Step 2: Extract NPCs with real Gemini API
-        with open(fixture_path, 'r') as f:
-            xml_content = f.read()
-
-        npcs = identify_npcs_with_gemini(xml_content)
-
         # Verify NPCs were extracted
         assert len(npcs) >= 2, "Should extract at least 2 NPCs (Klarg, Sildar)"
 
@@ -73,7 +63,7 @@ class TestFullActorExtractionWorkflow:
             assert npc.description
             assert npc.plot_relevance
 
-        # Step 3: Verify NPCs are linked to correct stat blocks
+        # Verify NPCs are linked to correct stat blocks
         klarg = next((npc for npc in npcs if npc.name == "Klarg"), None)
         assert klarg is not None
         assert klarg.creature_stat_block_name == "Bugbear", \
@@ -103,7 +93,7 @@ class TestFullActorExtractionWorkflow:
         test_xml.write_text(fixture_path.read_text())
 
         # Mock FoundryVTT API calls
-        with patch('actors.process_actors.FoundryClient') as mock_client_class:
+        with patch('actor_pipeline.process_actors.FoundryClient') as mock_client_class:
             mock_client = Mock()
             mock_client.search_actor.return_value = None  # No existing actors
             mock_client.create_creature_actor.return_value = "Actor.creature123"
@@ -147,7 +137,7 @@ class TestFullActorExtractionWorkflow:
         test_xml.write_text(fixture_path.read_text())
 
         # Mock FoundryVTT with existing actors in compendium
-        with patch('actors.process_actors.FoundryClient') as mock_client_class:
+        with patch('actor_pipeline.process_actors.FoundryClient') as mock_client_class:
             mock_client = Mock()
 
             # Simulate Bugbear exists in compendium, Human Fighter does not
@@ -197,7 +187,7 @@ class TestFullActorExtractionWorkflow:
         test_xml.write_text(xml_content)
 
         # Mock FoundryVTT
-        with patch('actors.process_actors.FoundryClient') as mock_client_class:
+        with patch('actor_pipeline.process_actors.FoundryClient') as mock_client_class:
             mock_client = Mock()
             mock_client.search_actor.return_value = None
             mock_client_class.return_value = mock_client
@@ -235,19 +225,14 @@ class TestFullActorExtractionWorkflow:
                 assert "DEX" in goblin.abilities or "dex" in goblin.abilities, \
                     "Goblin should have DEX ability score"
 
-    def test_npc_extraction_accuracy(self, check_api_key):
+    def test_npc_extraction_accuracy(self, shared_npcs):
         """
         Test Gemini NPC extraction accuracy.
 
         Verifies NPCs are correctly identified and linked to stat blocks.
+        Uses shared fixture to avoid duplicate API calls.
         """
-        fixture_path = Path(__file__).parent / "fixtures" / "sample_chapter_with_npcs.xml"
-
-        with open(fixture_path, 'r') as f:
-            xml_content = f.read()
-
-        # Extract NPCs with real Gemini API
-        npcs = identify_npcs_with_gemini(xml_content)
+        npcs = shared_npcs
 
         assert len(npcs) >= 2, "Should identify multiple NPCs"
 
@@ -304,18 +289,15 @@ class TestEndToEndWithRealPDF:
         import re
         import glob
         from pathlib import Path
+        from config import PROJECT_ROOT
 
-        # Path to monsters PDF directory
-        monsters_pdf_dir = Path("/Users/ethanotto/Documents/Projects/dnd_module_gen/data/pdf_sections/Lost_Mine_of_Phandelver")
+        # Path to monsters PDF directory (use PROJECT_ROOT for portability)
+        monsters_pdf_dir = PROJECT_ROOT / "data" / "pdf_sections" / "Lost_Mine_of_Phandelver"
         monsters_pdf_name = "08_Appendix_B_Monsters.pdf"
         monsters_pdf = monsters_pdf_dir / monsters_pdf_name
 
         if not monsters_pdf.exists():
             pytest.skip(f"Monsters PDF not found: {monsters_pdf}")
-
-        # Add src to path for importing pdf_to_xml
-        project_root = Path(__file__).parent.parent.parent
-        sys.path.insert(0, str(project_root / "src"))
 
         # Import the PDF processing main function
         from pdf_processing.pdf_to_xml import main, configure_gemini

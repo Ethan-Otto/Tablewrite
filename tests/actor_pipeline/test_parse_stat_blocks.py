@@ -2,12 +2,12 @@
 
 import pytest
 from pathlib import Path
-from actors.parse_stat_blocks import (
+from actor_pipeline.parse_stat_blocks import (
     parse_stat_block_with_gemini,
     extract_stat_blocks_from_document,
     extract_stat_blocks_from_xml_file
 )
-from actors.models import StatBlock
+from actor_pipeline.models import StatBlock
 from models import XMLDocument
 
 
@@ -50,7 +50,7 @@ class TestStatBlockParsingUnit:
         """Test parser returns StatBlock model (integration test required for full test)."""
         # This is a placeholder - real testing requires API
         # Just verify the function exists and has correct signature
-        from actors.parse_stat_blocks import parse_stat_block_with_gemini
+        from actor_pipeline.parse_stat_blocks import parse_stat_block_with_gemini
         import inspect
 
         sig = inspect.signature(parse_stat_block_with_gemini)

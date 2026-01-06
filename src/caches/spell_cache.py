@@ -2,7 +2,7 @@
 
 import logging
 from typing import Optional, Dict, List
-from ..items.websocket_fetch import fetch_all_spells_ws_sync
+from foundry.items.websocket_fetch import fetch_all_spells_ws_sync
 
 logger = logging.getLogger(__name__)
 

@@ -1,11 +1,8 @@
 import os
 import fitz  # PyMuPDF
-import sys
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from logging_config import setup_logging
 
-# Project root is three levels up from the script's directory (pdf_processing -> src -> root)
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import PROJECT_ROOT
+from logging_config import setup_logging
 
 logger = setup_logging(__name__)
 

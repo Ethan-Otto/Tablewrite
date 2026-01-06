@@ -10,7 +10,7 @@ from typing import Optional
 from google import genai
 from dotenv import load_dotenv
 
-from actors.models import StatBlock
+from actor_pipeline.models import StatBlock
 from util.gemini import generate_content_async
 
 # Load environment

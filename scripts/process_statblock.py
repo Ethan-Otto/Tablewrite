@@ -18,11 +18,11 @@ from dotenv import load_dotenv
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
-from actors.statblock_parser import parse_raw_text_to_statblock
-from foundry.actors.parser import parse_stat_block_parallel
-from foundry.actors.converter import convert_to_foundry
+from actor_pipeline.statblock_parser import parse_raw_text_to_statblock
+from foundry_converters.actors.parser import parse_stat_block_parallel
+from foundry_converters.actors.converter import convert_to_foundry
 from foundry.client import FoundryClient
-from foundry.actors.spell_cache import SpellCache
+from caches import SpellCache
 
 load_dotenv(project_root / ".env")
 

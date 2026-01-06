@@ -53,3 +53,6 @@ test-results.xml
 .pytest_cache/
 github.secrets
 
+
+# Test log file
+test.log

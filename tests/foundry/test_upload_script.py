@@ -3,7 +3,7 @@
 import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
-from src.foundry.upload_journal_to_foundry import (
+from foundry.upload_journal_to_foundry import (
     find_latest_run,
     find_xml_directory,
     upload_run_to_foundry,

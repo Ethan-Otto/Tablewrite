@@ -2,8 +2,7 @@
 import asyncio
 import os
 import pytest
-
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from config import PROJECT_ROOT
 
 
 @pytest.fixture
@@ -14,7 +13,7 @@ def test_pdf_path():
     Returns:
         str: Filesystem path to the test PDF `data/pdfs/Strongholds_Followers_extraction_test.pdf` within the project root.
     """
-    return os.path.join(PROJECT_ROOT, "data/pdfs/Strongholds_Followers_extraction_test.pdf")
+    return str(PROJECT_ROOT / "data" / "pdfs" / "Strongholds_Followers_extraction_test.pdf")
 
 
 @pytest.fixture(scope="session")
@@ -25,7 +24,7 @@ def session_test_pdf_path():
     Returns:
         str: Filesystem path to Strongholds_Followers_extraction_test.pdf inside the project's data/pdfs directory.
     """
-    return os.path.join(PROJECT_ROOT, "data/pdfs/Strongholds_Followers_extraction_test.pdf")
+    return str(PROJECT_ROOT / "data" / "pdfs" / "Strongholds_Followers_extraction_test.pdf")
 
 
 @pytest.fixture
@@ -97,7 +96,7 @@ def shared_extracted_maps(session_test_pdf_path, session_output_dir, session_che
     Returns:
         tuple: (maps, output_dir) where `maps` are the extracted map assets (in the format returned by `extract_maps_from_pdf`) and `output_dir` is the session-scoped output directory path.
     """
-    from src.pdf_processing.image_asset_processing.extract_map_assets import extract_maps_from_pdf
+    from pdf_processing.image_asset_processing.extract_map_assets import extract_maps_from_pdf
 
     maps = asyncio.run(extract_maps_from_pdf(
         session_test_pdf_path,

@@ -15,13 +15,13 @@ from typing import Dict, Any, List
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 # Add src to path for imports
-PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent
-src_path = str(PROJECT_ROOT / "src")
-if src_path not in sys.path:
-    sys.path.insert(0, src_path)
+_src_path = str(Path(__file__).parent.parent.parent.parent.parent / "src")
+if _src_path not in sys.path:
+    sys.path.insert(0, _src_path)
 
+from config import PROJECT_ROOT
 from pdf_processing.pdf_to_xml import main as pdf_to_xml_main, configure_gemini
-from actors.process_actors import process_actors_for_run
+from actor_pipeline.process_actors import process_actors_for_run
 from pdf_processing.image_asset_processing.extract_map_assets import extract_maps_from_pdf, save_metadata
 from foundry.upload_journal_to_foundry import upload_run_to_foundry
 from scenes.orchestrate import create_scene_from_map

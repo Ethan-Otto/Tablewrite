@@ -4,12 +4,12 @@ import asyncio
 import os
 import json
 import time
-from src.pdf_processing.image_asset_processing.extract_map_assets import (
+from pdf_processing.image_asset_processing.extract_map_assets import (
     extract_maps_from_pdf,
     save_metadata,
     extract_single_page
 )
-from src.pdf_processing.image_asset_processing.models import MapMetadata, MapDetectionResult
+from pdf_processing.image_asset_processing.models import MapMetadata, MapDetectionResult
 
 
 @pytest.mark.map

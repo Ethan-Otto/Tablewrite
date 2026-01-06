@@ -2,8 +2,8 @@
 
 import pytest
 from pathlib import Path
-from src.scene_extraction.create_gallery import create_scene_gallery_html
-from src.scene_extraction.models import Scene
+from scene_extraction.create_gallery import create_scene_gallery_html
+from scene_extraction.models import Scene
 
 
 @pytest.fixture

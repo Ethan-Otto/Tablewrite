@@ -3,7 +3,7 @@ import pytest
 import fitz
 import os
 import asyncio
-from src.pdf_processing.image_asset_processing.extract_maps import extract_image_with_pymupdf_async
+from pdf_processing.image_asset_processing.extract_maps import extract_image_with_pymupdf_async
 
 
 @pytest.mark.map

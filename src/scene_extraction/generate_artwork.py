@@ -6,13 +6,9 @@ from typing import Optional
 from pathlib import Path
 
 from .models import Scene, ChapterContext
+from util.parallel_image_gen import generate_images_parallel
 
 logger = logging.getLogger(__name__)
-
-# Import our parallel image generation utility
-import sys
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from util.parallel_image_gen import generate_images_parallel
 
 # Image generation model - can switch back to "imagen-4.0-fast-generate-001" if needed
 MODEL_NAME = "gemini-2.5-flash-image"

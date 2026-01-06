@@ -4,7 +4,7 @@ import pytest
 import os
 from unittest.mock import Mock, patch
 from dotenv import load_dotenv
-from src.foundry.client import FoundryClient
+from foundry.client import FoundryClient
 
 
 class TestFoundryClientInit:
@@ -46,7 +46,7 @@ class TestJournalOperations:
 
     def test_client_has_journals_manager(self, mock_client):
         """Test that FoundryClient has journals manager."""
-        from src.foundry.journals import JournalManager
+        from foundry.journals import JournalManager
         assert hasattr(mock_client, 'journals')
         assert isinstance(mock_client.journals, JournalManager)
 
@@ -197,7 +197,7 @@ class TestActorOperations:
 
     def test_client_create_creature_actor_raises_not_implemented(self, mock_client):
         """Test client.create_creature_actor raises NotImplementedError (not yet ported)."""
-        from src.actors.models import StatBlock
+        from actor_pipeline.models import StatBlock
 
         stat_block = StatBlock(
             name="Goblin",
@@ -213,7 +213,7 @@ class TestActorOperations:
     @pytest.mark.integration
     def test_client_create_npc_actor_success(self, mock_client):
         """Test client.create_npc_actor creates minimal NPC actor (requires backend)."""
-        from src.actors.models import NPC
+        from actor_pipeline.models import NPC
 
         npc = NPC(
             name="Klarg",
@@ -229,7 +229,7 @@ class TestActorOperations:
 
     def test_foundry_client_has_icon_cache(self, mock_client):
         """Test FoundryClient exposes icon cache."""
-        from src.foundry.icon_cache import IconCache
+        from caches import IconCache
 
         assert hasattr(mock_client, 'icons')
         assert isinstance(mock_client.icons, IconCache)

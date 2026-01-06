@@ -2,7 +2,7 @@
 
 import pytest
 from unittest.mock import Mock, patch
-from src.foundry.actors import ActorManager
+from foundry.actors import ActorManager
 
 
 @pytest.mark.unit
@@ -57,7 +57,7 @@ class TestActorManagerCreate:
 
     def test_create_creature_actor_raises_not_implemented(self):
         """Test creating a creature actor raises NotImplementedError."""
-        from src.actors.models import StatBlock
+        from actor_pipeline.models import StatBlock
 
         manager = ActorManager(backend_url="http://localhost:8000")
 
@@ -78,7 +78,7 @@ class TestActorManagerCreate:
     @patch('requests.post')
     def test_create_npc_actor_minimal(self, mock_post):
         """Test creating NPC actor creates minimal actor with bio."""
-        from src.actors.models import NPC
+        from actor_pipeline.models import NPC
 
         manager = ActorManager(backend_url="http://localhost:8000")
 

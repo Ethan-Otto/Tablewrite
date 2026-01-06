@@ -250,7 +250,7 @@ class TestFileManagerIntegration:
 
         result = manager.upload_file(
             local_path=test_image,
-            destination="test-uploads"
+            destination="uploaded-maps/tests"
         )
 
         assert result["success"] is True, f"Upload failed: {result.get('error')}"

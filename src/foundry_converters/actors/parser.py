@@ -15,7 +15,7 @@ from typing import Any, Optional, Union
 from dotenv import load_dotenv
 from google import genai
 
-from actors.models import StatBlock
+from actor_pipeline.models import StatBlock
 from foundry_converters.actors.models import (
     Attack,
     AttackSave,

@@ -23,10 +23,12 @@ from pathlib import Path
 from typing import Optional
 from dotenv import load_dotenv
 
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add src directory to path for imports
+_src_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src")
+if _src_dir not in sys.path:
+    sys.path.insert(0, _src_dir)
 
-from src.logging_config import setup_logging
+from logging_config import setup_logging
 
 logger = setup_logging(__name__)
 
@@ -154,7 +156,7 @@ def process_actors(run_dir: Path, target: str = "local") -> dict:
     logger.info("=" * 60)
 
     # Import here to avoid circular dependencies
-    from src.actors.process_actors import process_actors_for_run
+    from actor_pipeline.process_actors import process_actors_for_run
 
     try:
         result = process_actors_for_run(str(run_dir), target=target)
@@ -269,7 +271,7 @@ def run_map_extraction(
     logger.info("=" * 60)
 
     # Import here to avoid circular dependencies
-    from src.pdf_processing.image_asset_processing.extract_map_assets import (
+    from pdf_processing.image_asset_processing.extract_map_assets import (
         extract_maps_from_pdf,
         save_metadata
     )
@@ -350,7 +352,7 @@ def upload_to_foundry(run_dir: Path, target: str = "local", journal_name: str = 
     logger.info("=" * 60)
 
     # Import here to avoid circular dependencies
-    from src.foundry.upload_journal_to_foundry import upload_run_to_foundry
+    from foundry.upload_journal_to_foundry import upload_run_to_foundry
 
     try:
         result = upload_run_to_foundry(
@@ -399,8 +401,8 @@ def export_from_foundry(
     logger.info("=" * 60)
 
     # Import here to avoid circular dependencies
-    from src.foundry.client import FoundryClient
-    from src.foundry.export_from_foundry import export_to_html
+    from foundry.client import FoundryClient
+    from foundry.export_from_foundry import export_to_html
 
     try:
         # Initialize client

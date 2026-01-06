@@ -7,11 +7,13 @@ from pathlib import Path
 
 from .base import BaseTool, ToolSchema, ToolResponse
 
-# Add project paths for module imports
-project_root = Path(__file__).parent.parent.parent.parent.parent
-sys.path.insert(0, str(project_root))
-sys.path.insert(0, str(project_root / "src"))
+# Add src to path for imports (backend tools run from ui/backend)
+_src_dir = Path(__file__).parent.parent.parent.parent.parent / "src"
+if str(_src_dir) not in sys.path:
+    sys.path.insert(0, str(_src_dir))
 
+# Import config module for PROJECT_ROOT and automatic .env loading
+from config import PROJECT_ROOT  # noqa: E402
 from api import create_scene, APIError  # noqa: E402
 
 logger = logging.getLogger(__name__)

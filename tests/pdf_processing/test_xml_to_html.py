@@ -11,11 +11,7 @@ Tests XML to HTML conversion including:
 
 import pytest
 from pathlib import Path
-import sys
 import xml.etree.ElementTree as ET
-
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from pdf_processing.xml_to_html import xml_to_html_content, generate_html_page, main
 

@@ -4,7 +4,7 @@ import pytest
 from foundry_converters.actors.models import ParsedActorData, Attack, DamageFormula, InnateSpellcasting, InnateSpell
 from foundry_converters.actors.converter import convert_to_foundry
 from foundry.client import FoundryClient
-from foundry.actors.spell_cache import SpellCache
+from caches import SpellCache
 
 
 @pytest.mark.integration

@@ -40,7 +40,7 @@ Direct Library Usage:
 For operations not yet available via HTTP API, import from the
 internal modules directly:
 
-    from actors.orchestrate import create_actor_from_description_sync
+    from actor_pipeline.orchestrate import create_actor_from_description_sync
     from pdf_processing.image_asset_processing.extract_map_assets import extract_maps_from_pdf
 """
 
@@ -52,8 +52,12 @@ from typing import List, Dict, Any, Optional
 
 import requests
 
+from exceptions import FoundryError, ConversionError, ConfigurationError
 from scenes.orchestrate import create_scene_from_map_sync
 from scenes.models import SceneCreationResult
+
+# Re-export for backwards compatibility
+APIError = FoundryError
 
 logger = logging.getLogger(__name__)
 
@@ -76,17 +80,6 @@ __all__ = [
 ]
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
-
-
-class APIError(Exception):
-    """Raised when API operations fail.
-
-    This exception wraps internal errors to provide a clean boundary
-    between the public API and internal implementation details.
-
-    The original exception is preserved as __cause__ for debugging.
-    """
-    pass
 
 
 @dataclass

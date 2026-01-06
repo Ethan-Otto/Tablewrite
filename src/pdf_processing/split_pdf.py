@@ -1,12 +1,14 @@
-
 import fitz  # PyMuPDF
 import os
 import sys
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from logging_config import setup_logging
 
-# Project root is three levels up from the script's directory (pdf_processing -> src -> root)
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add src to path for direct execution (bypasses pytest's pythonpath config)
+_src_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _src_dir not in sys.path:
+    sys.path.insert(0, _src_dir)
+
+from config import PROJECT_ROOT  # noqa: E402
+from logging_config import setup_logging  # noqa: E402
 
 logger = setup_logging(__name__)
 
