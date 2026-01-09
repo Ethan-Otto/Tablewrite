@@ -89,26 +89,50 @@ async def find_entities(
     Returns:
         List of matching entities that are in Tablewrite hierarchy
     """
-    # If UUID provided, validate and return single entity
+    # If UUID provided, fetch entity once and validate Tablewrite membership
     if uuid:
-        if await is_in_tablewrite_folder(uuid, entity_type):
-            # Fetch to get name and folder
-            if entity_type == "actor":
-                result = await fetch_actor(uuid)
-            elif entity_type == "scene":
-                result = await fetch_scene(uuid)
-            elif entity_type == "journal":
-                result = await fetch_journal(uuid)
-            else:
-                return []
+        # Fetch entity first (avoid duplicate fetch in is_in_tablewrite_folder)
+        if entity_type == "actor":
+            result = await fetch_actor(uuid)
+        elif entity_type == "scene":
+            result = await fetch_scene(uuid)
+        elif entity_type == "journal":
+            result = await fetch_journal(uuid)
+        else:
+            return []
 
-            if result.success and result.entity:
-                return [EntityMatch(
-                    uuid=uuid,
-                    name=result.entity.get("name", "Unknown"),
-                    entity_type=entity_type,
-                    folder_id=result.entity.get("folder")
-                )]
+        if not result.success or not result.entity:
+            return []
+
+        # Validate Tablewrite membership using fetched data
+        folder_id = result.entity.get("folder")
+        if not folder_id:
+            return []
+
+        # Get folders and check hierarchy
+        folders_result = await list_folders()
+        if not folders_result.success or not folders_result.folders:
+            return []
+
+        folder_map = {f.id: f for f in folders_result.folders}
+        current = folder_id
+        in_tablewrite = False
+        while current:
+            folder = folder_map.get(current)
+            if not folder:
+                break
+            if folder.name == "Tablewrite":
+                in_tablewrite = True
+                break
+            current = folder.parent
+
+        if in_tablewrite:
+            return [EntityMatch(
+                uuid=uuid,
+                name=result.entity.get("name", "Unknown"),
+                entity_type=entity_type,
+                folder_id=folder_id
+            )]
         return []
 
     # List all entities of type
@@ -156,8 +180,7 @@ async def find_entities(
     search_lower = search_query.lower() if search_query and search_query != "*" else None
 
     for entity in entities:
-        # Get folder_id based on entity type - actors don't have folder in list result
-        # so we need to handle this specially
+        # Get folder_id from entity (all entity types include folder in list results)
         entity_folder = getattr(entity, 'folder', None)
 
         # Check Tablewrite hierarchy
