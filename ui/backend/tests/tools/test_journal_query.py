@@ -193,3 +193,61 @@ class TestContentExtraction:
         content, section_map = tool._extract_text_with_section_markers(journal)
         assert "[PAGE: Page]" in content
         assert section_map["Page"] == "p1"
+
+
+class TestFuzzyMatching:
+    """Test fuzzy journal name matching."""
+
+    def test_exact_match(self):
+        """Test exact name match."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+
+        journals = [
+            {"uuid": "j1", "name": "Lost Mine of Phandelver"},
+            {"uuid": "j2", "name": "Curse of Strahd"}
+        ]
+
+        result = tool._fuzzy_match_journal("Lost Mine of Phandelver", journals)
+        assert result["uuid"] == "j1"
+
+    def test_partial_match(self):
+        """Test partial name match (case-insensitive)."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+
+        journals = [
+            {"uuid": "j1", "name": "Lost Mine of Phandelver"},
+            {"uuid": "j2", "name": "Curse of Strahd"}
+        ]
+
+        result = tool._fuzzy_match_journal("lost mine", journals)
+        assert result["uuid"] == "j1"
+
+    def test_no_match(self):
+        """Test no match returns None."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+
+        journals = [
+            {"uuid": "j1", "name": "Lost Mine of Phandelver"},
+        ]
+
+        result = tool._fuzzy_match_journal("Tomb of Horrors", journals)
+        assert result is None
+
+    def test_case_insensitive(self):
+        """Test matching is case-insensitive."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+
+        journals = [
+            {"uuid": "j1", "name": "LOST MINE OF PHANDELVER"},
+        ]
+
+        result = tool._fuzzy_match_journal("lost mine of phandelver", journals)
+        assert result["uuid"] == "j1"

@@ -117,3 +117,28 @@ class JournalQueryTool(BaseTool):
                         sections.append(text + "\n")
 
         return "".join(sections), section_map
+
+    def _fuzzy_match_journal(self, name: str, journals: list[dict]) -> Optional[dict]:
+        """
+        Fuzzy match a journal name against available journals.
+
+        Args:
+            name: Name to search for (case-insensitive substring match)
+            journals: List of journal dicts with 'uuid' and 'name' keys
+
+        Returns:
+            Matching journal dict or None
+        """
+        name_lower = name.lower().strip()
+
+        # Try exact match first
+        for j in journals:
+            if j["name"].lower() == name_lower:
+                return j
+
+        # Try substring match
+        for j in journals:
+            if name_lower in j["name"].lower():
+                return j
+
+        return None
