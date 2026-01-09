@@ -8,7 +8,7 @@ from config import PROJECT_ROOT
 
 # Test fixture paths
 TEST_MAP_PATH = PROJECT_ROOT / "data" / "image_examples" / "castle.png"
-WEBP_MAP_PATH = PROJECT_ROOT / "data" / "image_examples" / "Cragmaw.webp"
+WEBP_MAP_PATH = PROJECT_ROOT / "data" / "verification" / "battlemaps" / "Cragmaw.webp"
 
 # Load environment variables at module level
 load_dotenv(PROJECT_ROOT / ".env")
@@ -96,8 +96,8 @@ async def test_detect_gridlines_real_api_with_webp(gemini_api_key):
 
     # Ensure test fixture exists - FAIL (not skip) if missing per CLAUDE.md
     assert WEBP_MAP_PATH.exists(), (
-        f"Test fixture not found: {WEBP_MAP_PATH}. "
-        "Expected Cragmaw.webp in data/image_examples/"
+        f"WEBP test fixture not found: {WEBP_MAP_PATH}. "
+        "Expected Cragmaw.webp in data/verification/battlemaps/"
     )
 
     # Make real API call

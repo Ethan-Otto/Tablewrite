@@ -122,6 +122,14 @@ export class TablewriteTab {
         this.container.querySelectorAll('.tab-content').forEach(c => {
           (c as HTMLElement).style.display = c.id === `${tabId}-tab` ? 'flex' : 'none';
         });
+
+        // When switching to chat tab, scroll messages to bottom
+        if (tabId === 'chat') {
+          const messagesContainer = this.container.querySelector('.tablewrite-messages');
+          if (messagesContainer) {
+            this.scrollToBottom(messagesContainer);
+          }
+        }
       });
     });
   }
