@@ -2,8 +2,63 @@
 import logging
 from typing import List, Optional
 from .base import BaseTool, ToolSchema, ToolResponse
+from app.websocket.push import (
+    fetch_actor, fetch_scene, fetch_journal, list_folders,
+    delete_actor, delete_scene, delete_journal, delete_folder,
+    list_actors, list_scenes, list_journals, remove_actor_items
+)
 
 logger = logging.getLogger(__name__)
+
+
+async def is_in_tablewrite_folder(entity_uuid: str, entity_type: str) -> bool:
+    """
+    Check if an entity is within a Tablewrite folder hierarchy.
+
+    Args:
+        entity_uuid: UUID of the entity (e.g., "Actor.abc123")
+        entity_type: Type of entity ("actor", "journal", "scene")
+
+    Returns:
+        True if entity is in Tablewrite folder hierarchy, False otherwise
+    """
+    # Fetch the entity to get its folder
+    if entity_type == "actor":
+        result = await fetch_actor(entity_uuid)
+    elif entity_type == "scene":
+        result = await fetch_scene(entity_uuid)
+    elif entity_type == "journal":
+        result = await fetch_journal(entity_uuid)
+    else:
+        return False
+
+    if not result.success or not result.entity:
+        return False
+
+    # Get folder ID from entity
+    folder_id = result.entity.get("folder")
+    if not folder_id:
+        return False
+
+    # Get all folders and build hierarchy
+    folders_result = await list_folders()
+    if not folders_result.success or not folders_result.folders:
+        return False
+
+    # Build folder lookup
+    folder_map = {f.id: f for f in folders_result.folders}
+
+    # Trace up the hierarchy looking for "Tablewrite"
+    current_folder_id = folder_id
+    while current_folder_id:
+        folder = folder_map.get(current_folder_id)
+        if not folder:
+            return False
+        if folder.name == "Tablewrite":
+            return True
+        current_folder_id = folder.parent
+
+    return False
 
 
 class AssetDeleterTool(BaseTool):
