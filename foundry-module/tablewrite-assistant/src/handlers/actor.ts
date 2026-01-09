@@ -6,7 +6,7 @@
  * Message format for delete: {uuid: string}
  */
 
-import type { CreateResult, GetResult, DeleteResult, ListResult, GiveResult } from './index.js';
+import type { CreateResult, GetResult, DeleteResult, ListResult, GiveResult, RemoveItemsResult } from './index.js';
 
 export async function handleActorCreate(data: Record<string, unknown>): Promise<CreateResult> {
   try {
@@ -568,6 +568,82 @@ export async function handleAddCustomItems(data: {
     };
   } catch (error) {
     console.error('[Tablewrite] Failed to add custom items:', error);
+    return {
+      success: false,
+      error: String(error)
+    };
+  }
+}
+
+/**
+ * Handle remove items from actor request.
+ * Removes embedded items (spells, features, weapons, etc.) from an actor by name.
+ * Uses case-insensitive partial matching.
+ */
+export async function handleRemoveActorItems(data: {
+  actor_uuid: string;
+  item_names: string[];
+}): Promise<RemoveItemsResult> {
+  try {
+    const { actor_uuid, item_names } = data;
+
+    if (!actor_uuid || !item_names || item_names.length === 0) {
+      return {
+        success: false,
+        error: 'actor_uuid and item_names are required'
+      };
+    }
+
+    const actor = await fromUuid(actor_uuid) as FoundryDocument | null;
+    if (!actor) {
+      return {
+        success: false,
+        error: `Actor not found: ${actor_uuid}`
+      };
+    }
+
+    // Find items matching the names (case-insensitive partial match)
+    // Cast to any to access the items collection which exists on Actor documents
+    const actorItems = (actor as any).items as { id: string; name: string }[];
+    const itemsToRemove: { id: string; name: string }[] = [];
+    const removedNames: string[] = [];
+
+    for (const searchName of item_names) {
+      const searchLower = searchName.toLowerCase();
+      const matchingItems = actorItems.filter((item: { id: string; name: string }) =>
+        item.name?.toLowerCase().includes(searchLower)
+      );
+      for (const item of matchingItems) {
+        if (!itemsToRemove.some(i => i.id === item.id)) {
+          itemsToRemove.push(item);
+          removedNames.push(item.name ?? 'Unknown');
+        }
+      }
+    }
+
+    if (itemsToRemove.length === 0) {
+      return {
+        success: true,
+        actor_uuid,
+        items_removed: 0,
+        removed_names: []
+      };
+    }
+
+    // Delete the items
+    const itemIds = itemsToRemove.map(i => i.id).filter((id): id is string => id !== null);
+    await actor.deleteEmbeddedDocuments('Item', itemIds);
+
+    console.log('[Tablewrite] Removed', itemIds.length, 'items from actor:', actor.name);
+
+    return {
+      success: true,
+      actor_uuid,
+      items_removed: itemIds.length,
+      removed_names: removedNames
+    };
+  } catch (error) {
+    console.error('[Tablewrite] Failed to remove actor items:', error);
     return {
       success: false,
       error: String(error)
