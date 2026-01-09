@@ -29,17 +29,19 @@ ACTOR_STYLE_OIL = (
 
 # 16-bit pixel art style for actors
 ACTOR_STYLE_PIXEL = (
-    "16-bit pixel art style, retro SNES RPG character portrait, "
-    "limited color palette, crisp pixel edges, dithering shading, "
-    "fantasy RPG aesthetic, nostalgic video game art, "
-    "clean pixel work, no anti-aliasing, no text"
+    "low resolution pixel art, 64x64 sprite style, "
+    "very limited 16-color palette, chunky visible pixels, "
+    "retro SNES RPG character portrait, no gradients, "
+    "classic 1990s video game aesthetic, crisp hard pixel edges, "
+    "no anti-aliasing, no smoothing, blocky simple shapes, no text"
 )
 
 # Rough charcoal sketch style for actors
 ACTOR_STYLE_CHARCOAL = (
-    "rough charcoal sketch on textured paper, dramatic shadows, "
-    "bold expressive strokes, smudged edges, high contrast, "
-    "raw artistic energy, figure study quality, "
+    "messy rushed charcoal sketch on textured paper, "
+    "loose unfinished strokes, heavy smudging, blurry edges, "
+    "quick gestural drawing, intentionally rough and imprecise, "
+    "not sharp, raw unpolished sketch, scribbled shading, "
     "grainy texture, monochromatic grayscale, no text"
 )
 
