@@ -36,11 +36,13 @@ async def execute_delete_assets(request: ToolRequest) -> ToolResponse:
 
     This endpoint is primarily for integration testing.
     """
+    # Validate required parameter
+    if not request.entity_type:
+        raise HTTPException(status_code=400, detail="entity_type is required")
+
     try:
         # Build kwargs from request
-        kwargs = {}
-        if request.entity_type:
-            kwargs["entity_type"] = request.entity_type
+        kwargs = {"entity_type": request.entity_type}
         if request.search_query:
             kwargs["search_query"] = request.search_query
         if request.uuid:
