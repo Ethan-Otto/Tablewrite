@@ -604,3 +604,81 @@
   color: #7a4;
   border-bottom-style: solid;
 }
+
+/* ========================================
+   Settings Panel Styles
+   ======================================== */
+
+/* Settings gear button in tab bar */
+.settings-btn {
+  margin-left: auto;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #888;
+  font-size: 14px;
+  transition: color 0.2s ease;
+}
+
+.settings-btn:hover {
+  color: #fff;
+}
+
+.settings-btn.active {
+  color: #7a4;
+}
+
+/* Settings panel */
+.tablewrite-settings-panel {
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid #444;
+  margin-bottom: 10px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.settings-row:last-child {
+  margin-bottom: 0;
+}
+
+.settings-row label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #ccc;
+  cursor: pointer;
+}
+
+.settings-row input[type="checkbox"] {
+  accent-color: #7a4;
+  width: 16px;
+  height: 16px;
+}
+
+.settings-row select {
+  padding: 4px 8px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #333;
+  color: #fff;
+  font-size: 12px;
+  min-width: 120px;
+}
+
+.settings-row select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settings-row select:focus {
+  border-color: #7a4;
+  outline: none;
+}
