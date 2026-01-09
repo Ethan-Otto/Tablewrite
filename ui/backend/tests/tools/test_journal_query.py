@@ -85,3 +85,97 @@ class TestJournalQueryToolSchema:
 
         query_type = schema.parameters["properties"]["query_type"]
         assert query_type["enum"] == ["question", "summary", "extraction"]
+
+
+class TestContentExtraction:
+    """Test HTML content extraction with section markers."""
+
+    def test_extract_simple_html(self):
+        """Test extracting text from simple HTML."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+
+        journal = {
+            "_id": "abc123",
+            "name": "Test Journal",
+            "pages": [
+                {
+                    "_id": "page1",
+                    "name": "Introduction",
+                    "text": {"content": "<p>Welcome to the adventure.</p>"}
+                }
+            ]
+        }
+
+        content, section_map = tool._extract_text_with_section_markers(journal)
+
+        assert "Welcome to the adventure" in content
+        assert "[PAGE: Introduction]" in content
+        assert section_map["Introduction"] == "page1"
+
+    def test_extract_with_headings(self):
+        """Test extracting headings as section markers."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+
+        journal = {
+            "_id": "abc123",
+            "name": "Test Journal",
+            "pages": [
+                {
+                    "_id": "page1",
+                    "name": "Chapter 1",
+                    "text": {
+                        "content": """
+                        <h1>The Beginning</h1>
+                        <p>Our story starts here.</p>
+                        <h2>Cragmaw Hideout</h2>
+                        <p>A goblin lair.</p>
+                        <h3>Area 1: Cave Mouth</h3>
+                        <p>The entrance.</p>
+                        """
+                    }
+                }
+            ]
+        }
+
+        content, section_map = tool._extract_text_with_section_markers(journal)
+
+        assert "[CHAPTER: The Beginning]" in content
+        assert "[SECTION: Cragmaw Hideout]" in content
+        assert "[SUBSECTION: Area 1: Cave Mouth]" in content
+        assert "Our story starts here" in content
+        assert section_map["The Beginning"] == "page1"
+        assert section_map["Cragmaw Hideout"] == "page1"
+
+    def test_extract_multiple_pages(self):
+        """Test extracting from multiple journal pages."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+
+        journal = {
+            "_id": "abc123",
+            "name": "Test Journal",
+            "pages": [
+                {
+                    "_id": "page1",
+                    "name": "Chapter 1",
+                    "text": {"content": "<p>First chapter content.</p>"}
+                },
+                {
+                    "_id": "page2",
+                    "name": "Chapter 2",
+                    "text": {"content": "<p>Second chapter content.</p>"}
+                }
+            ]
+        }
+
+        content, section_map = tool._extract_text_with_section_markers(journal)
+
+        assert "[PAGE: Chapter 1]" in content
+        assert "[PAGE: Chapter 2]" in content
+        assert section_map["Chapter 1"] == "page1"
+        assert section_map["Chapter 2"] == "page2"

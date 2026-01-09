@@ -3,6 +3,7 @@ import logging
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
+from bs4 import BeautifulSoup
 
 from .base import BaseTool, ToolSchema, ToolResponse
 
@@ -74,3 +75,45 @@ class JournalQueryTool(BaseTool):
             message="Not implemented yet",
             data=None
         )
+
+    def _extract_text_with_section_markers(self, journal: dict) -> tuple[str, dict]:
+        """
+        Parse journal HTML, preserve structure for source tracking.
+
+        Returns:
+            tuple: (extracted_text, section_to_page_id_map)
+        """
+        sections = []
+        section_map = {}  # section_name -> page_id
+
+        for page in journal.get("pages", []):
+            page_id = page.get("_id")
+            page_name = page.get("name", "")
+            html_content = page.get("text", {}).get("content", "")
+
+            # Track page for section mapping
+            section_map[page_name] = page_id
+            sections.append(f"\n[PAGE: {page_name}]\n")
+
+            # Parse HTML
+            soup = BeautifulSoup(html_content, "html.parser")
+
+            for element in soup.descendants:
+                if element.name == "h1":
+                    text = element.get_text(strip=True)
+                    section_map[text] = page_id
+                    sections.append(f"\n[CHAPTER: {text}]\n")
+                elif element.name == "h2":
+                    text = element.get_text(strip=True)
+                    section_map[text] = page_id
+                    sections.append(f"\n[SECTION: {text}]\n")
+                elif element.name == "h3":
+                    text = element.get_text(strip=True)
+                    section_map[text] = page_id
+                    sections.append(f"\n[SUBSECTION: {text}]\n")
+                elif element.name == "p":
+                    text = element.get_text(strip=True)
+                    if text:
+                        sections.append(text + "\n")
+
+        return "".join(sections), section_map
