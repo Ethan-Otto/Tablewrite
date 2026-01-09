@@ -179,3 +179,17 @@ class TestContentExtraction:
         assert "[PAGE: Chapter 2]" in content
         assert section_map["Chapter 1"] == "page1"
         assert section_map["Chapter 2"] == "page2"
+
+    def test_extract_none_content(self):
+        """Test extraction handles None content gracefully."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+        journal = {
+            "_id": "test",
+            "name": "Test",
+            "pages": [{"_id": "p1", "name": "Page", "text": {"content": None}}]
+        }
+        content, section_map = tool._extract_text_with_section_markers(journal)
+        assert "[PAGE: Page]" in content
+        assert section_map["Page"] == "p1"

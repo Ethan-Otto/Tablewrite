@@ -89,7 +89,7 @@ class JournalQueryTool(BaseTool):
         for page in journal.get("pages", []):
             page_id = page.get("_id")
             page_name = page.get("name", "")
-            html_content = page.get("text", {}).get("content", "")
+            html_content = page.get("text", {}).get("content", "") or ""
 
             # Track page for section mapping
             section_map[page_name] = page_id
