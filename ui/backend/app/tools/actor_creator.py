@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from .base import BaseTool, ToolSchema, ToolResponse
-from .image_styles import ACTOR_STYLE
+from .image_styles import get_actor_style
 
 # Add src to path for imports (backend tools run from ui/backend)
 _src_dir = Path(__file__).parent.parent.parent.parent.parent / "src"
@@ -27,6 +27,20 @@ logger = logging.getLogger(__name__)
 
 # Flag to disable image generation (for tests)
 _image_generation_enabled = True
+
+# Context settings from frontend (set per-request)
+_request_context: dict = {}
+
+
+def set_request_context(context: dict):
+    """Set the request context for the current request."""
+    global _request_context
+    _request_context = context or {}
+
+
+def get_request_context() -> dict:
+    """Get the current request context."""
+    return _request_context
 
 
 def set_image_generation_enabled(enabled: bool):
@@ -60,13 +74,18 @@ Visual description for image generation:"""
     return await asyncio.to_thread(_generate)
 
 
-async def generate_actor_image(visual_description: str, upload_to_foundry: bool = True) -> tuple[Optional[str], Optional[str]]:
+async def generate_actor_image(
+    visual_description: str,
+    upload_to_foundry: bool = True,
+    style: str = "watercolor"
+) -> tuple[Optional[str], Optional[str]]:
     """
     Generate an image of the actor using Imagen.
 
     Args:
         visual_description: Visual description of the actor
         upload_to_foundry: Whether to upload the image to Foundry
+        style: Art style to use ("watercolor" or "oil")
 
     Returns:
         Tuple of (local_url, foundry_path):
@@ -76,9 +95,10 @@ async def generate_actor_image(visual_description: str, upload_to_foundry: bool 
     import base64
 
     try:
-        # Combine description with actor style
-        styled_prompt = f"{visual_description}, {ACTOR_STYLE}"
-        logger.info(f"[IMAGE PROMPT] {styled_prompt}")
+        # Get style prompt based on setting
+        style_prompt = get_actor_style(style)
+        styled_prompt = f"{visual_description}, {style_prompt}"
+        logger.info(f"[IMAGE PROMPT] style={style}, prompt={styled_prompt[:100]}...")
 
         # Generate image in thread pool to avoid blocking event loop
         def _generate_image():
@@ -345,16 +365,25 @@ class ActorCreatorTool(BaseTool):
             # Uses retry logic to wait for WebSocket reconnection after hot reload
             spell_cache, icon_cache = await load_caches()
 
+            # Get settings from request context
+            context = get_request_context()
+            settings = context.get('settings', {})
+            art_enabled = settings.get('tokenArtEnabled', True)
+            art_style = settings.get('artStyle', 'watercolor')
+
             # Generate actor image BEFORE actor creation (if enabled)
             # This allows us to set the profile image on the actor
             image_url = None
             foundry_image_path = None
-            if _image_generation_enabled:
-                logger.info(f"Generating actor image for: {description[:50]}...")
+            if _image_generation_enabled and art_enabled:
+                logger.info(f"Generating actor image (style={art_style}) for: {description[:50]}...")
                 try:
                     visual_desc = await generate_actor_description(description)
                     logger.info(f"Generated visual description: {visual_desc[:100]}...")
-                    image_url, foundry_image_path = await generate_actor_image(visual_desc)
+                    image_url, foundry_image_path = await generate_actor_image(
+                        visual_desc,
+                        style=art_style
+                    )
                     if image_url:
                         logger.info(f"Actor image generated: {image_url}")
                     if foundry_image_path:
