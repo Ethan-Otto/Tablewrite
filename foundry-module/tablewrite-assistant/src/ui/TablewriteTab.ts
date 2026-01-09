@@ -5,7 +5,7 @@
 import { chatService, ChatMessage, ChatResponse } from './chat-service.js';
 import { BattleMapUpload } from './BattleMapUpload.js';
 import { ModuleUpload } from './ModuleUpload.js';
-import { getBackendUrl } from '../settings.js';
+import { getBackendUrl, isTokenArtEnabled, setTokenArtEnabled, getArtStyle, setArtStyle } from '../settings.js';
 
 // Foundry global declarations
 declare const ImagePopout: new (src: string, options?: { title?: string }) => { render(force?: boolean): void };
@@ -16,6 +16,7 @@ export class TablewriteTab {
   private isLoading: boolean = false;
   private battleMapUpload: BattleMapUpload | null = null;
   private moduleUpload: ModuleUpload | null = null;
+  private settingsOpen: boolean = false;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -28,6 +29,29 @@ export class TablewriteTab {
           <button class="tab-btn active" data-tab="chat">Chat</button>
           <button class="tab-btn" data-tab="battlemap">Battle Map</button>
           <button class="tab-btn" data-tab="module">Module</button>
+          <button class="settings-btn" title="${game.i18n.localize('TABLEWRITE_ASSISTANT.Settings')}">
+            <i class="fas fa-cog"></i>
+          </button>
+        </div>
+
+        <div class="tablewrite-settings-panel" style="display: none;">
+          <div class="settings-row">
+            <label>
+              <input type="checkbox" id="token-art-toggle" ${isTokenArtEnabled() ? 'checked' : ''} />
+              ${game.i18n.localize('TABLEWRITE_ASSISTANT.SettingsTokenArtEnabled')}
+            </label>
+          </div>
+          <div class="settings-row">
+            <label for="art-style-select">${game.i18n.localize('TABLEWRITE_ASSISTANT.SettingsArtStyle')}</label>
+            <select id="art-style-select">
+              <option value="watercolor" ${getArtStyle() === 'watercolor' ? 'selected' : ''}>
+                ${game.i18n.localize('TABLEWRITE_ASSISTANT.StyleWatercolor')}
+              </option>
+              <option value="oil" ${getArtStyle() === 'oil' ? 'selected' : ''}>
+                ${game.i18n.localize('TABLEWRITE_ASSISTANT.StyleOil')}
+              </option>
+            </select>
+          </div>
         </div>
 
         <div class="tab-content" id="chat-tab">
@@ -67,6 +91,9 @@ export class TablewriteTab {
 
     // Existing chat setup
     this.activateListeners();
+
+    // Attach settings panel listeners
+    this.attachSettingsListeners();
   }
 
   private activateListeners(): void {
@@ -132,6 +159,37 @@ export class TablewriteTab {
         }
       });
     });
+  }
+
+  private attachSettingsListeners(): void {
+    const settingsBtn = this.container.querySelector('.settings-btn');
+    const settingsPanel = this.container.querySelector('.tablewrite-settings-panel') as HTMLElement;
+    const tokenArtToggle = this.container.querySelector('#token-art-toggle') as HTMLInputElement;
+    const artStyleSelect = this.container.querySelector('#art-style-select') as HTMLSelectElement;
+
+    // Toggle settings panel
+    settingsBtn?.addEventListener('click', () => {
+      this.settingsOpen = !this.settingsOpen;
+      settingsPanel.style.display = this.settingsOpen ? 'block' : 'none';
+      settingsBtn.classList.toggle('active', this.settingsOpen);
+    });
+
+    // Handle token art toggle
+    tokenArtToggle?.addEventListener('change', async () => {
+      await setTokenArtEnabled(tokenArtToggle.checked);
+      // Disable style select when art is disabled
+      artStyleSelect.disabled = !tokenArtToggle.checked;
+    });
+
+    // Handle art style change
+    artStyleSelect?.addEventListener('change', async () => {
+      await setArtStyle(artStyleSelect.value);
+    });
+
+    // Set initial disabled state
+    if (artStyleSelect && tokenArtToggle) {
+      artStyleSelect.disabled = !tokenArtToggle.checked;
+    }
   }
 
   async sendMessage(content: string): Promise<void> {
