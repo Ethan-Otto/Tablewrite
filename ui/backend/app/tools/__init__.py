@@ -7,6 +7,7 @@ from .batch_actor_creator import BatchActorCreatorTool
 from .actor_editor import ActorEditorTool
 from .journal_creator import JournalCreatorTool
 from .scene_creator import SceneCreatorTool
+from .asset_deleter import AssetDeleterTool
 
 # Auto-register tools
 registry.register(ImageGeneratorTool())
@@ -15,6 +16,7 @@ registry.register(BatchActorCreatorTool())
 registry.register(ActorEditorTool())
 registry.register(JournalCreatorTool())
 registry.register(SceneCreatorTool())
+registry.register(AssetDeleterTool())
 
 __all__ = [
     'BaseTool',
@@ -27,5 +29,6 @@ __all__ = [
     'BatchActorCreatorTool',
     'ActorEditorTool',
     'JournalCreatorTool',
-    'SceneCreatorTool'
+    'SceneCreatorTool',
+    'AssetDeleterTool',
 ]
