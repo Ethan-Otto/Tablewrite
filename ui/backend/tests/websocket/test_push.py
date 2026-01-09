@@ -21,6 +21,19 @@ async def test_foundry_connection():
 
 @pytest.mark.integration
 @pytest.mark.asyncio
+async def test_list_scenes(ensure_foundry_connected):
+    """Test listing all world scenes."""
+    from app.websocket.push import list_scenes
+
+    result = await list_scenes(timeout=10.0)
+
+    assert result.success, f"Failed to list scenes: {result.error}"
+    assert result.scenes is not None
+    assert isinstance(result.scenes, list)
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
 async def test_push_actor_returns_uuid():
     """
     Create actor in Foundry via API and get UUID back.

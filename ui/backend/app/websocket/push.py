@@ -622,6 +622,70 @@ async def list_actors(timeout: float = 30.0) -> ListResult:
 
 
 @dataclass
+class SceneInfo:
+    """Scene info from list results."""
+    uuid: str
+    id: str
+    name: str
+    folder: Optional[str] = None
+
+
+@dataclass
+class SceneListResult:
+    """Result of listing scenes via WebSocket."""
+    success: bool
+    scenes: Optional[List[SceneInfo]] = None
+    error: Optional[str] = None
+
+
+async def list_scenes(timeout: float = 30.0) -> SceneListResult:
+    """
+    List all world scenes from Foundry.
+
+    Args:
+        timeout: Maximum seconds to wait for Foundry response
+
+    Returns:
+        SceneListResult with list of scenes if successful
+    """
+    response = await foundry_manager.broadcast_and_wait(
+        {"type": "list_scenes", "data": {}},
+        timeout=timeout
+    )
+
+    if response is None:
+        return SceneListResult(
+            success=False,
+            error="No Foundry client connected or timeout waiting for response"
+        )
+
+    if response.get("type") == "scenes_list":
+        data = response.get("data", {})
+        scenes_data = data.get("scenes", [])
+        scenes = [
+            SceneInfo(
+                uuid=s.get("uuid", ""),
+                id=s.get("id", ""),
+                name=s.get("name", ""),
+                folder=s.get("folder")
+            )
+            for s in scenes_data
+            if s.get("uuid") and s.get("id") and s.get("name")
+        ]
+        return SceneListResult(success=True, scenes=scenes)
+    elif response.get("type") == "scene_error":
+        return SceneListResult(
+            success=False,
+            error=response.get("error", "Unknown error from Foundry")
+        )
+    else:
+        return SceneListResult(
+            success=False,
+            error=f"Unexpected response type: {response.get('type')}"
+        )
+
+
+@dataclass
 class SearchResultItem:
     """Item from search results."""
     uuid: str

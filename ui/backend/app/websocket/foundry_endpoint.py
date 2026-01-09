@@ -31,6 +31,7 @@ RESPONSE_TYPES = {
     # List responses
     "actors_list",
     "journals_list",
+    "scenes_list",
     # Journal update responses
     "journal_updated",
     # Search responses
