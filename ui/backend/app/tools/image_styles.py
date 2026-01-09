@@ -35,11 +35,28 @@ ACTOR_STYLE_PIXEL = (
     "clean pixel work, no anti-aliasing, no text"
 )
 
+# Rough charcoal sketch style for actors
+ACTOR_STYLE_CHARCOAL = (
+    "rough charcoal sketch on textured paper, dramatic shadows, "
+    "bold expressive strokes, smudged edges, high contrast, "
+    "raw artistic energy, figure study quality, "
+    "grainy texture, monochromatic grayscale, no text"
+)
+
+# Pen and ink journal sketch style for actors
+ACTOR_STYLE_JOURNAL = (
+    "pen and ink sketch on aged parchment paper, "
+    "fine crosshatching, naturalist field journal illustration, "
+    "detailed linework, sepia and brown ink tones, "
+    "Victorian explorer's notebook style, hand-drawn quality, "
+    "slightly rough edges, scientific illustration aesthetic, no text"
+)
+
 def get_actor_style(style_name: str = "watercolor") -> str:
     """Get actor style prompt by name.
 
     Args:
-        style_name: "watercolor", "oil", or "pixel"
+        style_name: "watercolor", "oil", "pixel", "charcoal", or "journal"
 
     Returns:
         The style prompt string
@@ -48,6 +65,10 @@ def get_actor_style(style_name: str = "watercolor") -> str:
         return ACTOR_STYLE_OIL
     if style_name == "pixel":
         return ACTOR_STYLE_PIXEL
+    if style_name == "charcoal":
+        return ACTOR_STYLE_CHARCOAL
+    if style_name == "journal":
+        return ACTOR_STYLE_JOURNAL
     return ACTOR_STYLE  # Default to watercolor
 
 

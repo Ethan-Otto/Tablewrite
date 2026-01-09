@@ -53,6 +53,12 @@ export class TablewriteTab {
               <option value="pixel" ${getArtStyle() === 'pixel' ? 'selected' : ''}>
                 ${game.i18n.localize('TABLEWRITE_ASSISTANT.StylePixel')}
               </option>
+              <option value="charcoal" ${getArtStyle() === 'charcoal' ? 'selected' : ''}>
+                ${game.i18n.localize('TABLEWRITE_ASSISTANT.StyleCharcoal')}
+              </option>
+              <option value="journal" ${getArtStyle() === 'journal' ? 'selected' : ''}>
+                ${game.i18n.localize('TABLEWRITE_ASSISTANT.StyleJournal')}
+              </option>
             </select>
           </div>
         </div>

@@ -40,6 +40,8 @@ export function registerSettings(): void {
       'watercolor': 'TABLEWRITE_ASSISTANT.StyleWatercolor',
       'oil': 'TABLEWRITE_ASSISTANT.StyleOil',
       'pixel': 'TABLEWRITE_ASSISTANT.StylePixel',
+      'charcoal': 'TABLEWRITE_ASSISTANT.StyleCharcoal',
+      'journal': 'TABLEWRITE_ASSISTANT.StyleJournal',
     }
   });
 }
