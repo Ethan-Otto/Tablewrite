@@ -108,18 +108,324 @@ class TestAssetDeleterToolSchema:
 
 
 class TestAssetDeleterToolExecute:
-    """Test tool execute method (placeholder for now)."""
+    """Test tool execute method with mocking."""
 
     @pytest.mark.asyncio
-    async def test_execute_returns_not_implemented(self):
-        """Execute should return error for now (not implemented yet)."""
+    async def test_single_entity_deletion_returns_success(self):
+        """Single entity found should delete immediately and return success."""
+        from app.tools.asset_deleter import AssetDeleterTool, EntityMatch
+
+        tool = AssetDeleterTool()
+
+        # Mock find_entities to return a single match
+        mock_entity = EntityMatch(
+            uuid="Actor.abc123",
+            name="Test Goblin",
+            entity_type="actor",
+            folder_id="tablewrite_folder"
+        )
+
+        # Mock delete_actor to succeed
+        mock_delete_result = MagicMock()
+        mock_delete_result.success = True
+
+        with patch("app.tools.asset_deleter.find_entities", new_callable=AsyncMock, return_value=[mock_entity]), \
+             patch("app.tools.asset_deleter.delete_actor", new_callable=AsyncMock, return_value=mock_delete_result):
+            result = await tool.execute(entity_type="actor", search_query="goblin")
+
+            assert result.type == "text"
+            assert "Deleted" in result.message
+            assert "Test Goblin" in result.message
+            assert result.data["deleted"][0]["uuid"] == "Actor.abc123"
+
+    @pytest.mark.asyncio
+    async def test_bulk_deletion_without_confirm_returns_confirmation_required(self):
+        """Multiple entities found without confirm_bulk should return confirmation_required."""
+        from app.tools.asset_deleter import AssetDeleterTool, EntityMatch
+
+        tool = AssetDeleterTool()
+
+        # Mock find_entities to return multiple matches
+        mock_entities = [
+            EntityMatch(uuid="Actor.1", name="Goblin 1", entity_type="actor", folder_id="tw"),
+            EntityMatch(uuid="Actor.2", name="Goblin 2", entity_type="actor", folder_id="tw"),
+            EntityMatch(uuid="Actor.3", name="Goblin 3", entity_type="actor", folder_id="tw"),
+        ]
+
+        with patch("app.tools.asset_deleter.find_entities", new_callable=AsyncMock, return_value=mock_entities):
+            result = await tool.execute(entity_type="actor", search_query="goblin", confirm_bulk=False)
+
+            assert result.type == "confirmation_required"
+            assert "3" in result.message
+            assert result.data["pending_deletion"]["count"] == 3
+            assert len(result.data["pending_deletion"]["entities"]) == 3
+
+    @pytest.mark.asyncio
+    async def test_bulk_deletion_with_confirm_deletes_all(self):
+        """Multiple entities found with confirm_bulk=True should delete all."""
+        from app.tools.asset_deleter import AssetDeleterTool, EntityMatch
+
+        tool = AssetDeleterTool()
+
+        # Mock find_entities to return multiple matches
+        mock_entities = [
+            EntityMatch(uuid="Actor.1", name="Goblin 1", entity_type="actor", folder_id="tw"),
+            EntityMatch(uuid="Actor.2", name="Goblin 2", entity_type="actor", folder_id="tw"),
+        ]
+
+        # Mock delete_actor to succeed
+        mock_delete_result = MagicMock()
+        mock_delete_result.success = True
+
+        with patch("app.tools.asset_deleter.find_entities", new_callable=AsyncMock, return_value=mock_entities), \
+             patch("app.tools.asset_deleter.delete_actor", new_callable=AsyncMock, return_value=mock_delete_result):
+            result = await tool.execute(entity_type="actor", search_query="goblin", confirm_bulk=True)
+
+            assert result.type == "text"
+            assert "Deleted 2" in result.message
+            assert len(result.data["deleted"]) == 2
+
+    @pytest.mark.asyncio
+    async def test_no_matches_returns_appropriate_message(self):
+        """No entities found should return appropriate message."""
         from app.tools.asset_deleter import AssetDeleterTool
 
         tool = AssetDeleterTool()
-        result = await tool.execute(entity_type="actor")
+
+        with patch("app.tools.asset_deleter.find_entities", new_callable=AsyncMock, return_value=[]):
+            result = await tool.execute(entity_type="actor", search_query="nonexistent")
+
+            assert result.type == "text"
+            assert "No actor" in result.message
+            assert "nonexistent" in result.message
+            assert "Tablewrite" in result.message
+
+    @pytest.mark.asyncio
+    async def test_actor_item_uses_remove_actor_items(self):
+        """actor_item entity_type should use remove_actor_items."""
+        from app.tools.asset_deleter import AssetDeleterTool
+
+        tool = AssetDeleterTool()
+
+        # Mock is_in_tablewrite_folder to return True
+        mock_remove_result = MagicMock()
+        mock_remove_result.success = True
+        mock_remove_result.items_removed = 2
+        mock_remove_result.removed_names = ["Longsword", "Shield"]
+
+        with patch("app.tools.asset_deleter.is_in_tablewrite_folder", new_callable=AsyncMock, return_value=True), \
+             patch("app.tools.asset_deleter.remove_actor_items", new_callable=AsyncMock, return_value=mock_remove_result) as mock_remove:
+            result = await tool.execute(
+                entity_type="actor_item",
+                actor_uuid="Actor.abc123",
+                item_names=["sword", "shield"]
+            )
+
+            mock_remove.assert_called_once_with("Actor.abc123", ["sword", "shield"])
+            assert result.type == "text"
+            assert "Removed 2" in result.message
+            assert "Longsword" in result.message
+
+    @pytest.mark.asyncio
+    async def test_invalid_entity_type_returns_error(self):
+        """Invalid entity_type should return error."""
+        from app.tools.asset_deleter import AssetDeleterTool
+
+        tool = AssetDeleterTool()
+
+        # find_entities returns empty for invalid types
+        with patch("app.tools.asset_deleter.find_entities", new_callable=AsyncMock, return_value=[]):
+            result = await tool.execute(entity_type="invalid_type", search_query="test")
+
+            assert result.type == "text"
+            assert "No invalid_type" in result.message
+
+    @pytest.mark.asyncio
+    async def test_actor_item_without_actor_uuid_returns_error(self):
+        """actor_item deletion without actor_uuid should return error."""
+        from app.tools.asset_deleter import AssetDeleterTool
+
+        tool = AssetDeleterTool()
+
+        result = await tool.execute(entity_type="actor_item", item_names=["sword"])
 
         assert result.type == "error"
-        assert "Not implemented" in result.message
+        assert "actor_uuid" in result.message
+
+    @pytest.mark.asyncio
+    async def test_actor_item_without_item_names_returns_error(self):
+        """actor_item deletion without item_names should return error."""
+        from app.tools.asset_deleter import AssetDeleterTool
+
+        tool = AssetDeleterTool()
+
+        result = await tool.execute(entity_type="actor_item", actor_uuid="Actor.abc123")
+
+        assert result.type == "error"
+        assert "item_names" in result.message
+
+    @pytest.mark.asyncio
+    async def test_actor_item_outside_tablewrite_returns_error(self):
+        """actor_item deletion for actor outside Tablewrite should return error."""
+        from app.tools.asset_deleter import AssetDeleterTool
+
+        tool = AssetDeleterTool()
+
+        with patch("app.tools.asset_deleter.is_in_tablewrite_folder", new_callable=AsyncMock, return_value=False):
+            result = await tool.execute(
+                entity_type="actor_item",
+                actor_uuid="Actor.abc123",
+                item_names=["sword"]
+            )
+
+            assert result.type == "error"
+            assert "Tablewrite" in result.message
+
+    @pytest.mark.asyncio
+    async def test_delete_scene_uses_delete_scene(self):
+        """scene entity_type should use delete_scene."""
+        from app.tools.asset_deleter import AssetDeleterTool, EntityMatch
+
+        tool = AssetDeleterTool()
+
+        mock_entity = EntityMatch(
+            uuid="Scene.xyz789",
+            name="Test Cave",
+            entity_type="scene",
+            folder_id="tablewrite_folder"
+        )
+
+        mock_delete_result = MagicMock()
+        mock_delete_result.success = True
+
+        with patch("app.tools.asset_deleter.find_entities", new_callable=AsyncMock, return_value=[mock_entity]), \
+             patch("app.tools.asset_deleter.delete_scene", new_callable=AsyncMock, return_value=mock_delete_result) as mock_delete:
+            result = await tool.execute(entity_type="scene", search_query="cave")
+
+            mock_delete.assert_called_once_with("Scene.xyz789")
+            assert result.type == "text"
+            assert "Deleted" in result.message
+            assert "Test Cave" in result.message
+
+    @pytest.mark.asyncio
+    async def test_delete_journal_uses_delete_journal(self):
+        """journal entity_type should use delete_journal."""
+        from app.tools.asset_deleter import AssetDeleterTool, EntityMatch
+
+        tool = AssetDeleterTool()
+
+        mock_entity = EntityMatch(
+            uuid="JournalEntry.jnl123",
+            name="Chapter 1",
+            entity_type="journal",
+            folder_id="tablewrite_folder"
+        )
+
+        mock_delete_result = MagicMock()
+        mock_delete_result.success = True
+
+        with patch("app.tools.asset_deleter.find_entities", new_callable=AsyncMock, return_value=[mock_entity]), \
+             patch("app.tools.asset_deleter.delete_journal", new_callable=AsyncMock, return_value=mock_delete_result) as mock_delete:
+            result = await tool.execute(entity_type="journal", search_query="chapter")
+
+            mock_delete.assert_called_once_with("JournalEntry.jnl123")
+            assert result.type == "text"
+            assert "Deleted" in result.message
+            assert "Chapter 1" in result.message
+
+    @pytest.mark.asyncio
+    async def test_delete_folder_uses_delete_folder(self):
+        """folder entity_type should use delete_folder."""
+        from app.tools.asset_deleter import AssetDeleterTool, EntityMatch
+
+        tool = AssetDeleterTool()
+
+        mock_entity = EntityMatch(
+            uuid="Folder.fld456",
+            name="Lost Mine",
+            entity_type="folder",
+            folder_id="tablewrite_id"
+        )
+
+        mock_delete_result = MagicMock()
+        mock_delete_result.success = True
+
+        with patch("app.tools.asset_deleter.find_entities", new_callable=AsyncMock, return_value=[mock_entity]), \
+             patch("app.tools.asset_deleter.delete_folder", new_callable=AsyncMock, return_value=mock_delete_result) as mock_delete:
+            result = await tool.execute(entity_type="folder", search_query="lost mine")
+
+            # delete_folder takes folder_id, not uuid, but the EntityMatch uuid is the folder_id here
+            mock_delete.assert_called_once_with("Folder.fld456", delete_contents=True)
+            assert result.type == "text"
+            assert "Deleted" in result.message
+            assert "Lost Mine" in result.message
+
+    @pytest.mark.asyncio
+    async def test_delete_failure_returns_error(self):
+        """Failed deletion should return error."""
+        from app.tools.asset_deleter import AssetDeleterTool, EntityMatch
+
+        tool = AssetDeleterTool()
+
+        mock_entity = EntityMatch(
+            uuid="Actor.abc123",
+            name="Test Goblin",
+            entity_type="actor",
+            folder_id="tablewrite_folder"
+        )
+
+        mock_delete_result = MagicMock()
+        mock_delete_result.success = False
+
+        with patch("app.tools.asset_deleter.find_entities", new_callable=AsyncMock, return_value=[mock_entity]), \
+             patch("app.tools.asset_deleter.delete_actor", new_callable=AsyncMock, return_value=mock_delete_result):
+            result = await tool.execute(entity_type="actor", search_query="goblin")
+
+            assert result.type == "error"
+            assert "Failed" in result.message
+
+    @pytest.mark.asyncio
+    async def test_remove_actor_items_no_matches_returns_message(self):
+        """remove_actor_items with no matches should return appropriate message."""
+        from app.tools.asset_deleter import AssetDeleterTool
+
+        tool = AssetDeleterTool()
+
+        mock_remove_result = MagicMock()
+        mock_remove_result.success = True
+        mock_remove_result.items_removed = 0
+        mock_remove_result.removed_names = []
+
+        with patch("app.tools.asset_deleter.is_in_tablewrite_folder", new_callable=AsyncMock, return_value=True), \
+             patch("app.tools.asset_deleter.remove_actor_items", new_callable=AsyncMock, return_value=mock_remove_result):
+            result = await tool.execute(
+                entity_type="actor_item",
+                actor_uuid="Actor.abc123",
+                item_names=["nonexistent"]
+            )
+
+            assert result.type == "text"
+            assert "No items matching" in result.message
+
+    @pytest.mark.asyncio
+    async def test_bulk_deletion_shows_max_10_names(self):
+        """Bulk confirmation should show max 10 names with '... and N more'."""
+        from app.tools.asset_deleter import AssetDeleterTool, EntityMatch
+
+        tool = AssetDeleterTool()
+
+        # Create 15 mock entities
+        mock_entities = [
+            EntityMatch(uuid=f"Actor.{i}", name=f"Goblin {i}", entity_type="actor", folder_id="tw")
+            for i in range(15)
+        ]
+
+        with patch("app.tools.asset_deleter.find_entities", new_callable=AsyncMock, return_value=mock_entities):
+            result = await tool.execute(entity_type="actor", search_query="goblin", confirm_bulk=False)
+
+            assert result.type == "confirmation_required"
+            assert "15" in result.message
+            assert "... and 5 more" in result.message
 
 
 class TestIsInTablewriteFolderUnit:

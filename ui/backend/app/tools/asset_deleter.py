@@ -282,9 +282,141 @@ class AssetDeleterTool(BaseTool):
         Returns:
             ToolResponse with result of deletion operation
         """
-        # TODO: Implement in next task
+        logger.info(f"AssetDeleterTool.execute: entity_type={entity_type}, search_query={search_query}, uuid={uuid}")
+
+        # Handle actor_item deletion separately
+        if entity_type == "actor_item":
+            return await self._delete_actor_items(actor_uuid, item_names)
+
+        # Find matching entities
+        entities = await find_entities(entity_type, search_query, uuid, folder_name)
+
+        if not entities:
+            return ToolResponse(
+                type="text",
+                message=f"No {entity_type} matching '{search_query or uuid}' found in Tablewrite folders.",
+                data={"found": 0}
+            )
+
+        # Single item - delete immediately
+        if len(entities) == 1:
+            entity = entities[0]
+            success = await self._delete_entity(entity)
+            if success:
+                return ToolResponse(
+                    type="text",
+                    message=f"Deleted {entity_type} '{entity.name}'",
+                    data={"deleted": [{"uuid": entity.uuid, "name": entity.name}]}
+                )
+            else:
+                return ToolResponse(
+                    type="error",
+                    message=f"Failed to delete {entity_type} '{entity.name}'",
+                    data=None
+                )
+
+        # Multiple items - require confirmation
+        if not confirm_bulk:
+            names = [e.name for e in entities]
+            return ToolResponse(
+                type="confirmation_required",
+                message=f"Found {len(entities)} {entity_type}s to delete:\n" +
+                        "\n".join(f"- {name}" for name in names[:10]) +
+                        (f"\n... and {len(names) - 10} more" if len(names) > 10 else "") +
+                        "\n\nSay 'confirm' or 'yes, delete them' to proceed.",
+                data={
+                    "pending_deletion": {
+                        "entity_type": entity_type,
+                        "count": len(entities),
+                        "entities": [{"uuid": e.uuid, "name": e.name} for e in entities]
+                    }
+                }
+            )
+
+        # Confirmed bulk delete
+        deleted = []
+        failed = []
+        for entity in entities:
+            if await self._delete_entity(entity):
+                deleted.append(entity)
+            else:
+                failed.append(entity)
+
+        message = f"Deleted {len(deleted)} {entity_type}(s)"
+        if failed:
+            message += f", {len(failed)} failed"
+
         return ToolResponse(
-            type="error",
-            message="Not implemented yet",
-            data=None
+            type="text",
+            message=message,
+            data={
+                "deleted": [{"uuid": e.uuid, "name": e.name} for e in deleted],
+                "failed": [{"uuid": e.uuid, "name": e.name} for e in failed]
+            }
         )
+
+    async def _delete_entity(self, entity: EntityMatch) -> bool:
+        """Delete a single entity. Returns True on success."""
+        try:
+            if entity.entity_type == "actor":
+                result = await delete_actor(entity.uuid)
+            elif entity.entity_type == "scene":
+                result = await delete_scene(entity.uuid)
+            elif entity.entity_type == "journal":
+                result = await delete_journal(entity.uuid)
+            elif entity.entity_type == "folder":
+                result = await delete_folder(entity.uuid, delete_contents=True)
+            else:
+                return False
+
+            return result.success
+        except Exception as e:
+            logger.error(f"Failed to delete {entity.entity_type} {entity.uuid}: {e}")
+            return False
+
+    async def _delete_actor_items(
+        self,
+        actor_uuid: Optional[str],
+        item_names: Optional[List[str]]
+    ) -> ToolResponse:
+        """Delete items from an actor."""
+        if not actor_uuid:
+            return ToolResponse(
+                type="error",
+                message="actor_uuid is required for actor_item deletion",
+                data=None
+            )
+        if not item_names:
+            return ToolResponse(
+                type="error",
+                message="item_names is required for actor_item deletion",
+                data=None
+            )
+
+        # Verify actor is in Tablewrite
+        if not await is_in_tablewrite_folder(actor_uuid, "actor"):
+            return ToolResponse(
+                type="error",
+                message="Cannot remove items: actor is not in a Tablewrite folder",
+                data=None
+            )
+
+        result = await remove_actor_items(actor_uuid, item_names)
+        if result.success:
+            if result.items_removed == 0:
+                return ToolResponse(
+                    type="text",
+                    message=f"No items matching {item_names} found on actor",
+                    data={"removed": 0}
+                )
+            return ToolResponse(
+                type="text",
+                message=f"Removed {result.items_removed} item(s) from actor: {', '.join(result.removed_names or [])}",
+                data={"removed": result.items_removed, "names": result.removed_names}
+            )
+        else:
+            return ToolResponse(
+                type="error",
+                message=f"Failed to remove items: {result.error}",
+                data=None
+            )
