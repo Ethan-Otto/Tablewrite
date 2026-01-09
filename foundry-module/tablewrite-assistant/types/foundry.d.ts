@@ -79,6 +79,7 @@ declare global {
     settings: ClientSettings;
     i18n: Localization;
     actors: ActorCollection | null;
+    scenes: SceneCollection | null;
     folders: FolderCollection | null;
     packs: CompendiumCollection;
     world: World;
@@ -86,6 +87,15 @@ declare global {
 
   interface ActorCollection {
     map<T>(fn: (actor: FoundryDocument) => T): T[];
+  }
+
+  interface SceneDocument extends FoundryDocument {
+    folder?: { id: string } | null;
+  }
+
+  interface SceneCollection {
+    contents: SceneDocument[];
+    map<T>(fn: (scene: SceneDocument) => T): T[];
   }
 
   // Foundry globals

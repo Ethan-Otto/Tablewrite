@@ -6,7 +6,7 @@
  * Message format for delete: {uuid: string}
  */
 
-import type { CreateResult, GetResult, DeleteResult } from './index.js';
+import type { CreateResult, GetResult, DeleteResult, SceneInfo, SceneListResult } from './index.js';
 
 export async function handleSceneCreate(data: Record<string, unknown>): Promise<CreateResult> {
   try {
@@ -113,6 +113,33 @@ export async function handleDeleteScene(uuid: string): Promise<DeleteResult> {
     };
   } catch (error) {
     console.error('[Tablewrite] Failed to delete scene:', error);
+    return {
+      success: false,
+      error: String(error)
+    };
+  }
+}
+
+/**
+ * Handle list scenes request - list all world scenes.
+ */
+export async function handleListScenes(): Promise<SceneListResult> {
+  try {
+    const scenes = game.scenes?.contents ?? [];
+    const sceneInfos: SceneInfo[] = scenes.map(scene => ({
+      uuid: `Scene.${scene.id}`,
+      id: scene.id ?? '',
+      name: scene.name ?? '',
+      folder: scene.folder?.id ?? null
+    }));
+
+    console.log('[Tablewrite] Listed', sceneInfos.length, 'scenes');
+    return {
+      success: true,
+      scenes: sceneInfos
+    };
+  } catch (error) {
+    console.error('[Tablewrite] Failed to list scenes:', error);
     return {
       success: false,
       error: String(error)

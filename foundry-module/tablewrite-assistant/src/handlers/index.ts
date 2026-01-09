@@ -4,19 +4,19 @@
 
 export { handleActorCreate, handleGetActor, handleUpdateActor, handleDeleteActor, handleListActors, handleGiveItems, handleAddCustomItems } from './actor.js';
 export { handleGetJournal, handleJournalCreate, handleJournalDelete, handleListJournals, handleUpdateJournal } from './journal.js';
-export { handleSceneCreate, handleGetScene, handleDeleteScene } from './scene.js';
+export { handleSceneCreate, handleGetScene, handleDeleteScene, handleListScenes } from './scene.js';
 export { handleSearchItems, handleGetItem, handleListCompendiumItems } from './items.js';
 export { handleListFiles, handleFileUpload } from './files.js';
 export { handleGetOrCreateFolder, handleListFolders, handleDeleteFolder } from './folder.js';
 
 import { handleActorCreate, handleGetActor, handleUpdateActor, handleDeleteActor, handleListActors, handleGiveItems, handleAddCustomItems } from './actor.js';
 import { handleGetJournal, handleJournalCreate, handleJournalDelete, handleListJournals, handleUpdateJournal, JournalListResult, UpdateJournalResult } from './journal.js';
-import { handleSceneCreate, handleGetScene, handleDeleteScene } from './scene.js';
+import { handleSceneCreate, handleGetScene, handleDeleteScene, handleListScenes } from './scene.js';
 import { handleSearchItems, handleGetItem, handleListCompendiumItems } from './items.js';
 import { handleListFiles, handleFileUpload } from './files.js';
 import { handleGetOrCreateFolder, handleListFolders, handleDeleteFolder, FolderResult, ListFoldersResult, DeleteFolderResult } from './folder.js';
 
-export type MessageType = 'actor' | 'journal' | 'get_journal' | 'delete_journal' | 'list_journals' | 'update_journal' | 'scene' | 'get_scene' | 'delete_scene' | 'get_actor' | 'update_actor' | 'delete_actor' | 'list_actors' | 'give_items' | 'add_custom_items' | 'search_items' | 'get_item' | 'list_compendium_items' | 'list_files' | 'upload_file' | 'get_or_create_folder' | 'list_folders' | 'delete_folder' | 'module_progress' | 'connected' | 'pong';
+export type MessageType = 'actor' | 'journal' | 'get_journal' | 'delete_journal' | 'list_journals' | 'update_journal' | 'scene' | 'get_scene' | 'delete_scene' | 'list_scenes' | 'get_actor' | 'update_actor' | 'delete_actor' | 'list_actors' | 'give_items' | 'add_custom_items' | 'search_items' | 'get_item' | 'list_compendium_items' | 'list_files' | 'upload_file' | 'get_or_create_folder' | 'list_folders' | 'delete_folder' | 'module_progress' | 'connected' | 'pong';
 
 export interface TablewriteMessage {
   type: MessageType;
@@ -55,6 +55,19 @@ export interface ActorInfo {
 export interface ListResult {
   success: boolean;
   actors?: ActorInfo[];
+  error?: string;
+}
+
+export interface SceneInfo {
+  uuid: string;
+  id: string;
+  name: string;
+  folder: string | null;
+}
+
+export interface SceneListResult {
+  success: boolean;
+  scenes?: SceneInfo[];
   error?: string;
 }
 
@@ -100,7 +113,7 @@ export interface FileUploadResult {
 export interface MessageResult {
   responseType: string;
   request_id?: string;
-  data?: CreateResult | GetResult | DeleteResult | ListResult | GiveResult | SearchResult | FileListResult | FileUploadResult | FolderResult | ListFoldersResult | DeleteFolderResult | JournalListResult | UpdateJournalResult;
+  data?: CreateResult | GetResult | DeleteResult | ListResult | SceneListResult | GiveResult | SearchResult | FileListResult | FileUploadResult | FolderResult | ListFoldersResult | DeleteFolderResult | JournalListResult | UpdateJournalResult;
   error?: string;
 }
 
@@ -242,6 +255,15 @@ export async function handleMessage(message: TablewriteMessage): Promise<Message
         request_id: message.request_id,
         error: 'Missing uuid for delete_scene'
       };
+    case 'list_scenes': {
+      const result = await handleListScenes();
+      return {
+        responseType: result.success ? 'scenes_list' : 'scene_error',
+        request_id: message.request_id,
+        data: result,
+        error: result.error
+      };
+    }
     case 'get_actor':
       if (message.data?.uuid) {
         const result = await handleGetActor(message.data.uuid as string);
