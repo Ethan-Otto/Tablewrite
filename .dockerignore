@@ -1,0 +1,58 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python cache
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+*.egg
+.eggs/
+
+# Virtual environments
+.venv
+venv
+env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Test artifacts (will be created fresh)
+tests/output/
+tests/test_runs/
+test-results.xml
+test.log
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Build artifacts
+build/
+dist/
+*.whl
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Worktrees (separate git work areas)
+.worktrees/
+
+# Large output directories (mounted as volumes)
+output/
+
+# Demo/scratch files (from git status)
+demo_modules/
+
+# Documentation
+*.md
+!CLAUDE.md
+LICENSE

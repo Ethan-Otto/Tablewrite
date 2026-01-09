@@ -1,7 +1,7 @@
 """Tests for FoundryVTT API client (via WebSocket backend)."""
 
-import pytest
 import os
+import pytest
 from unittest.mock import Mock, patch
 from dotenv import load_dotenv
 from foundry.client import FoundryClient
@@ -93,7 +93,8 @@ class TestJournalOperations:
 class TestFoundryIntegration:
     """Integration tests for FoundryVTT API via WebSocket (requires running backend + Foundry)."""
 
-    BACKEND_URL = "http://localhost:8000"
+    # Use environment variable for Docker compatibility
+    BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
     @pytest.fixture
     def require_websocket(self):
@@ -167,9 +168,9 @@ class TestActorOperations:
     """Tests for actor operations via FoundryClient."""
 
     @pytest.fixture
-    def mock_client(self, monkeypatch):
-        """Create a FoundryClient with mocked environment."""
-        monkeypatch.setenv("BACKEND_URL", "http://localhost:8000")
+    def mock_client(self):
+        """Create a FoundryClient using environment variable (for Docker compatibility)."""
+        # Uses BACKEND_URL env var if set, otherwise defaults to localhost:8000
         return FoundryClient()
 
     def test_client_initializes_actor_manager(self, mock_client):

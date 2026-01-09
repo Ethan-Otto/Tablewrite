@@ -387,6 +387,21 @@ def check_foundry_credentials():
 
 
 @pytest.fixture(scope="session")
+def backend_url():
+    """
+    Get the backend URL from environment or use default.
+
+    In Docker, this will be http://host.docker.internal:8000
+    Locally, this will be http://localhost:8000
+
+    Usage:
+        def test_something(backend_url):
+            response = httpx.get(f"{backend_url}/health")
+    """
+    return os.getenv("BACKEND_URL", "http://localhost:8000")
+
+
+@pytest.fixture(scope="session")
 def sample_xml_content():
     """Return sample XML content for testing."""
     return """<Chapter_01_Introduction>

@@ -1,5 +1,6 @@
 """Tests for SceneManager - scene operations via WebSocket backend."""
 
+import os
 import pytest
 from unittest.mock import patch, MagicMock
 
@@ -455,7 +456,8 @@ class TestFoundryClientSceneManager:
 class TestSceneManagerIntegration:
     """Integration tests for scene creation (requires running backend + Foundry)."""
 
-    BACKEND_URL = "http://localhost:8000"
+    # Use environment variable for Docker compatibility
+    BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
     @pytest.fixture
     def require_websocket(self):

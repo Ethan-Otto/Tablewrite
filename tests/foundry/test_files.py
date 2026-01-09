@@ -1,5 +1,6 @@
 """Tests for FileManager - file upload operations via WebSocket backend."""
 
+import os
 import pytest
 from unittest.mock import patch, MagicMock, mock_open
 from pathlib import Path
@@ -207,7 +208,8 @@ class TestFoundryClientFileManager:
 class TestFileManagerIntegration:
     """Integration tests for file upload (requires running backend + Foundry)."""
 
-    BACKEND_URL = "http://localhost:8000"
+    # Use environment variable for Docker compatibility
+    BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
     @pytest.fixture
     def require_websocket(self):

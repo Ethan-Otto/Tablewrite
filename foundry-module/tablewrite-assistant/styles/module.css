@@ -5,6 +5,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  position: relative;
 }
 
 /* Tab content area - fills remaining space after tabs */
@@ -609,16 +610,24 @@
    Settings Panel Styles
    ======================================== */
 
-/* Settings gear button in tab bar */
+/* Settings gear button - positioned top-right corner */
 .settings-btn {
-  margin-left: auto;
-  padding: 8px 12px;
+  position: absolute !important;
+  top: 8px !important;
+  right: 8px !important;
+  width: auto !important;
+  height: auto !important;
+  padding: 2px !important;
+  margin: 0 !important;
   background: none;
   border: none;
   cursor: pointer;
   color: #888;
-  font-size: 14px;
+  font-size: 11px;
   transition: color 0.2s ease;
+  z-index: 100;
+  line-height: 1;
+  flex: none !important;
 }
 
 .settings-btn:hover {

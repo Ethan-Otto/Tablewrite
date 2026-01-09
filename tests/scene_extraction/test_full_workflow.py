@@ -74,8 +74,8 @@ class TestSceneProcessingWorkflow:
             assert len(scenes) == 1
             assert scenes[0].name == "Forest Clearing"
 
-            # Mock generate_images_parallel for image generation
-            with patch('src.scene_extraction.generate_artwork.generate_images_parallel') as mock_gen:
+            # Mock generate_images_parallel for image generation (patch where it's imported)
+            with patch('scene_extraction.generate_artwork.generate_images_parallel') as mock_gen:
                 mock_gen.return_value = [b"fake_png_data"]
 
                 image_bytes, prompt = generate_scene_image(scenes[0], context)

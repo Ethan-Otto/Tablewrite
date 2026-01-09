@@ -39,6 +39,7 @@ export function registerSettings(): void {
     choices: {
       'watercolor': 'TABLEWRITE_ASSISTANT.StyleWatercolor',
       'oil': 'TABLEWRITE_ASSISTANT.StyleOil',
+      'pixel': 'TABLEWRITE_ASSISTANT.StylePixel',
     }
   });
 }

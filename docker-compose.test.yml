@@ -1,0 +1,113 @@
+# Docker Compose for Running Tests
+# D&D Module Converter Test Infrastructure
+#
+# Usage:
+#   # Run smoke tests (default, fast)
+#   docker compose -f docker-compose.test.yml up --build
+#
+#   # Run full test suite (excluding integration tests)
+#   docker compose -f docker-compose.test.yml run --rm test-full
+#
+#   # Run with Gemini API (for tests marked @pytest.mark.requires_api)
+#   docker compose -f docker-compose.test.yml --env-file .env run --rm test-with-api
+#
+#   # Run integration tests (requires Foundry on host)
+#   docker compose -f docker-compose.test.yml --env-file .env run --rm test-integration
+#
+#   # Interactive shell for debugging
+#   docker compose -f docker-compose.test.yml run --rm test-shell
+
+services:
+  # Base test image configuration
+  test-base:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: test
+    volumes:
+      # Mount output for artifact inspection
+      - ./tests/output:/app/tests/output
+      - ./tests/test_runs:/app/tests/test_runs
+    environment:
+      - CI=true
+      - SKIP_FOUNDRY_INIT=true
+      - PYTHONPATH=/app/src
+      - AUTO_ESCALATE=false
+    profiles:
+      - never  # Base service, never run directly
+
+  # Smoke tests (default, fast, ~25 tests)
+  test:
+    extends:
+      service: test-base
+    profiles:
+      - default
+    command: ["uv", "run", "pytest", "-v", "--tb=short", "-m", "smoke"]
+
+  # Full test suite (excludes integration tests that need Foundry)
+  test-full:
+    extends:
+      service: test-base
+    command: >
+      uv run pytest -v --tb=short --full
+      -m "not integration and not slow"
+      -n auto --dist loadscope
+
+  # Tests that require Gemini API key
+  test-with-api:
+    extends:
+      service: test-base
+    env_file:
+      - .env
+    environment:
+      - CI=true
+      - SKIP_FOUNDRY_INIT=true
+    command: >
+      uv run pytest -v --tb=short --full
+      -m "requires_api and not integration"
+      -n auto --dist loadscope
+
+  # Integration tests (requires Foundry running on host)
+  # NOTE: Runs WITHOUT pytest-xdist (-n auto) because parallel WebSocket
+  # connections from Docker to host cause worker crashes and timeouts.
+  test-integration:
+    extends:
+      service: test-base
+    env_file:
+      - .env
+    environment:
+      - CI=false
+      - SKIP_FOUNDRY_INIT=false
+      # Connect to host machine's services
+      - BACKEND_URL=http://host.docker.internal:8000
+      - FOUNDRY_URL=http://host.docker.internal:30000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: >
+      uv run pytest -v --tb=long --full
+      -m "integration"
+      --timeout=120
+
+  # Interactive shell for debugging
+  test-shell:
+    extends:
+      service: test-base
+    stdin_open: true
+    tty: true
+    entrypoint: /bin/bash
+
+  # Run specific test file
+  test-file:
+    extends:
+      service: test-base
+    command: ["uv", "run", "pytest", "-v", "--tb=long"]
+    # Override with: docker compose run --rm test-file tests/path/to/test.py
+
+  # Unit tests only (fastest, no external dependencies)
+  test-unit:
+    extends:
+      service: test-base
+    command: >
+      uv run pytest -v --tb=short
+      -m "unit and not integration and not slow and not requires_api"
+      -n auto --dist loadscope

@@ -7,6 +7,7 @@
   "TABLEWRITE_ASSISTANT.SettingsArtStyleHint": "Visual style for generated actor portraits",
   "TABLEWRITE_ASSISTANT.StyleWatercolor": "Watercolor",
   "TABLEWRITE_ASSISTANT.StyleOil": "Oil Painting",
+  "TABLEWRITE_ASSISTANT.StylePixel": "16-bit Pixel Art",
   "TABLEWRITE_ASSISTANT.Settings": "Settings",
   "TABLEWRITE_ASSISTANT.Connected": "Connected to Tablewrite",
   "TABLEWRITE_ASSISTANT.Disconnected": "Disconnected from Tablewrite",

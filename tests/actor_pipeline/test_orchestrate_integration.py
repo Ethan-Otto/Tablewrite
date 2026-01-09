@@ -2,16 +2,17 @@
 
 These tests call the backend HTTP API which internally uses WebSocket
 to communicate with Foundry. Requires:
-- Backend running on localhost:8000
+- Backend running (localhost:8000 or BACKEND_URL env var)
 - Foundry with Tablewrite module connected
 """
 
-import pytest
 import os
+import pytest
 import httpx
 from pathlib import Path
 
-BACKEND_URL = "http://localhost:8000"
+# Use environment variable for Docker compatibility
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 
 class TestActorOrchestrationIntegration:

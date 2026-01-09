@@ -1,8 +1,12 @@
 """Tests for foundry.items.fetch module (via WebSocket backend)."""
 
+import os
 import pytest
 from unittest.mock import patch, MagicMock
 from foundry.items.fetch import fetch_items_by_type, fetch_all_spells
+
+# Use environment variable for Docker compatibility
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 
 class TestFetchItemsByType:
@@ -155,15 +159,15 @@ class TestFetchItemsIntegration:
         import httpx
 
         try:
-            response = httpx.get("http://localhost:8000/health", timeout=5.0)
+            response = httpx.get(f"{BACKEND_URL}/health", timeout=5.0)
             if response.status_code != 200:
                 pytest.fail("Backend not healthy")
         except httpx.ConnectError:
-            pytest.fail("Backend not running on localhost:8000")
+            pytest.fail(f"Backend not running at {BACKEND_URL}")
 
         # Check Foundry connection
         try:
-            response = httpx.get("http://localhost:8000/api/foundry/status", timeout=5.0)
+            response = httpx.get(f"{BACKEND_URL}/api/foundry/status", timeout=5.0)
             if response.json().get("status") != "connected":
                 pytest.fail("Foundry not connected to backend via WebSocket")
         except Exception as e:

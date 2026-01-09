@@ -50,6 +50,9 @@ export class TablewriteTab {
               <option value="oil" ${getArtStyle() === 'oil' ? 'selected' : ''}>
                 ${game.i18n.localize('TABLEWRITE_ASSISTANT.StyleOil')}
               </option>
+              <option value="pixel" ${getArtStyle() === 'pixel' ? 'selected' : ''}>
+                ${game.i18n.localize('TABLEWRITE_ASSISTANT.StylePixel')}
+              </option>
             </select>
           </div>
         </div>

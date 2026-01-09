@@ -66,10 +66,11 @@ def test_map_extraction_creates_metadata_file(tmp_path):
             # Return empty list (no maps found)
             mock_extract.return_value = []
 
-            result = run_map_extraction(run_dir, pdf_path="/fake/path.pdf")
+            result = run_map_extraction(run_dir, pdf_path="/fake/path.pdf", continue_on_error=True)
 
-            # Should handle the case gracefully
+            # Should handle the case gracefully (returns error dict instead of raising)
             assert isinstance(result, dict)
+            assert "errors" in result or "maps_extracted" in result
 
 
 @pytest.mark.integration

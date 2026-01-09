@@ -6,8 +6,8 @@ import io
 from google import genai
 from google.genai import types
 from typing import List
-from src.pdf_processing.image_asset_processing.models import MapDetectionResult
-from src.util.gemini import create_client
+from pdf_processing.image_asset_processing.models import MapDetectionResult
+from util.gemini import create_client
 
 logger = logging.getLogger(__name__)
 

@@ -2,6 +2,7 @@
 Integration tests for batch actor creation.
 Tests the full pipeline via HTTP API, not direct tool invocation.
 """
+import os
 import pytest
 import sys
 from pathlib import Path
@@ -10,7 +11,8 @@ import httpx
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "ui/backend"))
 
-BACKEND_URL = "http://localhost:8000"
+# Use environment variable for Docker compatibility
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 
 @pytest.mark.integration

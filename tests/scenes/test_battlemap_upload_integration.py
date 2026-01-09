@@ -4,16 +4,18 @@ Tests the full battle map upload pipeline through the REST API:
 /api/scenes/create-from-map
 
 Requirements:
-- Backend server running at localhost:8000
+- Backend server running (localhost:8000 or BACKEND_URL env var)
 - FoundryVTT connected to backend via WebSocket
 - Tablewrite Assistant module enabled in Foundry
 """
 
+import os
 import pytest
 from pathlib import Path
 import httpx
 
-BACKEND_URL = "http://localhost:8000"
+# Use environment variable for Docker compatibility
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 TEST_MAP = Path(__file__).parent / "fixtures" / "gridded_map.webp"
 
 
