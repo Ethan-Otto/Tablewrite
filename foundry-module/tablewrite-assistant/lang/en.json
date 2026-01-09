@@ -1,6 +1,13 @@
 {
   "TABLEWRITE_ASSISTANT.SettingsBackendUrl": "Backend URL",
   "TABLEWRITE_ASSISTANT.SettingsBackendUrlHint": "URL of your Tablewrite server (e.g., http://localhost:8000)",
+  "TABLEWRITE_ASSISTANT.SettingsTokenArtEnabled": "Token Art Generation",
+  "TABLEWRITE_ASSISTANT.SettingsTokenArtEnabledHint": "Generate AI artwork for created actors",
+  "TABLEWRITE_ASSISTANT.SettingsArtStyle": "Art Style",
+  "TABLEWRITE_ASSISTANT.SettingsArtStyleHint": "Visual style for generated actor portraits",
+  "TABLEWRITE_ASSISTANT.StyleWatercolor": "Watercolor",
+  "TABLEWRITE_ASSISTANT.StyleOil": "Oil Painting",
+  "TABLEWRITE_ASSISTANT.Settings": "Settings",
   "TABLEWRITE_ASSISTANT.Connected": "Connected to Tablewrite",
   "TABLEWRITE_ASSISTANT.Disconnected": "Disconnected from Tablewrite",
   "TABLEWRITE_ASSISTANT.CreatedActor": "Created actor: {name}",

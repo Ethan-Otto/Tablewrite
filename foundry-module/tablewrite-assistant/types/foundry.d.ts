@@ -15,6 +15,7 @@ declare global {
     type: typeof String | typeof Number | typeof Boolean | typeof Object | typeof Array;
     config: boolean;
     scope: 'world' | 'client';
+    choices?: Record<string, string>;
     onChange?: (value: unknown) => void;
   }
 
