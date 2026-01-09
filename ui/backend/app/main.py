@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 from dotenv import load_dotenv
 
-from app.routers import actors, chat, files, folders, health, journals, modules, scenes, search
+from app.routers import actors, chat, files, folders, health, journals, modules, scenes, search, tools
 from app.routers.scenes import scene_upload_router
 from app.websocket import foundry_websocket_endpoint
 from app.websocket.push import set_main_loop
@@ -67,6 +67,7 @@ app.include_router(files.router)
 app.include_router(folders.router)
 app.include_router(scenes.router)
 app.include_router(scene_upload_router)
+app.include_router(tools.router)
 
 
 @app.websocket("/ws/foundry")

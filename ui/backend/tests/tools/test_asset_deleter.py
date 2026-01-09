@@ -1134,3 +1134,461 @@ class TestFindEntitiesIntegration:
         finally:
             for uuid in actors:
                 await delete_actor(uuid)
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestAssetDeleterToolIntegration:
+    """Integration tests for AssetDeleterTool with real Foundry data.
+
+    Uses HTTP API to create test data, then invokes the tool directly.
+    This approach ensures WebSocket event loop compatibility.
+    """
+
+    BACKEND_URL = "http://localhost:8000"
+
+    async def test_delete_actor_roundtrip(self, ensure_foundry_connected, test_folders):
+        """Create actor in Tablewrite, delete via tool, verify it's gone."""
+        import httpx
+        import time
+        from tests.conftest import check_backend_and_foundry
+
+        await check_backend_and_foundry()
+
+        unique_suffix = f"{int(time.time() * 1000)}"
+        actor_name = f"Integration Test Actor Delete {unique_suffix}"
+        created_uuid = None
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # Create Tablewrite folder
+            folder_response = await client.post(
+                f"{self.BACKEND_URL}/api/foundry/folder",
+                json={"name": "Tablewrite", "type": "Actor"}
+            )
+            assert folder_response.status_code == 200
+            folder_data = folder_response.json()
+            assert folder_data.get("success"), f"Failed to create folder: {folder_data}"
+            folder_id = folder_data.get("folder_id")
+
+            # Create actor in Tablewrite
+            actor_response = await client.post(
+                f"{self.BACKEND_URL}/api/foundry/actor",
+                json={
+                    "actor": {
+                        "name": actor_name,
+                        "type": "npc",
+                        "system": {"abilities": {"str": {"value": 10}}}
+                    },
+                    "folder": folder_id
+                }
+            )
+            assert actor_response.status_code == 200
+            actor_data = actor_response.json()
+            assert actor_data.get("success"), f"Failed to create actor: {actor_data}"
+            created_uuid = actor_data.get("uuid")
+
+            try:
+                # Delete via API using the tool endpoint
+                delete_response = await client.post(
+                    f"{self.BACKEND_URL}/api/tools/delete_assets",
+                    json={"entity_type": "actor", "uuid": created_uuid}
+                )
+                assert delete_response.status_code == 200
+                delete_data = delete_response.json()
+                assert delete_data.get("type") == "text", \
+                    f"Expected success, got: {delete_data}"
+                assert "Deleted" in delete_data.get("message", ""), \
+                    f"Expected 'Deleted' in message: {delete_data}"
+
+                # Verify actor is gone
+                fetch_response = await client.get(
+                    f"{self.BACKEND_URL}/api/foundry/actor/{created_uuid}"
+                )
+                # Should return success=False or empty entity
+                fetch_data = fetch_response.json()
+                assert not fetch_data.get("success") or not fetch_data.get("entity"), \
+                    "Actor should be deleted but still exists"
+            finally:
+                # Cleanup (may already be deleted)
+                try:
+                    await client.delete(f"{self.BACKEND_URL}/api/foundry/actor/{created_uuid}")
+                except Exception:
+                    pass
+
+    async def test_bulk_delete_requires_confirmation(self, ensure_foundry_connected, test_folders):
+        """Create 2+ actors, attempt delete without confirm, verify confirmation_required response."""
+        import httpx
+        import time
+        from tests.conftest import check_backend_and_foundry
+
+        await check_backend_and_foundry()
+
+        unique_suffix = f"{int(time.time() * 1000)}"
+        search_term = f"BulkConfirmTest{unique_suffix}"
+        actor_uuids = []
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # Create Tablewrite folder
+            folder_response = await client.post(
+                f"{self.BACKEND_URL}/api/foundry/folder",
+                json={"name": "Tablewrite", "type": "Actor"}
+            )
+            folder_data = folder_response.json()
+            assert folder_data.get("success"), f"Failed to create folder: {folder_data}"
+            folder_id = folder_data.get("folder_id")
+
+            # Create multiple actors
+            for i in range(3):
+                actor_response = await client.post(
+                    f"{self.BACKEND_URL}/api/foundry/actor",
+                    json={
+                        "actor": {
+                            "name": f"{search_term} Actor {i}",
+                            "type": "npc",
+                            "system": {"abilities": {"str": {"value": 10}}}
+                        },
+                        "folder": folder_id
+                    }
+                )
+                actor_data = actor_response.json()
+                assert actor_data.get("success"), f"Failed to create actor {i}: {actor_data}"
+                actor_uuids.append(actor_data.get("uuid"))
+
+            try:
+                # Try to delete without confirm_bulk
+                delete_response = await client.post(
+                    f"{self.BACKEND_URL}/api/tools/delete_assets",
+                    json={
+                        "entity_type": "actor",
+                        "search_query": search_term,
+                        "confirm_bulk": False
+                    }
+                )
+                assert delete_response.status_code == 200
+                delete_data = delete_response.json()
+
+                # Should require confirmation
+                assert delete_data.get("type") == "confirmation_required", \
+                    f"Expected confirmation_required, got: {delete_data}"
+                assert "3" in delete_data.get("message", ""), \
+                    f"Expected '3' in message: {delete_data}"
+                assert delete_data.get("data", {}).get("pending_deletion", {}).get("count") == 3
+            finally:
+                # Cleanup all actors
+                for uuid in actor_uuids:
+                    try:
+                        await client.delete(f"{self.BACKEND_URL}/api/foundry/actor/{uuid}")
+                    except Exception:
+                        pass
+
+    async def test_bulk_delete_with_confirmation(self, ensure_foundry_connected, test_folders):
+        """Create 2+ actors, delete with confirm_bulk=True, verify all deleted."""
+        import httpx
+        import time
+        from tests.conftest import check_backend_and_foundry
+
+        await check_backend_and_foundry()
+
+        unique_suffix = f"{int(time.time() * 1000)}"
+        search_term = f"BulkDeleteTest{unique_suffix}"
+        actor_uuids = []
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # Create Tablewrite folder
+            folder_response = await client.post(
+                f"{self.BACKEND_URL}/api/foundry/folder",
+                json={"name": "Tablewrite", "type": "Actor"}
+            )
+            folder_data = folder_response.json()
+            assert folder_data.get("success"), f"Failed to create folder: {folder_data}"
+            folder_id = folder_data.get("folder_id")
+
+            # Create multiple actors
+            for i in range(2):
+                actor_response = await client.post(
+                    f"{self.BACKEND_URL}/api/foundry/actor",
+                    json={
+                        "actor": {
+                            "name": f"{search_term} Actor {i}",
+                            "type": "npc",
+                            "system": {"abilities": {"str": {"value": 10}}}
+                        },
+                        "folder": folder_id
+                    }
+                )
+                actor_data = actor_response.json()
+                assert actor_data.get("success"), f"Failed to create actor {i}: {actor_data}"
+                actor_uuids.append(actor_data.get("uuid"))
+
+            try:
+                # Delete with confirm_bulk=True
+                delete_response = await client.post(
+                    f"{self.BACKEND_URL}/api/tools/delete_assets",
+                    json={
+                        "entity_type": "actor",
+                        "search_query": search_term,
+                        "confirm_bulk": True
+                    }
+                )
+                assert delete_response.status_code == 200
+                delete_data = delete_response.json()
+
+                # Should succeed
+                assert delete_data.get("type") == "text", \
+                    f"Expected text, got: {delete_data}"
+                assert "Deleted 2" in delete_data.get("message", ""), \
+                    f"Expected 'Deleted 2' in message: {delete_data}"
+                assert len(delete_data.get("data", {}).get("deleted", [])) == 2
+
+                # Verify all actors are gone
+                for uuid in actor_uuids:
+                    fetch_response = await client.get(
+                        f"{self.BACKEND_URL}/api/foundry/actor/{uuid}"
+                    )
+                    fetch_data = fetch_response.json()
+                    assert not fetch_data.get("success") or not fetch_data.get("entity"), \
+                        f"Actor {uuid} should be deleted"
+            finally:
+                # Cleanup (actors should already be deleted)
+                for uuid in actor_uuids:
+                    try:
+                        await client.delete(f"{self.BACKEND_URL}/api/foundry/actor/{uuid}")
+                    except Exception:
+                        pass
+
+    async def test_remove_actor_items_via_tool(self, ensure_foundry_connected, test_folders):
+        """Create actor with items in Tablewrite, remove items via tool, verify items removed."""
+        import httpx
+        import time
+        from tests.conftest import check_backend_and_foundry
+
+        await check_backend_and_foundry()
+
+        unique_suffix = f"{int(time.time() * 1000)}"
+        actor_name = f"Integration Test Actor Items {unique_suffix}"
+        created_uuid = None
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # Create Tablewrite folder
+            folder_response = await client.post(
+                f"{self.BACKEND_URL}/api/foundry/folder",
+                json={"name": "Tablewrite", "type": "Actor"}
+            )
+            folder_data = folder_response.json()
+            assert folder_data.get("success"), f"Failed to create folder: {folder_data}"
+            folder_id = folder_data.get("folder_id")
+
+            # Create actor
+            actor_response = await client.post(
+                f"{self.BACKEND_URL}/api/foundry/actor",
+                json={
+                    "actor": {
+                        "name": actor_name,
+                        "type": "npc",
+                        "system": {"abilities": {"str": {"value": 10}}}
+                    },
+                    "folder": folder_id
+                }
+            )
+            actor_data = actor_response.json()
+            assert actor_data.get("success"), f"Failed to create actor: {actor_data}"
+            created_uuid = actor_data.get("uuid")
+
+            try:
+                # Search for a common item to add (Longsword)
+                search_response = await client.get(
+                    f"{self.BACKEND_URL}/api/foundry/search",
+                    params={"query": "Longsword", "type": "Item", "sub_type": "weapon"}
+                )
+                assert search_response.status_code == 200
+                search_data = search_response.json()
+                assert search_data.get("success") and search_data.get("results"), \
+                    "Could not find Longsword in compendiums"
+
+                # Add item to actor
+                item_uuid = search_data["results"][0]["uuid"]
+                give_response = await client.post(
+                    f"{self.BACKEND_URL}/api/foundry/actor/{created_uuid}/items",
+                    json={"item_uuids": [item_uuid]}
+                )
+                assert give_response.status_code == 200
+                give_data = give_response.json()
+                assert give_data.get("success"), f"Failed to give item: {give_data}"
+
+                # Verify item was added
+                fetch_before = await client.get(
+                    f"{self.BACKEND_URL}/api/foundry/actor/{created_uuid}"
+                )
+                fetch_before_data = fetch_before.json()
+                assert fetch_before_data.get("success"), f"Failed to fetch actor: {fetch_before_data}"
+                items_before = fetch_before_data.get("entity", {}).get("items", [])
+                assert any(item.get("name") == "Longsword" for item in items_before), \
+                    "Longsword should be on actor before removal"
+
+                # Remove item via tool
+                remove_response = await client.post(
+                    f"{self.BACKEND_URL}/api/tools/delete_assets",
+                    json={
+                        "entity_type": "actor_item",
+                        "actor_uuid": created_uuid,
+                        "item_names": ["Longsword"]
+                    }
+                )
+                assert remove_response.status_code == 200
+                remove_data = remove_response.json()
+
+                # Should succeed
+                assert remove_data.get("type") == "text", \
+                    f"Expected success, got: {remove_data}"
+                assert "Removed" in remove_data.get("message", ""), \
+                    f"Expected 'Removed' in message: {remove_data}"
+                assert remove_data.get("data", {}).get("removed", 0) >= 1, \
+                    f"Expected at least 1 item removed: {remove_data}"
+
+                # Verify item is gone
+                fetch_after = await client.get(
+                    f"{self.BACKEND_URL}/api/foundry/actor/{created_uuid}"
+                )
+                fetch_after_data = fetch_after.json()
+                assert fetch_after_data.get("success"), f"Failed to fetch actor: {fetch_after_data}"
+                items_after = fetch_after_data.get("entity", {}).get("items", [])
+                assert not any(item.get("name") == "Longsword" for item in items_after), \
+                    "Longsword should be removed from actor"
+            finally:
+                # Cleanup
+                try:
+                    await client.delete(f"{self.BACKEND_URL}/api/foundry/actor/{created_uuid}")
+                except Exception:
+                    pass
+
+    async def test_cannot_delete_outside_tablewrite(self, ensure_foundry_connected, test_folders):
+        """Create actor at root (no folder), verify tool returns 'not found in Tablewrite'."""
+        import httpx
+        import time
+        from tests.conftest import check_backend_and_foundry
+
+        await check_backend_and_foundry()
+
+        unique_suffix = f"{int(time.time() * 1000)}"
+        actor_name = f"RootLevelActor{unique_suffix}"
+        created_uuid = None
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # Create actor at root level (no folder)
+            actor_response = await client.post(
+                f"{self.BACKEND_URL}/api/foundry/actor",
+                json={
+                    "actor": {
+                        "name": actor_name,
+                        "type": "npc",
+                        "system": {"abilities": {"str": {"value": 10}}}
+                    }
+                    # No folder - created at root
+                }
+            )
+            actor_data = actor_response.json()
+            assert actor_data.get("success"), f"Failed to create actor: {actor_data}"
+            created_uuid = actor_data.get("uuid")
+
+            try:
+                # Try to delete via tool using UUID
+                delete_response = await client.post(
+                    f"{self.BACKEND_URL}/api/tools/delete_assets",
+                    json={"entity_type": "actor", "uuid": created_uuid}
+                )
+                assert delete_response.status_code == 200
+                delete_data = delete_response.json()
+
+                # Should fail with "not found in Tablewrite" message
+                assert delete_data.get("type") == "text", \
+                    f"Expected text response, got: {delete_data}"
+                message = delete_data.get("message", "")
+                assert "No actor" in message or "not found" in message.lower(), \
+                    f"Expected 'not found' message: {message}"
+                assert "Tablewrite" in message, \
+                    f"Expected 'Tablewrite' in message: {message}"
+
+                # Try to delete via tool using search query
+                delete_response2 = await client.post(
+                    f"{self.BACKEND_URL}/api/tools/delete_assets",
+                    json={"entity_type": "actor", "search_query": actor_name}
+                )
+                delete_data2 = delete_response2.json()
+
+                # Should also not find it
+                assert delete_data2.get("type") == "text", \
+                    f"Expected text response, got: {delete_data2}"
+                message2 = delete_data2.get("message", "")
+                assert "No actor" in message2 or "not found" in message2.lower(), \
+                    f"Expected 'not found' message: {message2}"
+            finally:
+                # Cleanup (must delete directly since tool won't)
+                try:
+                    await client.delete(f"{self.BACKEND_URL}/api/foundry/actor/{created_uuid}")
+                except Exception:
+                    pass
+
+    async def test_delete_actor_by_search_query(self, ensure_foundry_connected, test_folders):
+        """Create actor in Tablewrite, delete via search query, verify it's gone."""
+        import httpx
+        import time
+        from tests.conftest import check_backend_and_foundry
+
+        await check_backend_and_foundry()
+
+        unique_suffix = f"{int(time.time() * 1000)}"
+        actor_name = f"UniqueSearchDeleteActor{unique_suffix}"
+        created_uuid = None
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # Create Tablewrite folder
+            folder_response = await client.post(
+                f"{self.BACKEND_URL}/api/foundry/folder",
+                json={"name": "Tablewrite", "type": "Actor"}
+            )
+            folder_data = folder_response.json()
+            assert folder_data.get("success"), f"Failed to create folder: {folder_data}"
+            folder_id = folder_data.get("folder_id")
+
+            # Create actor with unique searchable name
+            actor_response = await client.post(
+                f"{self.BACKEND_URL}/api/foundry/actor",
+                json={
+                    "actor": {
+                        "name": actor_name,
+                        "type": "npc",
+                        "system": {"abilities": {"str": {"value": 10}}}
+                    },
+                    "folder": folder_id
+                }
+            )
+            actor_data = actor_response.json()
+            assert actor_data.get("success"), f"Failed to create actor: {actor_data}"
+            created_uuid = actor_data.get("uuid")
+
+            try:
+                # Delete via tool using search query
+                delete_response = await client.post(
+                    f"{self.BACKEND_URL}/api/tools/delete_assets",
+                    json={"entity_type": "actor", "search_query": actor_name}
+                )
+                assert delete_response.status_code == 200
+                delete_data = delete_response.json()
+                assert delete_data.get("type") == "text", \
+                    f"Expected success, got: {delete_data}"
+                assert "Deleted" in delete_data.get("message", ""), \
+                    f"Expected 'Deleted' in message: {delete_data}"
+
+                # Verify actor is gone
+                fetch_response = await client.get(
+                    f"{self.BACKEND_URL}/api/foundry/actor/{created_uuid}"
+                )
+                fetch_data = fetch_response.json()
+                assert not fetch_data.get("success") or not fetch_data.get("entity"), \
+                    "Actor should be deleted but still exists"
+            finally:
+                # Cleanup (may already be deleted)
+                try:
+                    await client.delete(f"{self.BACKEND_URL}/api/foundry/actor/{created_uuid}")
+                except Exception:
+                    pass
