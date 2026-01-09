@@ -1,5 +1,6 @@
 """Tests for AssetDeleterTool."""
 import pytest
+from unittest.mock import AsyncMock, patch, MagicMock
 
 
 class TestAssetDeleterToolSchema:
@@ -121,165 +122,335 @@ class TestAssetDeleterToolExecute:
         assert "Not implemented" in result.message
 
 
+class TestIsInTablewriteFolderUnit:
+    """Unit tests for is_in_tablewrite_folder with mocking."""
+
+    @pytest.mark.asyncio
+    async def test_entity_not_found_returns_false(self):
+        """If entity cannot be fetched, return False."""
+        from app.tools.asset_deleter import is_in_tablewrite_folder
+
+        with patch("app.tools.asset_deleter.fetch_actor") as mock_fetch:
+            # Simulate entity not found
+            mock_result = MagicMock()
+            mock_result.success = False
+            mock_result.entity = None
+            mock_fetch.return_value = mock_result
+
+            result = await is_in_tablewrite_folder("Actor.nonexistent", "actor")
+            assert result is False
+            mock_fetch.assert_called_once_with("Actor.nonexistent")
+
+    @pytest.mark.asyncio
+    async def test_entity_has_no_folder_returns_false(self):
+        """If entity has no folder (root level), return False."""
+        from app.tools.asset_deleter import is_in_tablewrite_folder
+
+        with patch("app.tools.asset_deleter.fetch_actor") as mock_fetch:
+            # Simulate entity at root (no folder)
+            mock_result = MagicMock()
+            mock_result.success = True
+            mock_result.entity = {"name": "Test Actor", "folder": None}
+            mock_fetch.return_value = mock_result
+
+            result = await is_in_tablewrite_folder("Actor.abc123", "actor")
+            assert result is False
+
+    @pytest.mark.asyncio
+    async def test_entity_in_tablewrite_root_returns_true(self):
+        """If entity is directly in Tablewrite folder, return True."""
+        from app.tools.asset_deleter import is_in_tablewrite_folder
+
+        with patch("app.tools.asset_deleter.fetch_actor") as mock_fetch, \
+             patch("app.tools.asset_deleter.list_folders") as mock_list:
+            # Actor in folder "tablewrite_folder_id"
+            mock_fetch_result = MagicMock()
+            mock_fetch_result.success = True
+            mock_fetch_result.entity = {"name": "Test Actor", "folder": "tablewrite_folder_id"}
+            mock_fetch.return_value = mock_fetch_result
+
+            # Folder hierarchy: Tablewrite is the direct parent
+            mock_folder = MagicMock()
+            mock_folder.id = "tablewrite_folder_id"
+            mock_folder.name = "Tablewrite"
+            mock_folder.parent = None
+
+            mock_list_result = MagicMock()
+            mock_list_result.success = True
+            mock_list_result.folders = [mock_folder]
+            mock_list.return_value = mock_list_result
+
+            result = await is_in_tablewrite_folder("Actor.abc123", "actor")
+            assert result is True
+
+    @pytest.mark.asyncio
+    async def test_entity_in_nested_tablewrite_subfolder_returns_true(self):
+        """If entity is in a subfolder of Tablewrite, return True."""
+        from app.tools.asset_deleter import is_in_tablewrite_folder
+
+        with patch("app.tools.asset_deleter.fetch_actor") as mock_fetch, \
+             patch("app.tools.asset_deleter.list_folders") as mock_list:
+            # Actor in folder "subfolder_id"
+            mock_fetch_result = MagicMock()
+            mock_fetch_result.success = True
+            mock_fetch_result.entity = {"name": "Test Actor", "folder": "subfolder_id"}
+            mock_fetch.return_value = mock_fetch_result
+
+            # Folder hierarchy: subfolder -> Tablewrite
+            mock_tablewrite = MagicMock()
+            mock_tablewrite.id = "tablewrite_folder_id"
+            mock_tablewrite.name = "Tablewrite"
+            mock_tablewrite.parent = None
+
+            mock_subfolder = MagicMock()
+            mock_subfolder.id = "subfolder_id"
+            mock_subfolder.name = "Lost Mine"
+            mock_subfolder.parent = "tablewrite_folder_id"
+
+            mock_list_result = MagicMock()
+            mock_list_result.success = True
+            mock_list_result.folders = [mock_tablewrite, mock_subfolder]
+            mock_list.return_value = mock_list_result
+
+            result = await is_in_tablewrite_folder("Actor.abc123", "actor")
+            assert result is True
+
+    @pytest.mark.asyncio
+    async def test_entity_in_non_tablewrite_folder_returns_false(self):
+        """If entity is in a folder that's not Tablewrite or its subfolder, return False."""
+        from app.tools.asset_deleter import is_in_tablewrite_folder
+
+        with patch("app.tools.asset_deleter.fetch_actor") as mock_fetch, \
+             patch("app.tools.asset_deleter.list_folders") as mock_list:
+            # Actor in folder "other_folder_id"
+            mock_fetch_result = MagicMock()
+            mock_fetch_result.success = True
+            mock_fetch_result.entity = {"name": "Test Actor", "folder": "other_folder_id"}
+            mock_fetch.return_value = mock_fetch_result
+
+            # Folder hierarchy: "Other" is not Tablewrite
+            mock_other = MagicMock()
+            mock_other.id = "other_folder_id"
+            mock_other.name = "Other"
+            mock_other.parent = None
+
+            mock_tablewrite = MagicMock()
+            mock_tablewrite.id = "tablewrite_folder_id"
+            mock_tablewrite.name = "Tablewrite"
+            mock_tablewrite.parent = None
+
+            mock_list_result = MagicMock()
+            mock_list_result.success = True
+            mock_list_result.folders = [mock_other, mock_tablewrite]
+            mock_list.return_value = mock_list_result
+
+            result = await is_in_tablewrite_folder("Actor.abc123", "actor")
+            assert result is False
+
+    @pytest.mark.asyncio
+    async def test_scene_entity_type(self):
+        """Test is_in_tablewrite_folder works for scenes."""
+        from app.tools.asset_deleter import is_in_tablewrite_folder
+
+        with patch("app.tools.asset_deleter.fetch_scene") as mock_fetch, \
+             patch("app.tools.asset_deleter.list_folders") as mock_list:
+            # Scene in Tablewrite folder
+            mock_fetch_result = MagicMock()
+            mock_fetch_result.success = True
+            mock_fetch_result.entity = {"name": "Test Scene", "folder": "tablewrite_folder_id"}
+            mock_fetch.return_value = mock_fetch_result
+
+            mock_folder = MagicMock()
+            mock_folder.id = "tablewrite_folder_id"
+            mock_folder.name = "Tablewrite"
+            mock_folder.parent = None
+
+            mock_list_result = MagicMock()
+            mock_list_result.success = True
+            mock_list_result.folders = [mock_folder]
+            mock_list.return_value = mock_list_result
+
+            result = await is_in_tablewrite_folder("Scene.abc123", "scene")
+            assert result is True
+            mock_fetch.assert_called_once_with("Scene.abc123")
+
+    @pytest.mark.asyncio
+    async def test_journal_entity_type(self):
+        """Test is_in_tablewrite_folder works for journals."""
+        from app.tools.asset_deleter import is_in_tablewrite_folder
+
+        with patch("app.tools.asset_deleter.fetch_journal") as mock_fetch, \
+             patch("app.tools.asset_deleter.list_folders") as mock_list:
+            # Journal in Tablewrite folder
+            mock_fetch_result = MagicMock()
+            mock_fetch_result.success = True
+            mock_fetch_result.entity = {"name": "Test Journal", "folder": "tablewrite_folder_id"}
+            mock_fetch.return_value = mock_fetch_result
+
+            mock_folder = MagicMock()
+            mock_folder.id = "tablewrite_folder_id"
+            mock_folder.name = "Tablewrite"
+            mock_folder.parent = None
+
+            mock_list_result = MagicMock()
+            mock_list_result.success = True
+            mock_list_result.folders = [mock_folder]
+            mock_list.return_value = mock_list_result
+
+            result = await is_in_tablewrite_folder("JournalEntry.abc123", "journal")
+            assert result is True
+            mock_fetch.assert_called_once_with("JournalEntry.abc123")
+
+    @pytest.mark.asyncio
+    async def test_invalid_entity_type_returns_false(self):
+        """Unknown entity type should return False."""
+        from app.tools.asset_deleter import is_in_tablewrite_folder
+
+        result = await is_in_tablewrite_folder("Unknown.abc123", "unknown")
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_list_folders_failure_returns_false(self):
+        """If list_folders fails, return False."""
+        from app.tools.asset_deleter import is_in_tablewrite_folder
+
+        with patch("app.tools.asset_deleter.fetch_actor") as mock_fetch, \
+             patch("app.tools.asset_deleter.list_folders") as mock_list:
+            # Actor has a folder
+            mock_fetch_result = MagicMock()
+            mock_fetch_result.success = True
+            mock_fetch_result.entity = {"name": "Test Actor", "folder": "some_folder_id"}
+            mock_fetch.return_value = mock_fetch_result
+
+            # But list_folders fails
+            mock_list_result = MagicMock()
+            mock_list_result.success = False
+            mock_list_result.folders = None
+            mock_list.return_value = mock_list_result
+
+            result = await is_in_tablewrite_folder("Actor.abc123", "actor")
+            assert result is False
+
+
 @pytest.mark.integration
 @pytest.mark.asyncio
 class TestTablewriteFolderValidation:
-    """Test Tablewrite folder validation."""
-
-    BACKEND_URL = "http://localhost:8000"
-
-    async def _create_folder(self, client, name: str, folder_type: str, parent: str = None) -> dict:
-        """Helper to create or get a folder via HTTP."""
-        body = {"name": name, "type": folder_type}
-        if parent:
-            body["parent"] = parent
-        response = await client.post(f"{self.BACKEND_URL}/api/foundry/folder", json=body)
-        return response.json()
-
-    async def _create_actor(self, client, name: str, folder_id: str = None) -> dict:
-        """Helper to create an actor via HTTP."""
-        actor_data = {"name": name, "type": "npc"}
-        if folder_id:
-            actor_data["folder"] = folder_id
-        response = await client.post(
-            f"{self.BACKEND_URL}/api/foundry/actor",
-            json={"actor": actor_data}
-        )
-        return response.json()
-
-    async def _delete_actor(self, client, uuid: str):
-        """Helper to delete an actor via HTTP."""
-        await client.delete(f"{self.BACKEND_URL}/api/foundry/actor/{uuid}")
-
-    async def _get_folders(self, client) -> list:
-        """Helper to get all folders via HTTP."""
-        response = await client.get(f"{self.BACKEND_URL}/api/foundry/folders")
-        data = response.json()
-        return data.get("folders", [])
-
-    async def _get_actor(self, client, uuid: str) -> dict:
-        """Helper to get an actor via HTTP."""
-        response = await client.get(f"{self.BACKEND_URL}/api/foundry/actor/{uuid}")
-        return response.json()
+    """Integration tests for Tablewrite folder validation using real Foundry."""
 
     async def test_is_in_tablewrite_folder_with_tablewrite_actor(self, ensure_foundry_connected, test_folders):
         """Actor in Tablewrite folder should return True."""
-        import httpx
         from app.tools.asset_deleter import is_in_tablewrite_folder
+        from app.websocket.push import push_actor, delete_actor, get_or_create_folder
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            # Check connection
-            status = await client.get(f"{self.BACKEND_URL}/api/foundry/status")
-            assert status.json().get("status") == "connected", "Foundry not connected"
+        # Create Tablewrite folder
+        folder_result = await get_or_create_folder("Tablewrite", "Actor")
+        assert folder_result.success, f"Failed to create folder: {folder_result.error}"
+        folder_id = folder_result.folder_id
 
-            # Create Tablewrite folder
-            folder_data = await self._create_folder(client, "Tablewrite", "Actor")
-            assert folder_data.get("success"), f"Failed to create folder: {folder_data}"
-            folder_id = folder_data.get("folder_id")
+        # Create actor in Tablewrite folder
+        actor_result = await push_actor({
+            "name": "Test Tablewrite Actor",
+            "type": "npc",
+            "folder": folder_id
+        })
+        assert actor_result.success, f"Failed to create actor: {actor_result.error}"
+        actor_uuid = actor_result.uuid
 
-            # Create actor in Tablewrite folder
-            actor_data = await self._create_actor(client, "Test Tablewrite Actor", folder_id)
-            assert actor_data.get("success"), f"Failed to create actor: {actor_data}"
-            actor_uuid = actor_data.get("uuid")
-
-            try:
-                # Use the is_in_tablewrite_folder helper
-                # This needs to call through HTTP to validate
-                result = await self._is_in_tablewrite_folder_via_api(
-                    client, actor_uuid, "actor"
-                )
-                assert result is True
-            finally:
-                await self._delete_actor(client, actor_uuid)
-
-    async def _is_in_tablewrite_folder_via_api(self, client, entity_uuid: str, entity_type: str) -> bool:
-        """
-        Check if entity is in Tablewrite folder using HTTP API calls.
-
-        This mirrors is_in_tablewrite_folder but uses HTTP instead of WebSocket.
-        """
-        # Fetch entity to get folder
-        if entity_type == "actor":
-            entity = await self._get_actor(client, entity_uuid)
-        else:
-            # Could add scene/journal support later
-            return False
-
-        if not entity.get("success") or not entity.get("entity"):
-            return False
-
-        folder_id = entity.get("entity", {}).get("folder")
-        if not folder_id:
-            return False
-
-        # Get all folders
-        folders = await self._get_folders(client)
-        folder_map = {f["id"]: f for f in folders}
-
-        # Trace up hierarchy looking for Tablewrite
-        current_folder_id = folder_id
-        while current_folder_id:
-            folder = folder_map.get(current_folder_id)
-            if not folder:
-                return False
-            if folder.get("name") == "Tablewrite":
-                return True
-            current_folder_id = folder.get("parent")
-
-        return False
+        try:
+            # Call is_in_tablewrite_folder directly
+            result = await is_in_tablewrite_folder(actor_uuid, "actor")
+            assert result is True, "Actor in Tablewrite folder should return True"
+        finally:
+            await delete_actor(actor_uuid)
 
     async def test_is_in_tablewrite_folder_with_non_tablewrite_actor(self, ensure_foundry_connected, test_folders):
         """Actor outside Tablewrite folder should return False."""
-        import httpx
+        from app.tools.asset_deleter import is_in_tablewrite_folder
+        from app.websocket.push import push_actor, delete_actor
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            # Check connection
-            status = await client.get(f"{self.BACKEND_URL}/api/foundry/status")
-            assert status.json().get("status") == "connected", "Foundry not connected"
+        # Create actor without folder (root level)
+        actor_result = await push_actor({
+            "name": "Test Root Actor",
+            "type": "npc"
+        })
+        assert actor_result.success, f"Failed to create actor: {actor_result.error}"
+        actor_uuid = actor_result.uuid
 
-            # Create actor without folder (root level)
-            actor_data = await self._create_actor(client, "Test Root Actor")
-            assert actor_data.get("success"), f"Failed to create actor: {actor_data}"
-            actor_uuid = actor_data.get("uuid")
-
-            try:
-                result = await self._is_in_tablewrite_folder_via_api(
-                    client, actor_uuid, "actor"
-                )
-                assert result is False
-            finally:
-                await self._delete_actor(client, actor_uuid)
+        try:
+            # Call is_in_tablewrite_folder directly
+            result = await is_in_tablewrite_folder(actor_uuid, "actor")
+            assert result is False, "Actor at root level should return False"
+        finally:
+            await delete_actor(actor_uuid)
 
     async def test_is_in_tablewrite_folder_with_nested_subfolder(self, ensure_foundry_connected, test_folders):
         """Actor in subfolder of Tablewrite folder should return True."""
+        from app.tools.asset_deleter import is_in_tablewrite_folder
+        from app.websocket.push import push_actor, delete_actor, get_or_create_folder
+
+        # Create Tablewrite folder first
+        tablewrite_result = await get_or_create_folder("Tablewrite", "Actor")
+        assert tablewrite_result.success, f"Failed to create Tablewrite folder: {tablewrite_result.error}"
+        tablewrite_id = tablewrite_result.folder_id
+
+        # Create a subfolder inside Tablewrite
+        # Note: get_or_create_folder creates folders with parent if we use hierarchical naming
+        # For nested folders, we need to use HTTP API directly or use the push interface
         import httpx
-
         async with httpx.AsyncClient(timeout=30.0) as client:
-            # Check connection
-            status = await client.get(f"{self.BACKEND_URL}/api/foundry/status")
-            assert status.json().get("status") == "connected", "Foundry not connected"
-
-            # Create Tablewrite folder first
-            tablewrite_data = await self._create_folder(client, "Tablewrite", "Actor")
-            assert tablewrite_data.get("success"), f"Failed to create Tablewrite folder: {tablewrite_data}"
-            tablewrite_id = tablewrite_data.get("folder_id")
-
-            # Create a subfolder inside Tablewrite
-            subfolder_data = await self._create_folder(
-                client, "Lost Mine Test", "Actor", parent=tablewrite_id
+            subfolder_response = await client.post(
+                "http://localhost:8000/api/foundry/folder",
+                json={"name": "Lost Mine Test", "type": "Actor", "parent": tablewrite_id}
             )
+            subfolder_data = subfolder_response.json()
             assert subfolder_data.get("success"), f"Failed to create subfolder: {subfolder_data}"
             subfolder_id = subfolder_data.get("folder_id")
 
-            # Create actor in the subfolder
-            actor_data = await self._create_actor(client, "Test Nested Actor", subfolder_id)
-            assert actor_data.get("success"), f"Failed to create actor: {actor_data}"
-            actor_uuid = actor_data.get("uuid")
+        # Create actor in the subfolder
+        actor_result = await push_actor({
+            "name": "Test Nested Actor",
+            "type": "npc",
+            "folder": subfolder_id
+        })
+        assert actor_result.success, f"Failed to create actor: {actor_result.error}"
+        actor_uuid = actor_result.uuid
 
-            try:
-                result = await self._is_in_tablewrite_folder_via_api(
-                    client, actor_uuid, "actor"
-                )
-                assert result is True, "Actor in Tablewrite subfolder should return True"
-            finally:
-                await self._delete_actor(client, actor_uuid)
+        try:
+            # Call is_in_tablewrite_folder directly
+            result = await is_in_tablewrite_folder(actor_uuid, "actor")
+            assert result is True, "Actor in Tablewrite subfolder should return True"
+        finally:
+            await delete_actor(actor_uuid)
+
+    async def test_is_in_tablewrite_folder_with_other_folder(self, ensure_foundry_connected, test_folders):
+        """Actor in non-Tablewrite folder should return False."""
+        from app.tools.asset_deleter import is_in_tablewrite_folder
+        from app.websocket.push import push_actor, delete_actor, get_or_create_folder
+
+        # Create a non-Tablewrite folder
+        other_result = await get_or_create_folder("Other Folder", "Actor")
+        assert other_result.success, f"Failed to create folder: {other_result.error}"
+
+        # Create actor in the other folder
+        actor_result = await push_actor({
+            "name": "Test Other Folder Actor",
+            "type": "npc",
+            "folder": other_result.folder_id
+        })
+        assert actor_result.success, f"Failed to create actor: {actor_result.error}"
+        actor_uuid = actor_result.uuid
+
+        try:
+            # Call is_in_tablewrite_folder directly
+            result = await is_in_tablewrite_folder(actor_uuid, "actor")
+            assert result is False, "Actor in non-Tablewrite folder should return False"
+        finally:
+            await delete_actor(actor_uuid)
+
+    async def test_is_in_tablewrite_folder_nonexistent_actor(self, ensure_foundry_connected, test_folders):
+        """Nonexistent actor should return False."""
+        from app.tools.asset_deleter import is_in_tablewrite_folder
+
+        # Use a UUID that doesn't exist
+        result = await is_in_tablewrite_folder("Actor.nonexistent123", "actor")
+        assert result is False, "Nonexistent actor should return False"
