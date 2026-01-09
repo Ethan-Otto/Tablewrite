@@ -354,8 +354,8 @@ class TestAssetDeleterToolExecute:
              patch("app.tools.asset_deleter.delete_folder", new_callable=AsyncMock, return_value=mock_delete_result) as mock_delete:
             result = await tool.execute(entity_type="folder", search_query="lost mine")
 
-            # delete_folder takes folder_id, not uuid, but the EntityMatch uuid is the folder_id here
-            mock_delete.assert_called_once_with("Folder.fld456", delete_contents=True)
+            # delete_folder takes raw folder_id without "Folder." prefix
+            mock_delete.assert_called_once_with("fld456", delete_contents=True)
             assert result.type == "text"
             assert "Deleted" in result.message
             assert "Lost Mine" in result.message

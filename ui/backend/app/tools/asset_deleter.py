@@ -71,6 +71,68 @@ class EntityMatch:
     folder_id: Optional[str] = None
 
 
+async def _find_tablewrite_subfolders(
+    folder_map: dict,
+    search_query: Optional[str],
+    target_subfolder: Optional[str] = None
+) -> List[EntityMatch]:
+    """
+    Find folders that are subfolders of Tablewrite (but not Tablewrite itself).
+
+    Args:
+        folder_map: Dict mapping folder ID to folder object
+        search_query: Name to search for (case-insensitive partial match), or "*" for all
+        target_subfolder: Optional - only find folders under this Tablewrite subfolder
+
+    Returns:
+        List of EntityMatch for matching Tablewrite subfolders
+    """
+    results = []
+    search_lower = search_query.lower() if search_query and search_query != "*" else None
+
+    for folder in folder_map.values():
+        # Skip the Tablewrite root folder itself (can't delete root)
+        if folder.name == "Tablewrite":
+            continue
+
+        # Check if this folder is under Tablewrite
+        path = []
+        current = folder.id
+        in_tablewrite = False
+        while current:
+            f = folder_map.get(current)
+            if not f:
+                break
+            path.append(f.name)
+            if f.name == "Tablewrite":
+                in_tablewrite = True
+                break
+            current = f.parent
+
+        if not in_tablewrite:
+            continue
+
+        # Check target_subfolder filter (must be direct child of Tablewrite)
+        if target_subfolder:
+            # Path is [folder_name, ..., parent_of_tablewrite, "Tablewrite"]
+            # We want the direct child of Tablewrite to match target_subfolder
+            if len(path) < 2 or path[-2] != target_subfolder:
+                continue
+
+        # Check name match
+        if search_lower and search_lower not in folder.name.lower():
+            continue
+
+        results.append(EntityMatch(
+            uuid=f"Folder.{folder.id}",
+            name=folder.name,
+            entity_type="folder",
+            folder_id=folder.parent
+        ))
+
+    return results
+
+
 async def find_entities(
     entity_type: str,
     search_query: Optional[str] = None,
@@ -135,6 +197,10 @@ async def find_entities(
             )]
         return []
 
+    # Get folder hierarchy first (needed for all entity types)
+    folders_result = await list_folders()
+    folder_map = {f.id: f for f in (folders_result.folders or [])}
+
     # List all entities of type
     if entity_type == "actor":
         list_result = await list_actors()
@@ -145,12 +211,11 @@ async def find_entities(
     elif entity_type == "journal":
         list_result = await list_journals()
         entities = list_result.journals or []
+    elif entity_type == "folder":
+        # Handle folder deletion - find Tablewrite subfolders
+        return await _find_tablewrite_subfolders(folder_map, search_query, folder_name)
     else:
         return []
-
-    # Get folder hierarchy for filtering
-    folders_result = await list_folders()
-    folder_map = {f.id: f for f in (folders_result.folders or [])}
 
     def is_in_tablewrite_hierarchy(folder_id: Optional[str], target_subfolder: Optional[str] = None) -> bool:
         """Check if folder is in Tablewrite hierarchy, optionally under specific subfolder."""
@@ -365,7 +430,9 @@ class AssetDeleterTool(BaseTool):
             elif entity.entity_type == "journal":
                 result = await delete_journal(entity.uuid)
             elif entity.entity_type == "folder":
-                result = await delete_folder(entity.uuid, delete_contents=True)
+                # delete_folder expects raw ID, not "Folder.xxx" format
+                folder_id = entity.uuid.replace("Folder.", "") if entity.uuid.startswith("Folder.") else entity.uuid
+                result = await delete_folder(folder_id, delete_contents=True)
             else:
                 return False
 
