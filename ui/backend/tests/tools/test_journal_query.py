@@ -294,3 +294,131 @@ class TestFuzzyMatching:
 
         result = tool._fuzzy_match_journal("Valid", journals)
         assert result["uuid"] == "j2"
+
+
+class TestResponseFormatting:
+    """Test response formatting with sources."""
+
+    def test_format_response_with_sources(self):
+        """Test formatting response with source references."""
+        from app.tools.journal_query import JournalQueryTool, SourceReference
+
+        tool = JournalQueryTool()
+
+        sources = [
+            SourceReference(
+                journal_name="Lost Mine",
+                journal_uuid="j1",
+                chapter="Chapter 1",
+                section="Cragmaw Hideout",
+                page_id="page1"
+            )
+        ]
+        links = ["@UUID[JournalEntryPage.page1]"]
+
+        result = tool._format_response("The treasure is gold.", sources, links)
+
+        assert "The treasure is gold." in result
+        assert "**Sources:**" in result
+        assert "Lost Mine > Chapter 1 > Cragmaw Hideout" in result
+        assert "@UUID[JournalEntryPage.page1]" in result
+
+    def test_format_response_minimal_source(self):
+        """Test formatting with minimal source info."""
+        from app.tools.journal_query import JournalQueryTool, SourceReference
+
+        tool = JournalQueryTool()
+
+        sources = [
+            SourceReference(
+                journal_name="Lost Mine",
+                journal_uuid="j1",
+                chapter=None,
+                section=None,
+                page_id="page1"
+            )
+        ]
+        links = ["@UUID[JournalEntryPage.page1]"]
+
+        result = tool._format_response("Answer here.", sources, links)
+
+        assert "Answer here." in result
+        assert "Lost Mine" in result
+        # Should not have trailing arrows when no chapter/section
+        assert "> " not in result.split("Lost Mine")[1][:5] if "Lost Mine" in result else True
+
+    def test_build_foundry_link(self):
+        """Test building Foundry page links."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+
+        link = tool._build_foundry_link("page123")
+        assert link == "@UUID[JournalEntryPage.page123]"
+
+    def test_format_response_multiple_sources(self):
+        """Test formatting with multiple source references."""
+        from app.tools.journal_query import JournalQueryTool, SourceReference
+
+        tool = JournalQueryTool()
+
+        sources = [
+            SourceReference(
+                journal_name="Lost Mine",
+                journal_uuid="j1",
+                chapter="Chapter 1",
+                section="Cragmaw Hideout",
+                page_id="page1"
+            ),
+            SourceReference(
+                journal_name="Lost Mine",
+                journal_uuid="j1",
+                chapter="Chapter 2",
+                section="Phandalin",
+                page_id="page2"
+            )
+        ]
+        links = ["@UUID[JournalEntryPage.page1]", "@UUID[JournalEntryPage.page2]"]
+
+        result = tool._format_response("The treasure is found in multiple locations.", sources, links)
+
+        assert "Cragmaw Hideout" in result
+        assert "Phandalin" in result
+        assert "@UUID[JournalEntryPage.page1]" in result
+        assert "@UUID[JournalEntryPage.page2]" in result
+
+    def test_format_response_empty_sources(self):
+        """Test formatting with empty sources list."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+
+        result = tool._format_response("No sources found.", [], [])
+
+        assert "No sources found." in result
+        assert "**Sources:**" in result  # Header still present
+
+    def test_format_response_chapter_only(self):
+        """Test formatting with chapter but no section."""
+        from app.tools.journal_query import JournalQueryTool, SourceReference
+
+        tool = JournalQueryTool()
+
+        sources = [
+            SourceReference(
+                journal_name="Lost Mine",
+                journal_uuid="j1",
+                chapter="Chapter 1",
+                section=None,
+                page_id="page1"
+            )
+        ]
+        links = ["@UUID[JournalEntryPage.page1]"]
+
+        result = tool._format_response("Answer here.", sources, links)
+
+        assert "Lost Mine > Chapter 1" in result
+        # Should not have extra trailing arrow
+        lines = result.split("\n")
+        location_line = [l for l in lines if "Lost Mine" in l and l.startswith("-")][0]
+        assert location_line == "- Lost Mine > Chapter 1"

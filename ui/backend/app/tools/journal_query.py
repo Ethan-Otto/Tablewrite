@@ -147,3 +147,32 @@ class JournalQueryTool(BaseTool):
                 return j
 
         return None
+
+    def _build_foundry_link(self, page_id: str) -> str:
+        """Build a Foundry link to a specific journal page."""
+        return f"@UUID[JournalEntryPage.{page_id}]"
+
+    def _format_response(self, answer: str, sources: list[SourceReference], links: list[str]) -> str:
+        """
+        Format the final response with answer and sources.
+
+        Args:
+            answer: The answer text
+            sources: List of source references
+            links: List of Foundry page links
+
+        Returns:
+            Formatted response string
+        """
+        response_parts = [answer, "", "---", "**Sources:**"]
+
+        for source, link in zip(sources, links):
+            location = source.journal_name
+            if source.chapter:
+                location += f" > {source.chapter}"
+            if source.section:
+                location += f" > {source.section}"
+            response_parts.append(f"- {location}")
+            response_parts.append(f"  {link}")
+
+        return "\n".join(response_parts)
