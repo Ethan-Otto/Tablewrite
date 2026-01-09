@@ -127,18 +127,23 @@ class JournalQueryTool(BaseTool):
             journals: List of journal dicts with 'uuid' and 'name' keys
 
         Returns:
-            Matching journal dict or None
+            Matching journal dict or None. Returns first match for ambiguous cases.
         """
+        if not name or not name.strip():
+            return None
+
         name_lower = name.lower().strip()
 
         # Try exact match first
         for j in journals:
-            if j["name"].lower() == name_lower:
+            j_name = j.get("name", "")
+            if j_name.lower() == name_lower:
                 return j
 
-        # Try substring match
+        # Try substring match (returns first match)
         for j in journals:
-            if name_lower in j["name"].lower():
+            j_name = j.get("name", "")
+            if name_lower in j_name.lower():
                 return j
 
         return None

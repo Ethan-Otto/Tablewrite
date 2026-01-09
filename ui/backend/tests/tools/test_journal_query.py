@@ -251,3 +251,46 @@ class TestFuzzyMatching:
 
         result = tool._fuzzy_match_journal("lost mine of phandelver", journals)
         assert result["uuid"] == "j1"
+
+    def test_empty_input_returns_none(self):
+        """Test empty input returns None."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+        journals = [{"uuid": "j1", "name": "Test Journal"}]
+
+        assert tool._fuzzy_match_journal("", journals) is None
+        assert tool._fuzzy_match_journal("   ", journals) is None
+
+    def test_empty_journals_list(self):
+        """Test empty journals list returns None."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+        assert tool._fuzzy_match_journal("Test", []) is None
+
+    def test_first_match_wins_for_ambiguous(self):
+        """Test that first match is returned for ambiguous substring matches."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+        journals = [
+            {"uuid": "j1", "name": "Lost Mine of Phandelver"},
+            {"uuid": "j2", "name": "Lost Caverns of Tsojcanth"}
+        ]
+
+        result = tool._fuzzy_match_journal("Lost", journals)
+        assert result["uuid"] == "j1"  # First match wins
+
+    def test_missing_name_key_handled(self):
+        """Test journals with missing name key are handled gracefully."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+        journals = [
+            {"uuid": "j1"},  # Missing 'name' key
+            {"uuid": "j2", "name": "Valid Journal"}
+        ]
+
+        result = tool._fuzzy_match_journal("Valid", journals)
+        assert result["uuid"] == "j2"
