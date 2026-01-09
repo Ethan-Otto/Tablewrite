@@ -5,6 +5,7 @@ from app.models.chat import ChatRequest, ChatResponse
 from app.services.command_parser import CommandParser, CommandType
 from app.services.gemini_service import GeminiService
 from app.tools import registry
+from app.tools.actor_creator import set_request_context
 
 router = APIRouter(prefix="/api", tags=["chat"])
 
@@ -66,6 +67,9 @@ async def chat(request: ChatRequest) -> ChatResponse:
                     type="text",
                     data={"thinking_mode": True}
                 )
+
+            # Set request context for tool execution
+            set_request_context(request.context)
 
             # Get all available tool schemas
             tool_schemas = registry.get_schemas()
