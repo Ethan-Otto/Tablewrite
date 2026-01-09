@@ -432,3 +432,399 @@ class TestTablewriteFolderValidation:
         # Use a UUID that doesn't exist
         result = await is_in_tablewrite_folder("Actor.nonexistent123", "actor")
         assert result is False, "Nonexistent actor should return False"
+
+
+class TestFindEntitiesUnit:
+    """Unit tests for find_entities with mocking."""
+
+    @pytest.mark.asyncio
+    async def test_find_by_uuid_returns_single_entity(self):
+        """If UUID is provided, return single entity if in Tablewrite."""
+        from app.tools.asset_deleter import find_entities, EntityMatch
+
+        mock_fetch_result = MagicMock()
+        mock_fetch_result.success = True
+        mock_fetch_result.entity = {"name": "Test Actor", "folder": "tablewrite_id"}
+
+        mock_folder = MagicMock()
+        mock_folder.id = "tablewrite_id"
+        mock_folder.name = "Tablewrite"
+        mock_folder.parent = None
+
+        mock_list_result = MagicMock()
+        mock_list_result.success = True
+        mock_list_result.folders = [mock_folder]
+
+        with patch("app.tools.asset_deleter.fetch_actor", new_callable=AsyncMock, return_value=mock_fetch_result), \
+             patch("app.tools.asset_deleter.list_folders", new_callable=AsyncMock, return_value=mock_list_result):
+            entities = await find_entities("actor", uuid="Actor.abc123")
+
+            assert len(entities) == 1
+            assert entities[0].uuid == "Actor.abc123"
+            assert entities[0].name == "Test Actor"
+            assert entities[0].entity_type == "actor"
+
+    @pytest.mark.asyncio
+    async def test_find_by_uuid_not_in_tablewrite_returns_empty(self):
+        """If UUID entity is not in Tablewrite, return empty list."""
+        from app.tools.asset_deleter import find_entities
+
+        mock_fetch_result = MagicMock()
+        mock_fetch_result.success = True
+        mock_fetch_result.entity = {"name": "Test Actor", "folder": None}
+
+        with patch("app.tools.asset_deleter.fetch_actor", new_callable=AsyncMock, return_value=mock_fetch_result):
+            entities = await find_entities("actor", uuid="Actor.abc123")
+            assert entities == []
+
+    @pytest.mark.asyncio
+    async def test_search_by_name_returns_partial_matches(self):
+        """Search by name returns case-insensitive partial matches."""
+        from app.tools.asset_deleter import find_entities
+
+        # Mock list_actors
+        mock_actor1 = MagicMock()
+        mock_actor1.uuid = "Actor.1"
+        mock_actor1.name = "Test Goblin Scout"
+        mock_actor1.folder = "tablewrite_id"
+
+        mock_actor2 = MagicMock()
+        mock_actor2.uuid = "Actor.2"
+        mock_actor2.name = "Orc Warrior"
+        mock_actor2.folder = "tablewrite_id"
+
+        mock_list_result = MagicMock()
+        mock_list_result.success = True
+        mock_list_result.actors = [mock_actor1, mock_actor2]
+
+        # Mock list_folders
+        mock_folder = MagicMock()
+        mock_folder.id = "tablewrite_id"
+        mock_folder.name = "Tablewrite"
+        mock_folder.parent = None
+
+        mock_folders_result = MagicMock()
+        mock_folders_result.success = True
+        mock_folders_result.folders = [mock_folder]
+
+        with patch("app.tools.asset_deleter.list_actors", new_callable=AsyncMock, return_value=mock_list_result), \
+             patch("app.tools.asset_deleter.list_folders", new_callable=AsyncMock, return_value=mock_folders_result):
+            entities = await find_entities("actor", search_query="goblin")
+
+            assert len(entities) == 1
+            assert entities[0].name == "Test Goblin Scout"
+
+    @pytest.mark.asyncio
+    async def test_search_with_wildcard_returns_all(self):
+        """Search with '*' returns all entities in Tablewrite."""
+        from app.tools.asset_deleter import find_entities
+
+        # Mock list_actors
+        mock_actor1 = MagicMock()
+        mock_actor1.uuid = "Actor.1"
+        mock_actor1.name = "Goblin"
+        mock_actor1.folder = "tablewrite_id"
+
+        mock_actor2 = MagicMock()
+        mock_actor2.uuid = "Actor.2"
+        mock_actor2.name = "Orc"
+        mock_actor2.folder = "tablewrite_id"
+
+        mock_list_result = MagicMock()
+        mock_list_result.success = True
+        mock_list_result.actors = [mock_actor1, mock_actor2]
+
+        # Mock list_folders
+        mock_folder = MagicMock()
+        mock_folder.id = "tablewrite_id"
+        mock_folder.name = "Tablewrite"
+        mock_folder.parent = None
+
+        mock_folders_result = MagicMock()
+        mock_folders_result.success = True
+        mock_folders_result.folders = [mock_folder]
+
+        with patch("app.tools.asset_deleter.list_actors", new_callable=AsyncMock, return_value=mock_list_result), \
+             patch("app.tools.asset_deleter.list_folders", new_callable=AsyncMock, return_value=mock_folders_result):
+            entities = await find_entities("actor", search_query="*")
+
+            assert len(entities) == 2
+
+    @pytest.mark.asyncio
+    async def test_search_with_folder_name_filters_to_subfolder(self):
+        """Search with folder_name filters to specific Tablewrite subfolder."""
+        from app.tools.asset_deleter import find_entities
+
+        # Mock list_actors
+        mock_actor1 = MagicMock()
+        mock_actor1.uuid = "Actor.1"
+        mock_actor1.name = "Lost Mine Goblin"
+        mock_actor1.folder = "lostmine_id"
+
+        mock_actor2 = MagicMock()
+        mock_actor2.uuid = "Actor.2"
+        mock_actor2.name = "Other Module Goblin"
+        mock_actor2.folder = "othermodule_id"
+
+        mock_list_result = MagicMock()
+        mock_list_result.success = True
+        mock_list_result.actors = [mock_actor1, mock_actor2]
+
+        # Mock folders: Tablewrite has two subfolders
+        mock_tablewrite = MagicMock()
+        mock_tablewrite.id = "tablewrite_id"
+        mock_tablewrite.name = "Tablewrite"
+        mock_tablewrite.parent = None
+
+        mock_lostmine = MagicMock()
+        mock_lostmine.id = "lostmine_id"
+        mock_lostmine.name = "Lost Mine"
+        mock_lostmine.parent = "tablewrite_id"
+
+        mock_othermodule = MagicMock()
+        mock_othermodule.id = "othermodule_id"
+        mock_othermodule.name = "Other Module"
+        mock_othermodule.parent = "tablewrite_id"
+
+        mock_folders_result = MagicMock()
+        mock_folders_result.success = True
+        mock_folders_result.folders = [mock_tablewrite, mock_lostmine, mock_othermodule]
+
+        with patch("app.tools.asset_deleter.list_actors", new_callable=AsyncMock, return_value=mock_list_result), \
+             patch("app.tools.asset_deleter.list_folders", new_callable=AsyncMock, return_value=mock_folders_result):
+            entities = await find_entities("actor", search_query="*", folder_name="Lost Mine")
+
+            assert len(entities) == 1
+            assert entities[0].name == "Lost Mine Goblin"
+
+    @pytest.mark.asyncio
+    async def test_entities_not_in_tablewrite_are_excluded(self):
+        """Entities not in Tablewrite folder hierarchy are excluded."""
+        from app.tools.asset_deleter import find_entities
+
+        # Mock list_actors - one in Tablewrite, one not
+        mock_actor_tw = MagicMock()
+        mock_actor_tw.uuid = "Actor.1"
+        mock_actor_tw.name = "Tablewrite Goblin"
+        mock_actor_tw.folder = "tablewrite_id"
+
+        mock_actor_other = MagicMock()
+        mock_actor_other.uuid = "Actor.2"
+        mock_actor_other.name = "Root Goblin"
+        mock_actor_other.folder = None
+
+        mock_actor_other_folder = MagicMock()
+        mock_actor_other_folder.uuid = "Actor.3"
+        mock_actor_other_folder.name = "Other Folder Goblin"
+        mock_actor_other_folder.folder = "other_folder_id"
+
+        mock_list_result = MagicMock()
+        mock_list_result.success = True
+        mock_list_result.actors = [mock_actor_tw, mock_actor_other, mock_actor_other_folder]
+
+        # Mock folders
+        mock_tablewrite = MagicMock()
+        mock_tablewrite.id = "tablewrite_id"
+        mock_tablewrite.name = "Tablewrite"
+        mock_tablewrite.parent = None
+
+        mock_other_folder = MagicMock()
+        mock_other_folder.id = "other_folder_id"
+        mock_other_folder.name = "Other Folder"
+        mock_other_folder.parent = None
+
+        mock_folders_result = MagicMock()
+        mock_folders_result.success = True
+        mock_folders_result.folders = [mock_tablewrite, mock_other_folder]
+
+        with patch("app.tools.asset_deleter.list_actors", new_callable=AsyncMock, return_value=mock_list_result), \
+             patch("app.tools.asset_deleter.list_folders", new_callable=AsyncMock, return_value=mock_folders_result):
+            entities = await find_entities("actor", search_query="goblin")
+
+            # Only the one in Tablewrite should be returned
+            assert len(entities) == 1
+            assert entities[0].name == "Tablewrite Goblin"
+
+    @pytest.mark.asyncio
+    async def test_invalid_entity_type_returns_empty(self):
+        """Invalid entity type returns empty list."""
+        from app.tools.asset_deleter import find_entities
+
+        entities = await find_entities("invalid_type", search_query="test")
+        assert entities == []
+
+    @pytest.mark.asyncio
+    async def test_find_scenes_uses_list_scenes(self):
+        """find_entities for scenes uses list_scenes."""
+        from app.tools.asset_deleter import find_entities
+
+        mock_scene = MagicMock()
+        mock_scene.uuid = "Scene.1"
+        mock_scene.name = "Test Scene"
+        mock_scene.folder = "tablewrite_id"
+
+        mock_list_result = MagicMock()
+        mock_list_result.success = True
+        mock_list_result.scenes = [mock_scene]
+
+        mock_folder = MagicMock()
+        mock_folder.id = "tablewrite_id"
+        mock_folder.name = "Tablewrite"
+        mock_folder.parent = None
+
+        mock_folders_result = MagicMock()
+        mock_folders_result.success = True
+        mock_folders_result.folders = [mock_folder]
+
+        with patch("app.tools.asset_deleter.list_scenes", new_callable=AsyncMock, return_value=mock_list_result) as mock_list, \
+             patch("app.tools.asset_deleter.list_folders", new_callable=AsyncMock, return_value=mock_folders_result):
+            entities = await find_entities("scene", search_query="test")
+
+            mock_list.assert_called_once()
+            assert len(entities) == 1
+            assert entities[0].entity_type == "scene"
+
+    @pytest.mark.asyncio
+    async def test_find_journals_uses_list_journals(self):
+        """find_entities for journals uses list_journals."""
+        from app.tools.asset_deleter import find_entities
+
+        mock_journal = MagicMock()
+        mock_journal.uuid = "JournalEntry.1"
+        mock_journal.name = "Test Journal"
+        mock_journal.folder = "tablewrite_id"
+
+        mock_list_result = MagicMock()
+        mock_list_result.success = True
+        mock_list_result.journals = [mock_journal]
+
+        mock_folder = MagicMock()
+        mock_folder.id = "tablewrite_id"
+        mock_folder.name = "Tablewrite"
+        mock_folder.parent = None
+
+        mock_folders_result = MagicMock()
+        mock_folders_result.success = True
+        mock_folders_result.folders = [mock_folder]
+
+        with patch("app.tools.asset_deleter.list_journals", new_callable=AsyncMock, return_value=mock_list_result) as mock_list, \
+             patch("app.tools.asset_deleter.list_folders", new_callable=AsyncMock, return_value=mock_folders_result):
+            entities = await find_entities("journal", search_query="test")
+
+            mock_list.assert_called_once()
+            assert len(entities) == 1
+            assert entities[0].entity_type == "journal"
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestFindEntitiesIntegration:
+    """Integration tests for find_entities with real Foundry data."""
+
+    async def test_find_actors_by_partial_name(self, ensure_foundry_connected, test_folders):
+        """Should find actors by partial name match in Tablewrite folder."""
+        from app.tools.asset_deleter import find_entities
+        from app.websocket.push import push_actor, delete_actor, get_or_create_folder
+
+        # Create test actor in Tablewrite
+        folder_result = await get_or_create_folder("Tablewrite", "Actor")
+        assert folder_result.success, f"Failed to create folder: {folder_result.error}"
+
+        actor_result = await push_actor({
+            "name": "Test Goblin Scout FindEntities",
+            "type": "npc",
+            "folder": folder_result.folder_id
+        })
+        assert actor_result.success, f"Failed to create actor: {actor_result.error}"
+
+        try:
+            entities = await find_entities("actor", search_query="goblin scout findentities")
+            assert len(entities) >= 1
+            assert any(e.name == "Test Goblin Scout FindEntities" for e in entities)
+        finally:
+            await delete_actor(actor_result.uuid)
+
+    async def test_find_entities_filters_to_tablewrite(self, ensure_foundry_connected, test_folders):
+        """Should only return entities in Tablewrite folders."""
+        from app.tools.asset_deleter import find_entities
+        from app.websocket.push import push_actor, delete_actor, get_or_create_folder
+
+        # Create one actor in Tablewrite, one outside
+        folder_result = await get_or_create_folder("Tablewrite", "Actor")
+        assert folder_result.success
+
+        tablewrite_actor = await push_actor({
+            "name": "Tablewrite Test Actor FindEntities",
+            "type": "npc",
+            "folder": folder_result.folder_id
+        })
+        assert tablewrite_actor.success
+
+        root_actor = await push_actor({
+            "name": "Root Test Actor FindEntities",
+            "type": "npc"
+        })
+        assert root_actor.success
+
+        try:
+            entities = await find_entities("actor", search_query="test actor findentities")
+            names = [e.name for e in entities]
+
+            assert "Tablewrite Test Actor FindEntities" in names
+            assert "Root Test Actor FindEntities" not in names
+        finally:
+            await delete_actor(tablewrite_actor.uuid)
+            await delete_actor(root_actor.uuid)
+
+    async def test_find_entity_by_uuid(self, ensure_foundry_connected, test_folders):
+        """Should find entity by specific UUID."""
+        from app.tools.asset_deleter import find_entities
+        from app.websocket.push import push_actor, delete_actor, get_or_create_folder
+
+        # Create test actor in Tablewrite
+        folder_result = await get_or_create_folder("Tablewrite", "Actor")
+        assert folder_result.success
+
+        actor_result = await push_actor({
+            "name": "UUID Test Actor FindEntities",
+            "type": "npc",
+            "folder": folder_result.folder_id
+        })
+        assert actor_result.success
+
+        try:
+            entities = await find_entities("actor", uuid=actor_result.uuid)
+            assert len(entities) == 1
+            assert entities[0].uuid == actor_result.uuid
+            assert entities[0].name == "UUID Test Actor FindEntities"
+        finally:
+            await delete_actor(actor_result.uuid)
+
+    async def test_find_all_with_wildcard(self, ensure_foundry_connected, test_folders):
+        """Search with '*' should return all entities in Tablewrite."""
+        from app.tools.asset_deleter import find_entities
+        from app.websocket.push import push_actor, delete_actor, get_or_create_folder
+
+        # Create test actors in Tablewrite
+        folder_result = await get_or_create_folder("Tablewrite", "Actor")
+        assert folder_result.success
+
+        actors = []
+        for i in range(2):
+            result = await push_actor({
+                "name": f"Wildcard Test Actor {i} FindEntities",
+                "type": "npc",
+                "folder": folder_result.folder_id
+            })
+            assert result.success
+            actors.append(result.uuid)
+
+        try:
+            entities = await find_entities("actor", search_query="*")
+            # Should find at least our test actors
+            names = [e.name for e in entities]
+            assert "Wildcard Test Actor 0 FindEntities" in names
+            assert "Wildcard Test Actor 1 FindEntities" in names
+        finally:
+            for uuid in actors:
+                await delete_actor(uuid)

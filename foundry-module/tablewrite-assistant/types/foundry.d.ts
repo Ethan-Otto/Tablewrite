@@ -130,6 +130,7 @@ declare global {
   interface FoundryDocument {
     id: string;
     name: string;
+    folder?: { id: string } | null;
     toObject(): Record<string, unknown>;
     delete(): Promise<void>;
     createEmbeddedDocuments(type: string, data: Record<string, unknown>[]): Promise<unknown[]>;

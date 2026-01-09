@@ -40,6 +40,7 @@ class ActorInfo:
     uuid: str
     id: str
     name: str
+    folder: Optional[str] = None
 
 
 @dataclass
@@ -604,7 +605,12 @@ async def list_actors(timeout: float = 30.0) -> ListResult:
         data = response.get("data", {})
         actors_data = data.get("actors", [])
         actors = [
-            ActorInfo(uuid=a.get("uuid", ""), id=a.get("id", ""), name=a.get("name", ""))
+            ActorInfo(
+                uuid=a.get("uuid", ""),
+                id=a.get("id", ""),
+                name=a.get("name", ""),
+                folder=a.get("folder")
+            )
             for a in actors_data
             if a.get("uuid") and a.get("id") and a.get("name")
         ]

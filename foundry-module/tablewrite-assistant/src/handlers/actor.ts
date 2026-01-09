@@ -202,7 +202,8 @@ export async function handleListActors(): Promise<ListResult> {
     const actorList = actors.map((actor: FoundryDocument) => ({
       uuid: `Actor.${actor.id}`,
       id: actor.id,
-      name: actor.name
+      name: actor.name,
+      folder: actor.folder?.id ?? null
     }));
 
     console.log('[Tablewrite] Listed', actorList.length, 'world actors');

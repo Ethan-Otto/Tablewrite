@@ -1,5 +1,6 @@
 """Asset deletion tool - delete Tablewrite assets via natural language."""
 import logging
+from dataclasses import dataclass
 from typing import List, Optional
 from .base import BaseTool, ToolSchema, ToolResponse
 from app.websocket.push import (
@@ -59,6 +60,122 @@ async def is_in_tablewrite_folder(entity_uuid: str, entity_type: str) -> bool:
         current_folder_id = folder.parent
 
     return False
+
+
+@dataclass
+class EntityMatch:
+    """A matched entity from search."""
+    uuid: str
+    name: str
+    entity_type: str
+    folder_id: Optional[str] = None
+
+
+async def find_entities(
+    entity_type: str,
+    search_query: Optional[str] = None,
+    uuid: Optional[str] = None,
+    folder_name: Optional[str] = None
+) -> List[EntityMatch]:
+    """
+    Find entities matching the search criteria.
+
+    Args:
+        entity_type: "actor", "scene", "journal", or "folder"
+        search_query: Name to search for (case-insensitive partial match), or "*" for all
+        uuid: Specific UUID (takes precedence over search_query)
+        folder_name: Optional Tablewrite subfolder to limit search
+
+    Returns:
+        List of matching entities that are in Tablewrite hierarchy
+    """
+    # If UUID provided, validate and return single entity
+    if uuid:
+        if await is_in_tablewrite_folder(uuid, entity_type):
+            # Fetch to get name and folder
+            if entity_type == "actor":
+                result = await fetch_actor(uuid)
+            elif entity_type == "scene":
+                result = await fetch_scene(uuid)
+            elif entity_type == "journal":
+                result = await fetch_journal(uuid)
+            else:
+                return []
+
+            if result.success and result.entity:
+                return [EntityMatch(
+                    uuid=uuid,
+                    name=result.entity.get("name", "Unknown"),
+                    entity_type=entity_type,
+                    folder_id=result.entity.get("folder")
+                )]
+        return []
+
+    # List all entities of type
+    if entity_type == "actor":
+        list_result = await list_actors()
+        entities = list_result.actors or []
+    elif entity_type == "scene":
+        list_result = await list_scenes()
+        entities = list_result.scenes or []
+    elif entity_type == "journal":
+        list_result = await list_journals()
+        entities = list_result.journals or []
+    else:
+        return []
+
+    # Get folder hierarchy for filtering
+    folders_result = await list_folders()
+    folder_map = {f.id: f for f in (folders_result.folders or [])}
+
+    def is_in_tablewrite_hierarchy(folder_id: Optional[str], target_subfolder: Optional[str] = None) -> bool:
+        """Check if folder is in Tablewrite hierarchy, optionally under specific subfolder."""
+        if not folder_id:
+            return False
+
+        path = []
+        current = folder_id
+        while current:
+            folder = folder_map.get(current)
+            if not folder:
+                return False
+            path.append(folder.name)
+            if folder.name == "Tablewrite":
+                # Found Tablewrite - check subfolder if specified
+                if target_subfolder:
+                    # Path is built from entity folder up to Tablewrite
+                    # So if entity is in "Lost Mine" -> "Tablewrite", path = ["Lost Mine", "Tablewrite"]
+                    # We want to check if "Lost Mine" is in the path (direct child of Tablewrite)
+                    return len(path) >= 2 and path[-2] == target_subfolder
+                return True
+            current = folder.parent
+        return False
+
+    # Filter and search
+    results = []
+    search_lower = search_query.lower() if search_query and search_query != "*" else None
+
+    for entity in entities:
+        # Get folder_id based on entity type - actors don't have folder in list result
+        # so we need to handle this specially
+        entity_folder = getattr(entity, 'folder', None)
+
+        # Check Tablewrite hierarchy
+        if not is_in_tablewrite_hierarchy(entity_folder, folder_name):
+            continue
+
+        # Check name match
+        if search_lower and search_lower not in entity.name.lower():
+            continue
+
+        results.append(EntityMatch(
+            uuid=entity.uuid,
+            name=entity.name,
+            entity_type=entity_type,
+            folder_id=entity_folder
+        ))
+
+    return results
 
 
 class AssetDeleterTool(BaseTool):
