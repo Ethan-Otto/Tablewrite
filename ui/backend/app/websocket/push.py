@@ -853,6 +853,16 @@ class GiveItemsResult:
     error: Optional[str] = None
 
 
+@dataclass
+class RemoveItemsResult:
+    """Result of removing items from an actor."""
+    success: bool
+    actor_uuid: Optional[str] = None
+    items_removed: Optional[int] = None
+    removed_names: Optional[List[str]] = None
+    error: Optional[str] = None
+
+
 async def give_items(
     actor_uuid: str,
     item_uuids: List[str],
@@ -905,6 +915,56 @@ async def give_items(
         )
     else:
         return GiveItemsResult(
+            success=False,
+            error=f"Unexpected response type: {response.get('type')}"
+        )
+
+
+async def remove_actor_items(
+    actor_uuid: str,
+    item_names: List[str],
+    timeout: float = 30.0
+) -> RemoveItemsResult:
+    """
+    Remove items from an actor by name (case-insensitive partial match).
+
+    Args:
+        actor_uuid: The actor UUID (e.g., "Actor.abc123")
+        item_names: List of item names to search for and remove
+        timeout: Maximum seconds to wait for Foundry response
+
+    Returns:
+        RemoveItemsResult with count and names of removed items
+    """
+    response = await foundry_manager.broadcast_and_wait(
+        {
+            "type": "remove_actor_items",
+            "data": {"actor_uuid": actor_uuid, "item_names": item_names}
+        },
+        timeout=timeout
+    )
+
+    if response is None:
+        return RemoveItemsResult(
+            success=False,
+            error="No Foundry client connected or timeout waiting for response"
+        )
+
+    if response.get("type") == "actor_items_removed":
+        data = response.get("data", {})
+        return RemoveItemsResult(
+            success=True,
+            actor_uuid=data.get("actor_uuid"),
+            items_removed=data.get("items_removed", 0),
+            removed_names=data.get("removed_names", [])
+        )
+    elif response.get("type") == "actor_error":
+        return RemoveItemsResult(
+            success=False,
+            error=response.get("error", "Unknown error from Foundry")
+        )
+    else:
+        return RemoveItemsResult(
             success=False,
             error=f"Unexpected response type: {response.get('type')}"
         )

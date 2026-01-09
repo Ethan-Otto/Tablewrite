@@ -53,6 +53,8 @@ RESPONSE_TYPES = {
     # Give items responses
     "items_given",
     "give_error",
+    # Remove items responses
+    "actor_items_removed",
     # Folder responses
     "folder_result",
     "folder_deleted",

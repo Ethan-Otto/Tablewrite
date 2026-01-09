@@ -58,3 +58,47 @@ async def test_push_actor_returns_uuid():
     assert "actors" in data
     # Verify we can list actors (proves WebSocket communication works)
     assert isinstance(data["actors"], list)
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_remove_actor_items(ensure_foundry_connected, test_folders):
+    """Test removing items from an actor."""
+    from app.websocket.push import push_actor, remove_actor_items, get_or_create_folder
+
+    # Create a test actor with items
+    folder_result = await get_or_create_folder("tests", "Actor")
+    assert folder_result.success, f"Failed to create test folder: {folder_result.error}"
+    folder_id = folder_result.folder_id
+
+    # Create actor with items via direct WebSocket push
+    actor_data = {
+        "actor": {
+            "name": "Test Actor for Item Removal",
+            "type": "npc",
+            "folder": folder_id,
+            "items": [
+                {"name": "Test Sword", "type": "weapon"},
+                {"name": "Test Shield", "type": "equipment"}
+            ]
+        }
+    }
+    create_result = await push_actor(actor_data, timeout=30.0)
+    assert create_result.success, f"Failed to create actor: {create_result.error}"
+    actor_uuid = create_result.uuid
+
+    try:
+        # Remove the sword (case-insensitive partial match on "sword")
+        result = await remove_actor_items(
+            actor_uuid=actor_uuid,
+            item_names=["sword"],
+            timeout=30.0
+        )
+
+        assert result.success, f"Failed to remove items: {result.error}"
+        assert result.items_removed == 1
+        assert "Test Sword" in result.removed_names
+    finally:
+        # Cleanup - delete the actor
+        from app.websocket.push import delete_actor
+        await delete_actor(actor_uuid)
