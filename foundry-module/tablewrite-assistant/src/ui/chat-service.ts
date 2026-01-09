@@ -2,7 +2,7 @@
  * Chat service for HTTP communication with backend.
  */
 
-import { getBackendUrl } from '../settings.js';
+import { getBackendUrl, isTokenArtEnabled, getArtStyle } from '../settings.js';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -37,12 +37,20 @@ class ChatService {
       timestamp: msg.timestamp?.toISOString() ?? new Date().toISOString()
     }));
 
+    // Include user settings in context
+    const context = {
+      settings: {
+        tokenArtEnabled: isTokenArtEnabled(),
+        artStyle: getArtStyle()
+      }
+    };
+
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         message,
-        context: {},
+        context,
         conversation_history: conversationHistory
       })
     });
