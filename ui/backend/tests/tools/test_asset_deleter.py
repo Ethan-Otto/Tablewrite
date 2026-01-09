@@ -130,13 +130,11 @@ class TestIsInTablewriteFolderUnit:
         """If entity cannot be fetched, return False."""
         from app.tools.asset_deleter import is_in_tablewrite_folder
 
-        with patch("app.tools.asset_deleter.fetch_actor") as mock_fetch:
-            # Simulate entity not found
-            mock_result = MagicMock()
-            mock_result.success = False
-            mock_result.entity = None
-            mock_fetch.return_value = mock_result
+        mock_result = MagicMock()
+        mock_result.success = False
+        mock_result.entity = None
 
+        with patch("app.tools.asset_deleter.fetch_actor", new_callable=AsyncMock, return_value=mock_result) as mock_fetch:
             result = await is_in_tablewrite_folder("Actor.nonexistent", "actor")
             assert result is False
             mock_fetch.assert_called_once_with("Actor.nonexistent")
@@ -146,13 +144,11 @@ class TestIsInTablewriteFolderUnit:
         """If entity has no folder (root level), return False."""
         from app.tools.asset_deleter import is_in_tablewrite_folder
 
-        with patch("app.tools.asset_deleter.fetch_actor") as mock_fetch:
-            # Simulate entity at root (no folder)
-            mock_result = MagicMock()
-            mock_result.success = True
-            mock_result.entity = {"name": "Test Actor", "folder": None}
-            mock_fetch.return_value = mock_result
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_result.entity = {"name": "Test Actor", "folder": None}
 
+        with patch("app.tools.asset_deleter.fetch_actor", new_callable=AsyncMock, return_value=mock_result):
             result = await is_in_tablewrite_folder("Actor.abc123", "actor")
             assert result is False
 
@@ -161,25 +157,22 @@ class TestIsInTablewriteFolderUnit:
         """If entity is directly in Tablewrite folder, return True."""
         from app.tools.asset_deleter import is_in_tablewrite_folder
 
-        with patch("app.tools.asset_deleter.fetch_actor") as mock_fetch, \
-             patch("app.tools.asset_deleter.list_folders") as mock_list:
-            # Actor in folder "tablewrite_folder_id"
-            mock_fetch_result = MagicMock()
-            mock_fetch_result.success = True
-            mock_fetch_result.entity = {"name": "Test Actor", "folder": "tablewrite_folder_id"}
-            mock_fetch.return_value = mock_fetch_result
+        mock_fetch_result = MagicMock()
+        mock_fetch_result.success = True
+        mock_fetch_result.entity = {"name": "Test Actor", "folder": "tablewrite_folder_id"}
 
-            # Folder hierarchy: Tablewrite is the direct parent
-            mock_folder = MagicMock()
-            mock_folder.id = "tablewrite_folder_id"
-            mock_folder.name = "Tablewrite"
-            mock_folder.parent = None
+        # Folder hierarchy: Tablewrite is the direct parent
+        mock_folder = MagicMock()
+        mock_folder.id = "tablewrite_folder_id"
+        mock_folder.name = "Tablewrite"
+        mock_folder.parent = None
 
-            mock_list_result = MagicMock()
-            mock_list_result.success = True
-            mock_list_result.folders = [mock_folder]
-            mock_list.return_value = mock_list_result
+        mock_list_result = MagicMock()
+        mock_list_result.success = True
+        mock_list_result.folders = [mock_folder]
 
+        with patch("app.tools.asset_deleter.fetch_actor", new_callable=AsyncMock, return_value=mock_fetch_result), \
+             patch("app.tools.asset_deleter.list_folders", new_callable=AsyncMock, return_value=mock_list_result):
             result = await is_in_tablewrite_folder("Actor.abc123", "actor")
             assert result is True
 
@@ -188,30 +181,27 @@ class TestIsInTablewriteFolderUnit:
         """If entity is in a subfolder of Tablewrite, return True."""
         from app.tools.asset_deleter import is_in_tablewrite_folder
 
-        with patch("app.tools.asset_deleter.fetch_actor") as mock_fetch, \
-             patch("app.tools.asset_deleter.list_folders") as mock_list:
-            # Actor in folder "subfolder_id"
-            mock_fetch_result = MagicMock()
-            mock_fetch_result.success = True
-            mock_fetch_result.entity = {"name": "Test Actor", "folder": "subfolder_id"}
-            mock_fetch.return_value = mock_fetch_result
+        mock_fetch_result = MagicMock()
+        mock_fetch_result.success = True
+        mock_fetch_result.entity = {"name": "Test Actor", "folder": "subfolder_id"}
 
-            # Folder hierarchy: subfolder -> Tablewrite
-            mock_tablewrite = MagicMock()
-            mock_tablewrite.id = "tablewrite_folder_id"
-            mock_tablewrite.name = "Tablewrite"
-            mock_tablewrite.parent = None
+        # Folder hierarchy: subfolder -> Tablewrite
+        mock_tablewrite = MagicMock()
+        mock_tablewrite.id = "tablewrite_folder_id"
+        mock_tablewrite.name = "Tablewrite"
+        mock_tablewrite.parent = None
 
-            mock_subfolder = MagicMock()
-            mock_subfolder.id = "subfolder_id"
-            mock_subfolder.name = "Lost Mine"
-            mock_subfolder.parent = "tablewrite_folder_id"
+        mock_subfolder = MagicMock()
+        mock_subfolder.id = "subfolder_id"
+        mock_subfolder.name = "Lost Mine"
+        mock_subfolder.parent = "tablewrite_folder_id"
 
-            mock_list_result = MagicMock()
-            mock_list_result.success = True
-            mock_list_result.folders = [mock_tablewrite, mock_subfolder]
-            mock_list.return_value = mock_list_result
+        mock_list_result = MagicMock()
+        mock_list_result.success = True
+        mock_list_result.folders = [mock_tablewrite, mock_subfolder]
 
+        with patch("app.tools.asset_deleter.fetch_actor", new_callable=AsyncMock, return_value=mock_fetch_result), \
+             patch("app.tools.asset_deleter.list_folders", new_callable=AsyncMock, return_value=mock_list_result):
             result = await is_in_tablewrite_folder("Actor.abc123", "actor")
             assert result is True
 
@@ -220,30 +210,27 @@ class TestIsInTablewriteFolderUnit:
         """If entity is in a folder that's not Tablewrite or its subfolder, return False."""
         from app.tools.asset_deleter import is_in_tablewrite_folder
 
-        with patch("app.tools.asset_deleter.fetch_actor") as mock_fetch, \
-             patch("app.tools.asset_deleter.list_folders") as mock_list:
-            # Actor in folder "other_folder_id"
-            mock_fetch_result = MagicMock()
-            mock_fetch_result.success = True
-            mock_fetch_result.entity = {"name": "Test Actor", "folder": "other_folder_id"}
-            mock_fetch.return_value = mock_fetch_result
+        mock_fetch_result = MagicMock()
+        mock_fetch_result.success = True
+        mock_fetch_result.entity = {"name": "Test Actor", "folder": "other_folder_id"}
 
-            # Folder hierarchy: "Other" is not Tablewrite
-            mock_other = MagicMock()
-            mock_other.id = "other_folder_id"
-            mock_other.name = "Other"
-            mock_other.parent = None
+        # Folder hierarchy: "Other" is not Tablewrite
+        mock_other = MagicMock()
+        mock_other.id = "other_folder_id"
+        mock_other.name = "Other"
+        mock_other.parent = None
 
-            mock_tablewrite = MagicMock()
-            mock_tablewrite.id = "tablewrite_folder_id"
-            mock_tablewrite.name = "Tablewrite"
-            mock_tablewrite.parent = None
+        mock_tablewrite = MagicMock()
+        mock_tablewrite.id = "tablewrite_folder_id"
+        mock_tablewrite.name = "Tablewrite"
+        mock_tablewrite.parent = None
 
-            mock_list_result = MagicMock()
-            mock_list_result.success = True
-            mock_list_result.folders = [mock_other, mock_tablewrite]
-            mock_list.return_value = mock_list_result
+        mock_list_result = MagicMock()
+        mock_list_result.success = True
+        mock_list_result.folders = [mock_other, mock_tablewrite]
 
+        with patch("app.tools.asset_deleter.fetch_actor", new_callable=AsyncMock, return_value=mock_fetch_result), \
+             patch("app.tools.asset_deleter.list_folders", new_callable=AsyncMock, return_value=mock_list_result):
             result = await is_in_tablewrite_folder("Actor.abc123", "actor")
             assert result is False
 
@@ -252,24 +239,21 @@ class TestIsInTablewriteFolderUnit:
         """Test is_in_tablewrite_folder works for scenes."""
         from app.tools.asset_deleter import is_in_tablewrite_folder
 
-        with patch("app.tools.asset_deleter.fetch_scene") as mock_fetch, \
-             patch("app.tools.asset_deleter.list_folders") as mock_list:
-            # Scene in Tablewrite folder
-            mock_fetch_result = MagicMock()
-            mock_fetch_result.success = True
-            mock_fetch_result.entity = {"name": "Test Scene", "folder": "tablewrite_folder_id"}
-            mock_fetch.return_value = mock_fetch_result
+        mock_fetch_result = MagicMock()
+        mock_fetch_result.success = True
+        mock_fetch_result.entity = {"name": "Test Scene", "folder": "tablewrite_folder_id"}
 
-            mock_folder = MagicMock()
-            mock_folder.id = "tablewrite_folder_id"
-            mock_folder.name = "Tablewrite"
-            mock_folder.parent = None
+        mock_folder = MagicMock()
+        mock_folder.id = "tablewrite_folder_id"
+        mock_folder.name = "Tablewrite"
+        mock_folder.parent = None
 
-            mock_list_result = MagicMock()
-            mock_list_result.success = True
-            mock_list_result.folders = [mock_folder]
-            mock_list.return_value = mock_list_result
+        mock_list_result = MagicMock()
+        mock_list_result.success = True
+        mock_list_result.folders = [mock_folder]
 
+        with patch("app.tools.asset_deleter.fetch_scene", new_callable=AsyncMock, return_value=mock_fetch_result) as mock_fetch, \
+             patch("app.tools.asset_deleter.list_folders", new_callable=AsyncMock, return_value=mock_list_result):
             result = await is_in_tablewrite_folder("Scene.abc123", "scene")
             assert result is True
             mock_fetch.assert_called_once_with("Scene.abc123")
@@ -279,24 +263,21 @@ class TestIsInTablewriteFolderUnit:
         """Test is_in_tablewrite_folder works for journals."""
         from app.tools.asset_deleter import is_in_tablewrite_folder
 
-        with patch("app.tools.asset_deleter.fetch_journal") as mock_fetch, \
-             patch("app.tools.asset_deleter.list_folders") as mock_list:
-            # Journal in Tablewrite folder
-            mock_fetch_result = MagicMock()
-            mock_fetch_result.success = True
-            mock_fetch_result.entity = {"name": "Test Journal", "folder": "tablewrite_folder_id"}
-            mock_fetch.return_value = mock_fetch_result
+        mock_fetch_result = MagicMock()
+        mock_fetch_result.success = True
+        mock_fetch_result.entity = {"name": "Test Journal", "folder": "tablewrite_folder_id"}
 
-            mock_folder = MagicMock()
-            mock_folder.id = "tablewrite_folder_id"
-            mock_folder.name = "Tablewrite"
-            mock_folder.parent = None
+        mock_folder = MagicMock()
+        mock_folder.id = "tablewrite_folder_id"
+        mock_folder.name = "Tablewrite"
+        mock_folder.parent = None
 
-            mock_list_result = MagicMock()
-            mock_list_result.success = True
-            mock_list_result.folders = [mock_folder]
-            mock_list.return_value = mock_list_result
+        mock_list_result = MagicMock()
+        mock_list_result.success = True
+        mock_list_result.folders = [mock_folder]
 
+        with patch("app.tools.asset_deleter.fetch_journal", new_callable=AsyncMock, return_value=mock_fetch_result) as mock_fetch, \
+             patch("app.tools.asset_deleter.list_folders", new_callable=AsyncMock, return_value=mock_list_result):
             result = await is_in_tablewrite_folder("JournalEntry.abc123", "journal")
             assert result is True
             mock_fetch.assert_called_once_with("JournalEntry.abc123")
@@ -314,20 +295,17 @@ class TestIsInTablewriteFolderUnit:
         """If list_folders fails, return False."""
         from app.tools.asset_deleter import is_in_tablewrite_folder
 
-        with patch("app.tools.asset_deleter.fetch_actor") as mock_fetch, \
-             patch("app.tools.asset_deleter.list_folders") as mock_list:
-            # Actor has a folder
-            mock_fetch_result = MagicMock()
-            mock_fetch_result.success = True
-            mock_fetch_result.entity = {"name": "Test Actor", "folder": "some_folder_id"}
-            mock_fetch.return_value = mock_fetch_result
+        mock_fetch_result = MagicMock()
+        mock_fetch_result.success = True
+        mock_fetch_result.entity = {"name": "Test Actor", "folder": "some_folder_id"}
 
-            # But list_folders fails
-            mock_list_result = MagicMock()
-            mock_list_result.success = False
-            mock_list_result.folders = None
-            mock_list.return_value = mock_list_result
+        # But list_folders fails
+        mock_list_result = MagicMock()
+        mock_list_result.success = False
+        mock_list_result.folders = None
 
+        with patch("app.tools.asset_deleter.fetch_actor", new_callable=AsyncMock, return_value=mock_fetch_result), \
+             patch("app.tools.asset_deleter.list_folders", new_callable=AsyncMock, return_value=mock_list_result):
             result = await is_in_tablewrite_folder("Actor.abc123", "actor")
             assert result is False
 
