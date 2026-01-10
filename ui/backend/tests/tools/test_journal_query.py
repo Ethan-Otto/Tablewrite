@@ -548,3 +548,52 @@ class TestContextManagement:
         assert "Section A" in context.last_sections
         assert "Section B" in context.last_sections
         assert None not in context.last_sections
+
+
+class TestPromptBuilding:
+    """Test prompt building for different query types."""
+
+    def test_build_question_prompt(self):
+        """Test building prompt for question query type."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+
+        prompt = tool._build_prompt(
+            query="What treasure is in Cragmaw Castle?",
+            query_type="question",
+            content="[PAGE: Chapter 3]\nCragmaw Castle contains gold and gems."
+        )
+
+        assert "What treasure is in Cragmaw Castle?" in prompt
+        assert "Cragmaw Castle contains gold" in prompt
+        assert "[SOURCE:" in prompt  # Should include source instruction
+
+    def test_build_summary_prompt(self):
+        """Test building prompt for summary query type."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+
+        prompt = tool._build_prompt(
+            query="Summarize Chapter 2",
+            query_type="summary",
+            content="[PAGE: Chapter 2]\nLots of content here."
+        )
+
+        assert "Summarize" in prompt or "summary" in prompt.lower()
+        assert "Chapter 2" in prompt
+
+    def test_build_extraction_prompt(self):
+        """Test building prompt for extraction query type."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+
+        prompt = tool._build_prompt(
+            query="List all NPCs",
+            query_type="extraction",
+            content="[PAGE: Chapter 1]\nSildar Hallwinter is a human fighter."
+        )
+
+        assert "List all NPCs" in prompt or "extract" in prompt.lower()

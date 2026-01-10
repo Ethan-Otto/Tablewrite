@@ -204,3 +204,56 @@ class JournalQueryTool(BaseTool):
             last_sections=[s.section for s in sources if s.section],
             timestamp=datetime.now()
         )
+
+    def _build_prompt(self, query: str, query_type: str, content: str) -> str:
+        """
+        Build a prompt for Gemini based on query type.
+
+        Args:
+            query: User's question
+            query_type: One of "question", "summary", "extraction"
+            content: Extracted journal content with section markers
+
+        Returns:
+            Formatted prompt string
+        """
+        base_instructions = """You are a D&D module assistant. Answer based ONLY on the provided journal content.
+Include [SOURCE: section name] markers in your response to indicate where information came from.
+
+Journal Content:
+"""
+
+        if query_type == "question":
+            task = f"""
+
+Answer the following question based on the journal content above.
+Be specific and cite the relevant section.
+
+Question: {query}
+
+Answer:"""
+
+        elif query_type == "summary":
+            task = f"""
+
+Provide a concise summary based on the journal content above.
+Focus on the key points and important details.
+
+Request: {query}
+
+Summary:"""
+
+        elif query_type == "extraction":
+            task = f"""
+
+Extract and list the requested information from the journal content above.
+Format as a bulleted list with section references.
+
+Request: {query}
+
+Extracted Information:"""
+
+        else:
+            task = f"\n\nQuestion: {query}\n\nAnswer:"
+
+        return base_instructions + content + task
