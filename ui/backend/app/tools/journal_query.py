@@ -44,9 +44,10 @@ class JournalQueryTool(BaseTool):
         return ToolSchema(
             name="query_journal",
             description=(
-                "Answer questions, summarize, or extract information from D&D module journals. "
-                "Use when user asks about module content, NPCs, locations, treasures, encounters, "
-                "or wants summaries of chapters/sections."
+                "Query Foundry VTT journal entries to answer questions about their content. "
+                "MUST be used when user asks about: journal content, what's in a page/chapter/section, "
+                "NPCs, locations, treasures, encounters, storylines, or wants summaries. "
+                "This tool reads the ACTUAL journal content from Foundry - do not answer from general D&D knowledge."
             ),
             parameters={
                 "type": "object",
