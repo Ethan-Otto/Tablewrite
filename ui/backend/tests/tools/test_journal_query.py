@@ -451,18 +451,18 @@ class TestResponseFormatting:
         assert "> " not in result.split("Lost Mine")[1][:5] if "Lost Mine" in result else True
 
     def test_build_foundry_link(self):
-        """Test building Foundry page links with labels."""
+        """Test building Foundry page links with full UUID."""
         from app.tools.journal_query import JournalQueryTool
 
         tool = JournalQueryTool()
 
-        # Default label
-        link = tool._build_foundry_link("page123")
-        assert link == "@UUID[JournalEntryPage.page123]{Open}"
+        # Default label - full UUID format
+        link = tool._build_foundry_link("journal123", "page456")
+        assert link == "@UUID[JournalEntry.journal123.JournalEntryPage.page456]{Open}"
 
         # Custom label
-        link = tool._build_foundry_link("page123", "Cave Mouth")
-        assert link == "@UUID[JournalEntryPage.page123]{Cave Mouth}"
+        link = tool._build_foundry_link("journal123", "page456", "Cave Mouth")
+        assert link == "@UUID[JournalEntry.journal123.JournalEntryPage.page456]{Cave Mouth}"
 
     def test_format_response_multiple_sources(self):
         """Test formatting with multiple source references."""

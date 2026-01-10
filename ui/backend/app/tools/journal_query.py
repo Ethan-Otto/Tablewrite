@@ -134,8 +134,10 @@ class JournalQueryTool(BaseTool):
                 self._update_context(session_id, journal, sources)
 
             # 6. Build Foundry links with descriptive labels
+            # Need journal ID for full UUID: JournalEntry.{journalId}.JournalEntryPage.{pageId}
+            journal_id = journal.get("_id", "")
             foundry_links = [
-                self._build_foundry_link(s.page_id, s.section or s.chapter or "Open")
+                self._build_foundry_link(journal_id, s.page_id, s.section or s.chapter or "Open")
                 for s in sources if s.page_id
             ]
 
@@ -463,9 +465,12 @@ Which journal most likely contains the answer?
                 return True
         return False
 
-    def _build_foundry_link(self, page_id: str, label: str = "Open") -> str:
-        """Build a Foundry link to a specific journal page."""
-        return f"@UUID[JournalEntryPage.{page_id}]{{{label}}}"
+    def _build_foundry_link(self, journal_id: str, page_id: str, label: str = "Open") -> str:
+        """Build a Foundry link to a specific journal page.
+
+        Full UUID format: JournalEntry.{journalId}.JournalEntryPage.{pageId}
+        """
+        return f"@UUID[JournalEntry.{journal_id}.JournalEntryPage.{page_id}]{{{label}}}"
 
     def _format_response(self, answer: str, sources: list[SourceReference], links: list[str]) -> str:
         """
