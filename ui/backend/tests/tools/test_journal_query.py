@@ -568,6 +568,7 @@ class TestPromptBuilding:
         assert "What treasure is in Cragmaw Castle?" in prompt
         assert "Cragmaw Castle contains gold" in prompt
         assert "[SOURCE:" in prompt  # Should include source instruction
+        assert "Answer the following question" in prompt
 
     def test_build_summary_prompt(self):
         """Test building prompt for summary query type."""
@@ -583,6 +584,7 @@ class TestPromptBuilding:
 
         assert "Summarize" in prompt or "summary" in prompt.lower()
         assert "Chapter 2" in prompt
+        assert "Provide a concise summary" in prompt
 
     def test_build_extraction_prompt(self):
         """Test building prompt for extraction query type."""
@@ -597,3 +599,18 @@ class TestPromptBuilding:
         )
 
         assert "List all NPCs" in prompt or "extract" in prompt.lower()
+        assert "Extract and list" in prompt
+
+    def test_build_unknown_query_type_fallback(self):
+        """Test that unknown query types use question-like fallback."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+        prompt = tool._build_prompt(
+            query="Some query",
+            query_type="invalid_type",
+            content="Some content"
+        )
+
+        assert "Question: Some query" in prompt
+        assert "Answer:" in prompt
