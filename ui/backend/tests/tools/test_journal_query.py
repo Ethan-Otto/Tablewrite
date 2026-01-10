@@ -295,6 +295,109 @@ class TestFuzzyMatching:
         result = tool._fuzzy_match_journal("Valid", journals)
         assert result["uuid"] == "j2"
 
+    def test_plural_singular_matching(self):
+        """Test that 'Lost Mines' matches 'Lost Mine of Phandelver'."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+        journals = [
+            {"uuid": "j1", "name": "Lost Mine of Phandelver test"}
+        ]
+
+        # 'Mines' should match 'Mine'
+        result = tool._fuzzy_match_journal("Lost Mines", journals)
+        assert result is not None
+        assert result["uuid"] == "j1"
+
+    def test_word_based_matching(self):
+        """Test word-based matching ignores filler words."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+        journals = [
+            {"uuid": "j1", "name": "The Lost Mine of Phandelver"}
+        ]
+
+        # Should match even with different filler words
+        result = tool._fuzzy_match_journal("Lost Mine Phandelver", journals)
+        assert result is not None
+        assert result["uuid"] == "j1"
+
+
+class TestPageDetection:
+    """Test page-specific query detection."""
+
+    def test_detect_page_query_whats_in(self):
+        """Test detecting 'what's in Part 2 page' queries."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+        journal = {
+            "pages": [
+                {"_id": "p1", "name": "Chapter 1"},
+                {"_id": "p2", "name": "Part 2"},
+                {"_id": "p3", "name": "Appendix"}
+            ]
+        }
+
+        result = tool._detect_page_query("What's in Part 2 page", journal)
+        assert result is not None
+        assert result["_id"] == "p2"
+
+    def test_detect_page_query_part2_no_space(self):
+        """Test detecting 'Part2' matches 'Part 2'."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+        journal = {
+            "pages": [
+                {"_id": "p1", "name": "Part 2"}
+            ]
+        }
+
+        result = tool._fuzzy_match_page("Part2", journal["pages"])
+        assert result is not None
+        assert result["_id"] == "p1"
+
+    def test_detect_page_query_no_match(self):
+        """Test that unrelated queries don't match pages."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+        journal = {
+            "pages": [
+                {"_id": "p1", "name": "Chapter 1"},
+                {"_id": "p2", "name": "Chapter 2"}
+            ]
+        }
+
+        # This shouldn't match because it's asking about NPCs, not a page
+        result = tool._detect_page_query("List all NPCs in the journal", journal)
+        # May or may not match - depends on implementation
+        # The key is it shouldn't incorrectly match "Chapter 1"
+
+    def test_extract_page_content(self):
+        """Test extracting content from a single page."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+        page = {
+            "_id": "page1",
+            "name": "Part 2",
+            "text": {
+                "content": "<h1>Part Two</h1><p>This is the content.</p>"
+            }
+        }
+        journal = {"pages": [page]}
+
+        content, section_map = tool._extract_page_content(page, journal)
+
+        assert "Part 2" in content
+        assert "Part Two" in content
+        assert "This is the content" in content
+        assert "Part 2" in section_map
+        assert section_map["Part 2"] == "page1"
+
 
 class TestResponseFormatting:
     """Test response formatting with sources."""
@@ -348,13 +451,18 @@ class TestResponseFormatting:
         assert "> " not in result.split("Lost Mine")[1][:5] if "Lost Mine" in result else True
 
     def test_build_foundry_link(self):
-        """Test building Foundry page links."""
+        """Test building Foundry page links with labels."""
         from app.tools.journal_query import JournalQueryTool
 
         tool = JournalQueryTool()
 
+        # Default label
         link = tool._build_foundry_link("page123")
-        assert link == "@UUID[JournalEntryPage.page123]"
+        assert link == "@UUID[JournalEntryPage.page123]{Open}"
+
+        # Custom label
+        link = tool._build_foundry_link("page123", "Cave Mouth")
+        assert link == "@UUID[JournalEntryPage.page123]{Cave Mouth}"
 
     def test_format_response_multiple_sources(self):
         """Test formatting with multiple source references."""

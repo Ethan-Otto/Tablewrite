@@ -113,8 +113,13 @@ class JournalQueryTool(BaseTool):
                     data=None
                 )
 
-            # 2. Extract text content with section markers
-            content, section_map = self._extract_text_with_section_markers(journal)
+            # 2. Check for page-specific query - if user asks about specific page, use just that page
+            target_page = self._detect_page_query(query, journal)
+            if target_page:
+                content, section_map = self._extract_page_content(target_page, journal)
+            else:
+                # Extract text content with section markers from entire journal
+                content, section_map = self._extract_text_with_section_markers(journal)
 
             # 3. Build and send prompt to Gemini
             prompt = self._build_prompt(query, query_type, content)
@@ -127,9 +132,9 @@ class JournalQueryTool(BaseTool):
             if session_id:
                 self._update_context(session_id, journal, sources)
 
-            # 6. Build Foundry links
+            # 6. Build Foundry links with descriptive labels
             foundry_links = [
-                self._build_foundry_link(s.page_id)
+                self._build_foundry_link(s.page_id, s.section or s.chapter or "Open")
                 for s in sources if s.page_id
             ]
 
@@ -271,12 +276,134 @@ Which journal most likely contains the answer?
 
         return "".join(sections), section_map
 
+    def _detect_page_query(self, query: str, journal: dict) -> Optional[dict]:
+        """
+        Detect if query is asking about a specific page.
+
+        Looks for patterns like:
+        - "What's in Part 2 page"
+        - "What's in the Part2 page"
+        - "Show me Part 2"
+
+        Returns:
+            The matching page dict if found, None otherwise
+        """
+        query_lower = query.lower()
+        pages = journal.get("pages", [])
+
+        # Common patterns indicating page-specific query
+        page_patterns = [
+            r"(?:what'?s?\s+in|show\s+me|tell\s+me\s+about|summarize)\s+(?:the\s+)?(.+?)\s*(?:page|section|chapter)?$",
+            r"(?:the\s+)?(.+?)\s+page\s+(?:content|contains|has)",
+        ]
+
+        for pattern in page_patterns:
+            match = re.search(pattern, query_lower, re.IGNORECASE)
+            if match:
+                page_ref = match.group(1).strip()
+                # Try to match against page names
+                matched_page = self._fuzzy_match_page(page_ref, pages)
+                if matched_page:
+                    return matched_page
+
+        # Also try direct page name matching without patterns
+        for page in pages:
+            page_name = page.get("name", "").lower()
+            # Check if page name appears in query (normalized)
+            page_words = self._normalize_words(page_name)
+            query_words = self._normalize_words(query_lower)
+
+            # If all page words appear in query, it might be asking about that page
+            if page_words and all(self._word_matches(pw, query_words) for pw in page_words):
+                return page
+
+        return None
+
+    def _fuzzy_match_page(self, name: str, pages: list[dict]) -> Optional[dict]:
+        """Fuzzy match a page name against available pages."""
+        if not name or not name.strip():
+            return None
+
+        name_lower = name.lower().strip()
+        query_words = self._normalize_words(name_lower)
+
+        # Try exact match first
+        for page in pages:
+            page_name = page.get("name", "")
+            if page_name.lower() == name_lower:
+                return page
+
+        # Try substring match
+        for page in pages:
+            page_name = page.get("name", "")
+            if name_lower in page_name.lower() or page_name.lower() in name_lower:
+                return page
+
+        # Try word-based match (handles "Part 2" vs "Part2")
+        for page in pages:
+            page_name = page.get("name", "")
+            page_words = self._normalize_words(page_name.lower())
+            if query_words and page_words:
+                if all(self._word_matches(qw, page_words) for qw in query_words):
+                    return page
+
+        # Try numeric matching (Part2 -> Part 2)
+        name_normalized = re.sub(r'(\d+)', r' \1 ', name_lower).strip()
+        name_normalized = ' '.join(name_normalized.split())
+        for page in pages:
+            page_name = page.get("name", "")
+            page_normalized = re.sub(r'(\d+)', r' \1 ', page_name.lower()).strip()
+            page_normalized = ' '.join(page_normalized.split())
+            if name_normalized == page_normalized:
+                return page
+
+        return None
+
+    def _extract_page_content(self, page: dict, journal: dict) -> tuple[str, dict]:
+        """
+        Extract content from a single page.
+
+        Returns:
+            tuple: (extracted_text, section_to_page_id_map)
+        """
+        sections = []
+        section_map = {}
+
+        page_id = page.get("_id")
+        page_name = page.get("name", "")
+        html_content = page.get("text", {}).get("content", "") or ""
+
+        section_map[page_name] = page_id
+        sections.append(f"\n[PAGE: {page_name}]\n")
+
+        soup = BeautifulSoup(html_content, "html.parser")
+
+        for element in soup.descendants:
+            if element.name == "h1":
+                text = element.get_text(strip=True)
+                section_map[text] = page_id
+                sections.append(f"\n[CHAPTER: {text}]\n")
+            elif element.name == "h2":
+                text = element.get_text(strip=True)
+                section_map[text] = page_id
+                sections.append(f"\n[SECTION: {text}]\n")
+            elif element.name == "h3":
+                text = element.get_text(strip=True)
+                section_map[text] = page_id
+                sections.append(f"\n[SUBSECTION: {text}]\n")
+            elif element.name == "p":
+                text = element.get_text(strip=True)
+                if text:
+                    sections.append(text + "\n")
+
+        return "".join(sections), section_map
+
     def _fuzzy_match_journal(self, name: str, journals: list[dict]) -> Optional[dict]:
         """
         Fuzzy match a journal name against available journals.
 
         Args:
-            name: Name to search for (case-insensitive substring match)
+            name: Name to search for (case-insensitive, handles plural/singular)
             journals: List of journal dicts with 'uuid' and 'name' keys
 
         Returns:
@@ -286,6 +413,7 @@ Which journal most likely contains the answer?
             return None
 
         name_lower = name.lower().strip()
+        query_words = self._normalize_words(name_lower)
 
         # Try exact match first
         for j in journals:
@@ -293,17 +421,46 @@ Which journal most likely contains the answer?
             if j_name.lower() == name_lower:
                 return j
 
-        # Try substring match (returns first match)
+        # Try substring match
         for j in journals:
             j_name = j.get("name", "")
             if name_lower in j_name.lower():
                 return j
 
+        # Try word-based match (all query words found in journal name)
+        for j in journals:
+            j_name = j.get("name", "")
+            j_words = self._normalize_words(j_name.lower())
+            if all(self._word_matches(qw, j_words) for qw in query_words):
+                return j
+
         return None
 
-    def _build_foundry_link(self, page_id: str) -> str:
+    def _normalize_words(self, text: str) -> list[str]:
+        """Extract words from text, removing common filler words."""
+        import re
+        words = re.findall(r'\b\w+\b', text.lower())
+        # Remove common filler words
+        filler = {'the', 'a', 'an', 'of', 'in', 'on', 'at', 'to', 'for'}
+        return [w for w in words if w not in filler]
+
+    def _word_matches(self, query_word: str, target_words: list[str]) -> bool:
+        """Check if query word matches any target word (handles plurals)."""
+        for tw in target_words:
+            # Exact match
+            if query_word == tw:
+                return True
+            # Singular/plural: "mines" matches "mine", "mine" matches "mines"
+            if query_word.rstrip('s') == tw.rstrip('s'):
+                return True
+            # Check if one is prefix of other (for partial matches like "lost" in "lostmine")
+            if query_word.startswith(tw) or tw.startswith(query_word):
+                return True
+        return False
+
+    def _build_foundry_link(self, page_id: str, label: str = "Open") -> str:
         """Build a Foundry link to a specific journal page."""
-        return f"@UUID[JournalEntryPage.{page_id}]"
+        return f"@UUID[JournalEntryPage.{page_id}]{{{label}}}"
 
     def _format_response(self, answer: str, sources: list[SourceReference], links: list[str]) -> str:
         """
