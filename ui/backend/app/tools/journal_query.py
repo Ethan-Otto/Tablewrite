@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from bs4 import BeautifulSoup
 
 from .base import BaseTool, ToolSchema, ToolResponse
+from app.websocket import list_journals, fetch_journal
 
 logger = logging.getLogger(__name__)
 
@@ -68,14 +69,163 @@ class JournalQueryTool(BaseTool):
             }
         )
 
-    async def execute(self, query: str, query_type: str, journal_name: str = None, session_id: str = None) -> ToolResponse:
-        """Execute journal query."""
-        # Stub for now
-        return ToolResponse(
-            type="text",
-            message="Not implemented yet",
-            data=None
-        )
+    async def execute(
+        self,
+        query: str,
+        query_type: str,
+        journal_name: str = None,
+        session_id: str = None
+    ) -> ToolResponse:
+        """
+        Execute journal query for Q&A, summaries, or extraction.
+
+        Args:
+            query: User's question or request
+            query_type: One of "question", "summary", "extraction"
+            journal_name: Optional specific journal name
+            session_id: Optional session ID for context
+
+        Returns:
+            ToolResponse with answer and source references
+        """
+        try:
+            # 1. Resolve which journal to query
+            if journal_name:
+                journal = await self._fetch_journal_by_name(journal_name)
+            elif session_id and self._has_context(session_id):
+                context = self._get_context(session_id)
+                journal = await self._fetch_journal_by_uuid(context.journal_uuid)
+            else:
+                journal = await self._select_journal_via_gemini(query)
+                if journal is None:
+                    journal_names = await self._list_journal_names()
+                    return ToolResponse(
+                        type="clarification",
+                        message=f"Which journal are you asking about?\n\nAvailable journals:\n" +
+                                "\n".join(f"- {name}" for name in journal_names),
+                        data={"available_journals": journal_names}
+                    )
+
+            if journal is None:
+                return ToolResponse(
+                    type="error",
+                    message=f"Could not find journal: {journal_name or 'unknown'}",
+                    data=None
+                )
+
+            # 2. Extract text content with section markers
+            content, section_map = self._extract_text_with_section_markers(journal)
+
+            # 3. Build and send prompt to Gemini
+            prompt = self._build_prompt(query, query_type, content)
+            response = await self._query_gemini(prompt)
+
+            # 4. Parse response and build source references
+            answer, sources = self._parse_response_with_sources(response, journal, section_map)
+
+            # 5. Store context for follow-ups
+            if session_id:
+                self._update_context(session_id, journal, sources)
+
+            # 6. Build Foundry links
+            foundry_links = [
+                self._build_foundry_link(s.page_id)
+                for s in sources if s.page_id
+            ]
+
+            # 7. Format and return response
+            formatted = self._format_response(answer, sources, foundry_links)
+
+            return ToolResponse(
+                type="text",
+                message=formatted,
+                data={
+                    "answer": answer,
+                    "sources": [s.model_dump() for s in sources],
+                    "foundry_links": foundry_links,
+                    "journal_name": journal["name"],
+                    "journal_uuid": journal["_id"]
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Journal query failed: {e}")
+            return ToolResponse(
+                type="error",
+                message=f"Failed to query journal: {str(e)}",
+                data=None
+            )
+
+    async def _fetch_journal_by_name(self, name: str) -> Optional[dict]:
+        """Fetch journal by name from Foundry."""
+        journals_result = await list_journals()
+        if not journals_result.success:
+            return None
+
+        journals = [{"uuid": j.uuid, "name": j.name} for j in journals_result.journals]
+        matched = self._fuzzy_match_journal(name, journals)
+
+        if matched:
+            return await self._fetch_journal_by_uuid(matched["uuid"])
+        return None
+
+    async def _fetch_journal_by_uuid(self, uuid: str) -> Optional[dict]:
+        """Fetch full journal content by UUID from Foundry."""
+        result = await fetch_journal(uuid)
+        if result.success:
+            return result.entity
+        return None
+
+    async def _list_journal_names(self) -> list[str]:
+        """Get list of all journal names."""
+        result = await list_journals()
+        if result.success:
+            return [j.name for j in result.journals]
+        return []
+
+    async def _select_journal_via_gemini(self, query: str) -> Optional[dict]:
+        """Ask Gemini to pick the most relevant journal."""
+        journal_names = await self._list_journal_names()
+        if not journal_names:
+            return None
+
+        journal_list = "\n".join(f"- {name}" for name in journal_names)
+
+        prompt = f"""Given these available D&D module journals:
+{journal_list}
+
+User question: "{query}"
+
+Which journal most likely contains the answer?
+- If clearly one journal, respond with ONLY the exact journal name
+- If unclear or could be multiple, respond with "CLARIFY"
+"""
+
+        response = await self._query_gemini(prompt)
+
+        if "CLARIFY" in response.upper():
+            return None
+
+        # Try to match response to a journal
+        journals_result = await list_journals()
+        if not journals_result.success:
+            return None
+
+        journals = [{"uuid": j.uuid, "name": j.name} for j in journals_result.journals]
+        matched = self._fuzzy_match_journal(response.strip(), journals)
+
+        if matched:
+            return await self._fetch_journal_by_uuid(matched["uuid"])
+
+        return None
+
+    async def _query_gemini(self, prompt: str) -> str:
+        """Send prompt to Gemini and get response."""
+        from app.services.gemini_service import GeminiService
+
+        service = GeminiService()
+        response = service.api.generate_content(prompt)
+        return response.text
 
     def _extract_text_with_section_markers(self, journal: dict) -> tuple[str, dict]:
         """
