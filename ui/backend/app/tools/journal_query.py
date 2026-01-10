@@ -185,11 +185,15 @@ class JournalQueryTool(BaseTool):
 
     async def _select_journal_via_gemini(self, query: str) -> Optional[dict]:
         """Ask Gemini to pick the most relevant journal."""
-        journal_names = await self._list_journal_names()
-        if not journal_names:
+        journals_result = await list_journals()
+        if not journals_result.success:
             return None
 
-        journal_list = "\n".join(f"- {name}" for name in journal_names)
+        journals = [{"uuid": j.uuid, "name": j.name} for j in journals_result.journals]
+        if not journals:
+            return None
+
+        journal_list = "\n".join(f"- {j['name']}" for j in journals)
 
         prompt = f"""Given these available D&D module journals:
 {journal_list}
@@ -206,12 +210,7 @@ Which journal most likely contains the answer?
         if "CLARIFY" in response.upper():
             return None
 
-        # Try to match response to a journal
-        journals_result = await list_journals()
-        if not journals_result.success:
-            return None
-
-        journals = [{"uuid": j.uuid, "name": j.name} for j in journals_result.journals]
+        # Try to match response to a journal (reusing journals list from above)
         matched = self._fuzzy_match_journal(response.strip(), journals)
 
         if matched:
@@ -221,11 +220,14 @@ Which journal most likely contains the answer?
 
     async def _query_gemini(self, prompt: str) -> str:
         """Send prompt to Gemini and get response."""
+        import asyncio
         from app.services.gemini_service import GeminiService
 
-        service = GeminiService()
-        response = service.api.generate_content(prompt)
-        return response.text
+        def _generate():
+            service = GeminiService()
+            return service.api.generate_content(prompt).text
+
+        return await asyncio.to_thread(_generate)
 
     def _extract_text_with_section_markers(self, journal: dict) -> tuple[str, dict]:
         """
