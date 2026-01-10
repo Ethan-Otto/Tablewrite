@@ -174,4 +174,40 @@ describe('main.ts', () => {
     // Client should be null after close
     expect(client).toBeNull();
   });
+
+  it('renderSidebar hook adds tab with native DOM (v13 compatible)', async () => {
+    // Create mock HTMLElement sidebar
+    const mockSidebar = document.createElement('div');
+    mockSidebar.innerHTML = `
+      <nav id="sidebar-tabs">
+        <a class="item" data-tab="chat"><i class="fas fa-comments"></i></a>
+      </nav>
+    `;
+
+    // Mock game.i18n
+    // @ts-ignore
+    globalThis.game.i18n = {
+      localize: vi.fn().mockReturnValue('Tablewrite Assistant')
+    };
+
+    await import('../src/main');
+
+    // Trigger renderSidebar hook with HTMLElement (not JQuery)
+    const renderCallback = hookCallbacks['renderSidebar']?.[0];
+    expect(renderCallback).toBeDefined();
+
+    // Call with HTMLElement as v13 does
+    renderCallback?.({}, mockSidebar, {}, {});
+
+    // Verify tab was added
+    const tabButton = mockSidebar.querySelector('[data-tab="tablewrite"]');
+    expect(tabButton).not.toBeNull();
+    expect(tabButton?.tagName).toBe('A');
+    expect(tabButton?.classList.contains('item')).toBe(true);
+
+    // Verify tab content container was added
+    const tabContent = mockSidebar.querySelector('#tablewrite');
+    expect(tabContent).not.toBeNull();
+    expect(tabContent?.classList.contains('tab')).toBe(true);
+  });
 });
