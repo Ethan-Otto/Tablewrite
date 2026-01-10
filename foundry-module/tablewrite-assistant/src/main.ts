@@ -31,32 +31,39 @@ Hooks.once('ready', () => {
 
 /**
  * Register sidebar tab for chat UI.
+ * v13 compatible: uses native DOM instead of jQuery.
  */
-Hooks.on('renderSidebar', (app: Application, html: JQuery, context?: unknown, options?: { parts?: string[] }) => {
+Hooks.on('renderSidebar', (app: Application, html: HTMLElement, context?: unknown, options?: { parts?: string[] }) => {
   // v13: Skip partial re-renders
   if (options?.parts && !options.parts.includes('sidebar')) return;
 
-  const tabsContainer = html.find('#sidebar-tabs');
-  if (!tabsContainer.length) return;
+  const tabsContainer = html.querySelector('#sidebar-tabs');
+  if (!tabsContainer) return;
 
   // Prevent duplicates (important for v13 re-renders)
-  if (tabsContainer.find('[data-tab="tablewrite"]').length) return;
+  if (tabsContainer.querySelector('[data-tab="tablewrite"]')) return;
 
   // Add tab button right after the chat tab
-  const chatTab = tabsContainer.find('[data-tab="chat"]');
-  const tabButton = $(`
-    <a class="item" data-tab="tablewrite" data-tooltip="${game.i18n.localize('TABLEWRITE_ASSISTANT.TabTooltip')}">
-      <i class="fas fa-feather-alt"></i>
-    </a>
-  `);
+  const chatTab = tabsContainer.querySelector('[data-tab="chat"]');
+  if (!chatTab) return;
+
+  const tabButton = document.createElement('a');
+  tabButton.className = 'item';
+  tabButton.dataset.tab = 'tablewrite';
+  tabButton.dataset.tooltip = game.i18n.localize('TABLEWRITE_ASSISTANT.TabTooltip');
+  tabButton.innerHTML = '<i class="fas fa-feather-alt"></i>';
   chatTab.after(tabButton);
 
-  // Add tab content container (html IS the sidebar element)
+  // Add tab content container
   // Must include 'tab' class for Foundry's tab switching to work
-  html.append('<section id="tablewrite" class="tab sidebar-tab flexcol" data-tab="tablewrite"></section>');
+  const tabContent = document.createElement('section');
+  tabContent.id = 'tablewrite';
+  tabContent.className = 'tab sidebar-tab flexcol';
+  tabContent.dataset.tab = 'tablewrite';
+  html.appendChild(tabContent);
 
   // Initialize tab when clicked (lazy initialization)
-  tabButton.on('click', () => {
+  tabButton.addEventListener('click', () => {
     const container = document.getElementById('tablewrite');
     if (container && !container.dataset.initialized) {
       container.dataset.initialized = 'true';
