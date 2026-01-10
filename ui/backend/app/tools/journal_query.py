@@ -1,5 +1,6 @@
 """Journal query tool for Q&A, summaries, and extraction from journals."""
 import logging
+import re
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
@@ -257,3 +258,62 @@ Extracted Information:"""
             task = f"\n\nQuestion: {query}\n\nAnswer:"
 
         return base_instructions + content + task
+
+    def _parse_response_with_sources(
+        self,
+        response: str,
+        journal: dict,
+        section_map: dict
+    ) -> tuple[str, list[SourceReference]]:
+        """
+        Parse Gemini response and extract source references.
+
+        Args:
+            response: Raw response from Gemini
+            journal: Journal dict with _id and name
+            section_map: Map of section names to page IDs
+
+        Returns:
+            tuple: (cleaned_answer, list_of_source_references)
+        """
+        # Find all [SOURCE: ...] markers
+        source_pattern = r'\[SOURCE:\s*([^\]]+)\]'
+        matches = re.findall(source_pattern, response)
+
+        # Clean the response by removing source markers
+        cleaned = re.sub(source_pattern, '', response).strip()
+
+        sources = []
+        seen_sections = set()
+
+        for match in matches:
+            section_name = match.strip()
+            if section_name in seen_sections:
+                continue
+            seen_sections.add(section_name)
+
+            page_id = section_map.get(section_name)
+
+            sources.append(SourceReference(
+                journal_name=journal["name"],
+                journal_uuid=journal["_id"],
+                chapter=None,  # Could be enhanced to detect chapters
+                section=section_name,
+                page_id=page_id
+            ))
+
+        # If no sources found, add journal-level reference
+        if not sources:
+            first_page_id = None
+            if journal.get("pages"):
+                first_page_id = journal["pages"][0].get("_id")
+
+            sources.append(SourceReference(
+                journal_name=journal["name"],
+                journal_uuid=journal["_id"],
+                chapter=None,
+                section=None,
+                page_id=first_page_id
+            ))
+
+        return cleaned, sources

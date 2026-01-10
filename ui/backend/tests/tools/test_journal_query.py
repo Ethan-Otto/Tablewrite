@@ -614,3 +614,55 @@ class TestPromptBuilding:
 
         assert "Question: Some query" in prompt
         assert "Answer:" in prompt
+
+
+class TestSourceParsing:
+    """Test parsing source references from Gemini response."""
+
+    def test_parse_single_source(self):
+        """Test parsing a single source reference."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+
+        response = "The treasure includes gold coins. [SOURCE: Cragmaw Castle]"
+        journal = {"_id": "j1", "name": "Lost Mine"}
+        section_map = {"Cragmaw Castle": "page1"}
+
+        answer, sources = tool._parse_response_with_sources(response, journal, section_map)
+
+        assert "The treasure includes gold coins" in answer
+        assert len(sources) == 1
+        assert sources[0].section == "Cragmaw Castle"
+        assert sources[0].page_id == "page1"
+
+    def test_parse_multiple_sources(self):
+        """Test parsing multiple source references."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+
+        response = "Info from [SOURCE: Chapter 1] and [SOURCE: Chapter 2]."
+        journal = {"_id": "j1", "name": "Test"}
+        section_map = {"Chapter 1": "p1", "Chapter 2": "p2"}
+
+        answer, sources = tool._parse_response_with_sources(response, journal, section_map)
+
+        assert len(sources) == 2
+
+    def test_parse_no_sources(self):
+        """Test parsing response with no source markers."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+
+        response = "General answer with no specific source."
+        journal = {"_id": "j1", "name": "Test"}
+        section_map = {}
+
+        answer, sources = tool._parse_response_with_sources(response, journal, section_map)
+
+        assert answer == "General answer with no specific source."
+        # Should still have at least the journal-level source
+        assert len(sources) >= 1
+        assert sources[0].journal_name == "Test"
