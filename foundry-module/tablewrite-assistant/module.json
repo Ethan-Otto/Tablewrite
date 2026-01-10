@@ -4,8 +4,8 @@
   "description": "Create D&D content through natural language. Actors, journals, and scenes appear automatically.",
   "version": "0.1.1",
   "compatibility": {
-    "minimum": "11",
-    "verified": "12"
+    "minimum": "12",
+    "verified": "13"
   },
   "authors": [
     {
