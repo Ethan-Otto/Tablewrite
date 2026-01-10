@@ -422,3 +422,129 @@ class TestResponseFormatting:
         lines = result.split("\n")
         location_line = [l for l in lines if "Lost Mine" in l and l.startswith("-")][0]
         assert location_line == "- Lost Mine > Chapter 1"
+
+
+class TestContextManagement:
+    """Test session context management for follow-ups."""
+
+    def test_has_context_returns_false_for_new_session(self):
+        """Test _has_context returns False for unknown session."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+        assert tool._has_context("unknown-session") is False
+
+    def test_update_and_has_context(self):
+        """Test updating and checking context."""
+        from app.tools.journal_query import JournalQueryTool, SourceReference
+
+        tool = JournalQueryTool()
+        session_id = "test-session-123"
+
+        journal = {"_id": "j1", "name": "Test Journal"}
+        sources = [
+            SourceReference(
+                journal_name="Test",
+                journal_uuid="j1",
+                chapter="Ch1",
+                section="Sec1",
+                page_id="p1"
+            )
+        ]
+
+        tool._update_context(session_id, journal, sources)
+
+        assert tool._has_context(session_id) is True
+
+    def test_context_expiry(self):
+        """Test context expires after 30 minutes."""
+        from app.tools.journal_query import JournalQueryTool, JournalContext, _session_contexts
+        from datetime import datetime, timedelta
+
+        tool = JournalQueryTool()
+        session_id = "expiry-test"
+
+        # Manually set old context
+        _session_contexts[session_id] = JournalContext(
+            journal_uuid="j1",
+            journal_name="Test",
+            last_sections=["Ch1"],
+            timestamp=datetime.now() - timedelta(minutes=31)
+        )
+
+        # Should return False due to expiry
+        assert tool._has_context(session_id) is False
+        # Should have been cleaned up
+        assert session_id not in _session_contexts
+
+    def test_get_context(self):
+        """Test getting context for a session."""
+        from app.tools.journal_query import JournalQueryTool, SourceReference
+
+        tool = JournalQueryTool()
+        session_id = "get-context-test"
+
+        journal = {"_id": "j1", "name": "Test Journal"}
+        sources = [
+            SourceReference(
+                journal_name="Test",
+                journal_uuid="j1",
+                chapter="Ch1",
+                section="Sec1",
+                page_id="p1"
+            )
+        ]
+
+        tool._update_context(session_id, journal, sources)
+        context = tool._get_context(session_id)
+
+        assert context is not None
+        assert context.journal_uuid == "j1"
+        assert context.journal_name == "Test Journal"
+
+    def test_get_context_returns_none_for_unknown_session(self):
+        """Test _get_context returns None for unknown session."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+        assert tool._get_context("nonexistent-session") is None
+
+    def test_context_stores_last_sections(self):
+        """Test that context stores the sections from sources."""
+        from app.tools.journal_query import JournalQueryTool, SourceReference, _session_contexts
+
+        tool = JournalQueryTool()
+        session_id = "sections-test"
+
+        journal = {"_id": "j1", "name": "Test Journal"}
+        sources = [
+            SourceReference(
+                journal_name="Test",
+                journal_uuid="j1",
+                chapter="Ch1",
+                section="Section A",
+                page_id="p1"
+            ),
+            SourceReference(
+                journal_name="Test",
+                journal_uuid="j1",
+                chapter="Ch1",
+                section="Section B",
+                page_id="p2"
+            ),
+            SourceReference(
+                journal_name="Test",
+                journal_uuid="j1",
+                chapter="Ch2",
+                section=None,  # No section
+                page_id="p3"
+            )
+        ]
+
+        tool._update_context(session_id, journal, sources)
+        context = _session_contexts[session_id]
+
+        # Should only include non-None sections
+        assert "Section A" in context.last_sections
+        assert "Section B" in context.last_sections
+        assert None not in context.last_sections

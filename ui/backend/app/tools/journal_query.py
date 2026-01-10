@@ -176,3 +176,31 @@ class JournalQueryTool(BaseTool):
             response_parts.append(f"  {link}")
 
         return "\n".join(response_parts)
+
+    def _has_context(self, session_id: str) -> bool:
+        """Check if session has recent (non-expired) context."""
+        if session_id not in _session_contexts:
+            return False
+
+        context = _session_contexts[session_id]
+        # Expire after 30 minutes
+        if (datetime.now() - context.timestamp).total_seconds() > 1800:
+            del _session_contexts[session_id]
+            return False
+
+        return True
+
+    def _get_context(self, session_id: str) -> Optional[JournalContext]:
+        """Get context for a session if it exists and is not expired."""
+        if self._has_context(session_id):
+            return _session_contexts.get(session_id)
+        return None
+
+    def _update_context(self, session_id: str, journal: dict, sources: list[SourceReference]):
+        """Store context for follow-up questions."""
+        _session_contexts[session_id] = JournalContext(
+            journal_uuid=journal["_id"],
+            journal_name=journal["name"],
+            last_sections=[s.section for s in sources if s.section],
+            timestamp=datetime.now()
+        )
