@@ -294,7 +294,11 @@ Which journal most likely contains the answer?
 
         # Common patterns indicating page-specific query
         page_patterns = [
-            r"(?:what'?s?\s+in|show\s+me|tell\s+me\s+about|summarize)\s+(?:the\s+)?(.+?)\s*(?:page|section|chapter)?$",
+            # "What's in Part2 page of the Lost Mine" -> captures "Part2"
+            r"(?:what'?s?\s+in|show\s+me|tell\s+me\s+about|summarize)\s+(?:the\s+)?(.+?)\s+page(?:\s+of|\s*$)",
+            # "What's in the Part2 page" at end of string
+            r"(?:what'?s?\s+in|show\s+me|tell\s+me\s+about|summarize)\s+(?:the\s+)?(.+?)\s*(?:page|section|chapter)\s*$",
+            # "the Part2 page content/contains/has"
             r"(?:the\s+)?(.+?)\s+page\s+(?:content|contains|has)",
         ]
 
