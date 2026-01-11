@@ -178,19 +178,18 @@ Answer (YES or NO):"""
 
         # Determine which ruleset to use
         if rules_version == "modern":
-            rules_year = "2024"
-            rules_note = "Use the 2024 Player's Handbook rules. Note key differences from 2014 rules where relevant."
+            rules_info = "**Rules Version:** 2024 rules\nUse the 2024 Player's Handbook rules. Note key differences from 2014 rules where relevant."
         elif rules_version == "legacy":
-            rules_year = "2014"
-            rules_note = "Use the 2014 Player's Handbook rules."
+            rules_info = "**Rules Version:** 2014 rules\nUse the 2014 Player's Handbook rules."
+        elif rules_version:
+            # Other systems might have their own version strings
+            rules_info = f"**Rules Version:** {rules_version}"
         else:
-            rules_year = ""
-            rules_note = ""
+            rules_info = ""
 
         prompt = f"""You are an expert {system_title} rules advisor. Answer the following question thoroughly and accurately.
 
-**Rules Version:** {rules_year} rules
-{rules_note}
+{rules_info}
 
 Include:
 - The core rule mechanics for THIS specific rules version
@@ -281,12 +280,16 @@ Available commands:
 
             prompt += f"\n**Game System:** {system_title} (system id: {system_id})"
 
-            # Add rules version context for dnd5e
-            if system_id == "dnd5e" and rules_version:
-                if rules_version == "legacy":
-                    prompt += " - Using 2014 (Legacy) Rules"
-                elif rules_version == "modern":
-                    prompt += " - Using 2024 Rules"
+            # Add rules version context
+            if rules_version:
+                if system_id == "dnd5e":
+                    if rules_version == "legacy":
+                        prompt += " - Using 2014 (Legacy) Rules"
+                    elif rules_version == "modern":
+                        prompt += " - Using 2024 Rules"
+                else:
+                    # Pass through any rules version for other systems
+                    prompt += f" - Rules: {rules_version}"
 
             prompt += "\nTailor all content, rules references, and mechanics to this specific game system and rules version.\n\n"
 
