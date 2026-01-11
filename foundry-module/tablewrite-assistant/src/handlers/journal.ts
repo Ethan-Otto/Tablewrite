@@ -44,8 +44,18 @@ export async function handleGetJournal(uuid: string): Promise<GetResult> {
     }
 
     // Convert to plain object for transmission
-    const journalData = journal.toObject();
-    console.log('[Tablewrite] Fetched journal:', journalData.name, uuid);
+    // Use toObject(true) to include embedded documents (pages)
+    const journalData = (journal as any).toObject(true);
+
+    // Also manually fetch pages if they're not included (Foundry v11+ compatibility)
+    if (!journalData.pages || journalData.pages.length === 0) {
+      const journalEntry = journal as any;
+      if (journalEntry.pages && journalEntry.pages.size > 0) {
+        journalData.pages = journalEntry.pages.map((page: any) => page.toObject(true));
+      }
+    }
+
+    console.log('[Tablewrite] Fetched journal:', journalData.name, 'with', journalData.pages?.length || 0, 'pages', uuid);
 
     return {
       success: true,
