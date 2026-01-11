@@ -268,16 +268,17 @@ def foundry_status(ensure_foundry_connected):
 @pytest.fixture
 def require_foundry(ensure_foundry_connected):
     """
-    Skip test if Foundry is not connected.
+    FAIL test if Foundry is not connected.
 
     Use this fixture in tests that require a live Foundry connection.
+    Integration tests must FAIL (not skip) if Foundry is unavailable.
     """
     if not ensure_foundry_connected:
-        pytest.skip("Foundry initialization was skipped")
+        pytest.fail("Foundry not connected - start backend and connect Foundry module")
     if ensure_foundry_connected.get("error"):
-        pytest.skip(f"Foundry not available: {ensure_foundry_connected['error']}")
+        pytest.fail(f"Foundry not available: {ensure_foundry_connected['error']} - start backend and connect Foundry module")
     if not ensure_foundry_connected.get("foundry_connected"):
-        pytest.skip("Foundry is not connected")
+        pytest.fail("Foundry is not connected - start backend and connect Foundry module")
     return ensure_foundry_connected
 
 

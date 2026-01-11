@@ -34,7 +34,7 @@ class TestActorRoundTrip:
             client.journals.get_all_journals_by_name("__test__")
             return client
         except Exception as e:
-            pytest.skip(f"FoundryVTT not available: {e}")
+            pytest.fail(f"FoundryVTT not available: {e} - start backend and connect Foundry module")
 
     @pytest.fixture
     def goblin_data(self):
