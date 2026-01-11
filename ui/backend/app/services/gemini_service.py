@@ -157,7 +157,8 @@ Answer (YES or NO):"""
     def generate_with_thinking(
         self,
         message: str,
-        conversation_history: Optional[list] = None
+        conversation_history: Optional[list] = None,
+        context: Optional[Dict[str, Any]] = None
     ) -> str:
         """
         Generate a response using extended thinking for thorough reasoning.
@@ -165,15 +166,34 @@ Answer (YES or NO):"""
         Args:
             message: User message
             conversation_history: Previous messages
+            context: Request context (game system, settings, etc.)
 
         Returns:
             Generated response with thorough reasoning
         """
         # Build prompt optimized for rules explanation
-        prompt = """You are an expert D&D 5e rules advisor. Answer the following question thoroughly and accurately.
+        game_system = (context or {}).get("gameSystem", {})
+        system_title = game_system.get("title", "D&D 5e")
+        rules_version = game_system.get("rulesVersion")
+
+        # Determine which ruleset to use
+        if rules_version == "modern":
+            rules_year = "2024"
+            rules_note = "Use the 2024 Player's Handbook rules. Note key differences from 2014 rules where relevant."
+        elif rules_version == "legacy":
+            rules_year = "2014"
+            rules_note = "Use the 2014 Player's Handbook rules."
+        else:
+            rules_year = ""
+            rules_note = ""
+
+        prompt = f"""You are an expert {system_title} rules advisor. Answer the following question thoroughly and accurately.
+
+**Rules Version:** {rules_year} rules
+{rules_note}
 
 Include:
-- The core rule mechanics
+- The core rule mechanics for THIS specific rules version
 - Relevant page references if known (PHB, DMG, etc.)
 - Common edge cases or clarifications
 - Practical examples when helpful
@@ -253,6 +273,7 @@ Available commands:
 
         # Add game system context
         game_system = context.get("gameSystem", {})
+        print(f"[DEBUG] Game system context: {game_system}")
         if game_system:
             system_id = game_system.get("id", "unknown")
             system_title = game_system.get("title", "Unknown System")
