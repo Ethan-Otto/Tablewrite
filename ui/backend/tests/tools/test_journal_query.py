@@ -776,6 +776,53 @@ class TestSourceParsing:
         assert len(sources) >= 1
         assert sources[0].journal_name == "Test"
 
+    def test_parse_no_sources_with_target_page(self):
+        """Test that target_page is used when no source markers found."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+
+        response = "The content is Banana."  # No [SOURCE: ...] markers
+        journal = {"_id": "j1", "name": "Cool Adventure", "pages": [
+            {"_id": "page1", "name": "Part 1"},
+            {"_id": "page2", "name": "Part 2"},
+        ]}
+        section_map = {"Part 2": "page2"}
+        target_page = {"_id": "page2", "name": "Part 2"}
+
+        answer, sources = tool._parse_response_with_sources(
+            response, journal, section_map, target_page
+        )
+
+        assert answer == "The content is Banana."
+        assert len(sources) == 1
+        # Should use target_page, not fall back to first page
+        assert sources[0].page_id == "page2"
+        assert sources[0].section == "Part 2"
+        assert sources[0].journal_name == "Cool Adventure"
+
+    def test_parse_no_sources_without_target_page_falls_back_to_first(self):
+        """Test fallback to first page when no target_page and no source markers."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+
+        response = "General answer."
+        journal = {"_id": "j1", "name": "Cool Adventure", "pages": [
+            {"_id": "page1", "name": "Part 1"},
+            {"_id": "page2", "name": "Part 2"},
+        ]}
+        section_map = {}
+
+        answer, sources = tool._parse_response_with_sources(
+            response, journal, section_map
+        )
+
+        assert len(sources) == 1
+        # Should fall back to first page when no target_page
+        assert sources[0].page_id == "page1"
+        assert sources[0].section is None
+
 
 # ============================================================================
 # INTEGRATION TESTS - Require real Foundry connection with test data

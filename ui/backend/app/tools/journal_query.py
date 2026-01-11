@@ -133,7 +133,7 @@ class JournalQueryTool(BaseTool):
             response = await self._query_gemini(prompt)
 
             # 4. Parse response and build source references
-            answer, sources = self._parse_response_with_sources(response, journal, section_map)
+            answer, sources = self._parse_response_with_sources(response, journal, section_map, target_page)
 
             # 5. Store context for follow-ups
             if session_id:
@@ -622,7 +622,8 @@ Extracted Information:"""
         self,
         response: str,
         journal: dict,
-        section_map: dict
+        section_map: dict,
+        target_page: Optional[dict] = None
     ) -> tuple[str, list[SourceReference]]:
         """
         Parse Gemini response and extract source references.
@@ -631,6 +632,7 @@ Extracted Information:"""
             response: Raw response from Gemini
             journal: Journal dict with _id and name
             section_map: Map of section names to page IDs
+            target_page: If query was for a specific page, that page dict
 
         Returns:
             tuple: (cleaned_answer, list_of_source_references)
@@ -661,18 +663,31 @@ Extracted Information:"""
                 page_id=page_id
             ))
 
-        # If no sources found, add journal-level reference
+        # If no sources found, use target page if available, else fall back to first page
         if not sources:
-            first_page_id = None
-            if journal.get("pages"):
-                first_page_id = journal["pages"][0].get("_id")
+            if target_page:
+                # Use the specific page that was queried
+                page_id = target_page.get("_id")
+                page_name = target_page.get("name")
+                sources.append(SourceReference(
+                    journal_name=journal["name"],
+                    journal_uuid=journal["_id"],
+                    chapter=None,
+                    section=page_name,
+                    page_id=page_id
+                ))
+            else:
+                # Fall back to first page of journal
+                first_page_id = None
+                if journal.get("pages"):
+                    first_page_id = journal["pages"][0].get("_id")
 
-            sources.append(SourceReference(
-                journal_name=journal["name"],
-                journal_uuid=journal["_id"],
-                chapter=None,
-                section=None,
-                page_id=first_page_id
-            ))
+                sources.append(SourceReference(
+                    journal_name=journal["name"],
+                    journal_uuid=journal["_id"],
+                    chapter=None,
+                    section=None,
+                    page_id=first_page_id
+                ))
 
         return cleaned, sources
