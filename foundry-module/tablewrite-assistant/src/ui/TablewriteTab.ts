@@ -314,12 +314,30 @@ export class TablewriteTab {
         if (!uuid) return;
 
         try {
-          // Use Foundry's fromUuid to get the document and open its sheet
+          // Use Foundry's fromUuid to get the document
           const doc = await fromUuid(uuid);
-          if (doc && 'sheet' in doc) {
+          if (!doc) {
+            ui.notifications?.warn(`Could not find document: ${uuid}`);
+            return;
+          }
+
+          // Check if this is a JournalEntryPage - open parent journal to this page
+          if (uuid.includes('.JournalEntryPage.')) {
+            const page = doc as any;
+            const journal = page.parent;
+            if (journal && 'sheet' in journal) {
+              // Open the journal sheet with this page selected
+              journal.sheet.render(true, { pageId: page.id });
+              console.log('[Tablewrite] Opened journal to page:', page.name);
+              return;
+            }
+          }
+
+          // For other document types, open the sheet directly
+          if ('sheet' in doc) {
             (doc as any).sheet.render(true);
           } else {
-            ui.notifications?.warn(`Could not find document: ${uuid}`);
+            ui.notifications?.warn(`Could not open document: ${uuid}`);
           }
         } catch (error) {
           console.error('[Tablewrite] Failed to open document:', error);
