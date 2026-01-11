@@ -4,9 +4,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 const mockFetch = vi.fn();
 globalThis.fetch = mockFetch;
 
-// Mock getBackendUrl
+// Mock settings functions
 vi.mock('../../src/settings.js', () => ({
-  getBackendUrl: () => 'http://localhost:8000'
+  getBackendUrl: () => 'http://localhost:8000',
+  isTokenArtEnabled: () => true,
+  getArtStyle: () => 'watercolor'
 }));
 
 describe('ChatService', () => {
@@ -46,13 +48,18 @@ describe('ChatService', () => {
       const callArgs = mockFetch.mock.calls[0];
       const body = JSON.parse(callArgs[1].body);
       expect(body.message).toBe('How are you?');
-      expect(body.context).toEqual({});
+      expect(body.context).toEqual({
+        settings: {
+          tokenArtEnabled: true,
+          artStyle: 'watercolor'
+        }
+      });
       expect(body.conversation_history).toHaveLength(2);
       expect(body.conversation_history[0].role).toBe('user');
       expect(body.conversation_history[0].content).toBe('Hi');
     });
 
-    it('returns the message from response', async () => {
+    it('returns the full ChatResponse object', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ message: 'I am doing well!', type: 'text' })
@@ -62,7 +69,7 @@ describe('ChatService', () => {
 
       const result = await chatService.send('Hello', []);
 
-      expect(result).toBe('I am doing well!');
+      expect(result).toEqual({ message: 'I am doing well!', type: 'text' });
     });
 
     it('throws error when response is not ok', async () => {

@@ -76,7 +76,7 @@ describe('TablewriteTab', () => {
 
   describe('sendMessage', () => {
     it('adds user message to display', async () => {
-      mockSend.mockResolvedValueOnce('Hello!');
+      mockSend.mockResolvedValueOnce({ message: 'Hello!', type: 'text' });
       const { TablewriteTab } = await import('../../src/ui/TablewriteTab');
       const tab = new TablewriteTab(container);
       tab.render();
@@ -89,7 +89,7 @@ describe('TablewriteTab', () => {
     });
 
     it('adds assistant response to display', async () => {
-      mockSend.mockResolvedValueOnce('Hello! How can I help?');
+      mockSend.mockResolvedValueOnce({ message: 'Hello! How can I help?', type: 'text' });
       const { TablewriteTab } = await import('../../src/ui/TablewriteTab');
       const tab = new TablewriteTab(container);
       tab.render();
@@ -127,7 +127,7 @@ describe('TablewriteTab', () => {
 
   describe('formatContent', () => {
     it('converts bold markdown to strong tags', async () => {
-      mockSend.mockResolvedValueOnce('This is **bold** text');
+      mockSend.mockResolvedValueOnce({ message: 'This is **bold** text', type: 'text' });
       const { TablewriteTab } = await import('../../src/ui/TablewriteTab');
       const tab = new TablewriteTab(container);
       tab.render();
@@ -139,7 +139,7 @@ describe('TablewriteTab', () => {
     });
 
     it('converts italic markdown to em tags', async () => {
-      mockSend.mockResolvedValueOnce('This is *italic* text');
+      mockSend.mockResolvedValueOnce({ message: 'This is *italic* text', type: 'text' });
       const { TablewriteTab } = await import('../../src/ui/TablewriteTab');
       const tab = new TablewriteTab(container);
       tab.render();
@@ -151,7 +151,7 @@ describe('TablewriteTab', () => {
     });
 
     it('converts inline code markdown to code tags', async () => {
-      mockSend.mockResolvedValueOnce('Use the `command` here');
+      mockSend.mockResolvedValueOnce({ message: 'Use the `command` here', type: 'text' });
       const { TablewriteTab } = await import('../../src/ui/TablewriteTab');
       const tab = new TablewriteTab(container);
       tab.render();
@@ -163,7 +163,7 @@ describe('TablewriteTab', () => {
     });
 
     it('converts newlines to br tags', async () => {
-      mockSend.mockResolvedValueOnce('Line 1\nLine 2');
+      mockSend.mockResolvedValueOnce({ message: 'Line 1\nLine 2', type: 'text' });
       const { TablewriteTab } = await import('../../src/ui/TablewriteTab');
       const tab = new TablewriteTab(container);
       tab.render();
@@ -175,7 +175,7 @@ describe('TablewriteTab', () => {
     });
 
     it('escapes HTML in message content to prevent XSS', async () => {
-      mockSend.mockResolvedValueOnce('<script>alert("xss")</script>');
+      mockSend.mockResolvedValueOnce({ message: '<script>alert("xss")</script>', type: 'text' });
       const { TablewriteTab } = await import('../../src/ui/TablewriteTab');
       const tab = new TablewriteTab(container);
       tab.render();
@@ -190,7 +190,7 @@ describe('TablewriteTab', () => {
 
   describe('keyboard handling', () => {
     it('submits on Enter key', async () => {
-      mockSend.mockResolvedValueOnce('Response');
+      mockSend.mockResolvedValueOnce({ message: 'Response', type: 'text' });
       const { TablewriteTab } = await import('../../src/ui/TablewriteTab');
       const tab = new TablewriteTab(container);
       tab.render();
