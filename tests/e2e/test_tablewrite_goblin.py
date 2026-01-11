@@ -5,10 +5,13 @@ import time
 import sys
 from pathlib import Path
 
-# Add the foundry helper to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'foundry-module' / 'tablewrite-assistant' / 'scripts' / 'feedback'))
+# Skip entire module if playwright not installed (not available in CI)
+pytest.importorskip("playwright")
 
 from playwright.sync_api import sync_playwright
+
+# Add the foundry helper to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'foundry-module' / 'tablewrite-assistant' / 'scripts' / 'feedback'))
 
 
 FOUNDRY_URL = "http://localhost:30000"
