@@ -72,13 +72,15 @@ Hooks.on('renderSidebar', (app: Application, html: HTMLElement, context?: unknow
     tabLi.appendChild(tabButton);
     chatLi.after(tabLi);
 
-    // Add tab content container
+    // Add tab content container to #sidebar-content (not root sidebar)
+    // v13 sidebar structure: #sidebar > #sidebar-tabs + #sidebar-content
+    const sidebarContent = html.querySelector('#sidebar-content');
     const tabContent = document.createElement('section');
     tabContent.id = 'tablewrite';
     tabContent.className = 'tab sidebar-tab flexcol';
     tabContent.dataset.tab = 'tablewrite';
     tabContent.dataset.group = 'primary';
-    html.appendChild(tabContent);
+    (sidebarContent || html).appendChild(tabContent);
 
     // Initialize tab when clicked (lazy initialization)
     tabButton.addEventListener('click', () => {

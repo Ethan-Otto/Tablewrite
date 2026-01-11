@@ -1,5 +1,12 @@
 /* Tablewrite module styles - matches Foundry native chat */
 
+/* Tablewrite sidebar tab - must fill available space like native chat */
+#tablewrite.sidebar-tab {
+  flex: 1 1 0% !important;
+  min-height: 0;
+  overflow: hidden;
+}
+
 /* Main container - fills sidebar tab */
 .tablewrite-container {
   display: flex;
