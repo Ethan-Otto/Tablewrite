@@ -4,11 +4,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 const mockFetch = vi.fn();
 globalThis.fetch = mockFetch;
 
-// Mock game object with system info
+// Mock game object with system info and settings
 (globalThis as any).game = {
   system: {
     id: 'dnd5e',
     title: 'DnD5e'
+  },
+  settings: {
+    get: (module: string, key: string) => {
+      if (module === 'dnd5e' && key === 'rulesVersion') {
+        return 'legacy';  // 2014 rules
+      }
+      return undefined;
+    }
   }
 };
 
@@ -63,7 +71,8 @@ describe('ChatService', () => {
         },
         gameSystem: {
           id: 'dnd5e',
-          title: 'DnD5e'
+          title: 'DnD5e',
+          rulesVersion: 'legacy'
         }
       });
       expect(body.conversation_history).toHaveLength(2);

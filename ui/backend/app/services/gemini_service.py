@@ -256,8 +256,18 @@ Available commands:
         if game_system:
             system_id = game_system.get("id", "unknown")
             system_title = game_system.get("title", "Unknown System")
-            prompt += f"\n**Game System:** {system_title} (system id: {system_id})\n"
-            prompt += "Tailor all content, rules references, and mechanics to this specific game system.\n\n"
+            rules_version = game_system.get("rulesVersion")
+
+            prompt += f"\n**Game System:** {system_title} (system id: {system_id})"
+
+            # Add rules version context for dnd5e
+            if system_id == "dnd5e" and rules_version:
+                if rules_version == "legacy":
+                    prompt += " - Using 2014 (Legacy) Rules"
+                elif rules_version == "modern":
+                    prompt += " - Using 2024 Rules"
+
+            prompt += "\nTailor all content, rules references, and mechanics to this specific game system and rules version.\n\n"
 
         if context.get("module"):
             prompt += f"Current module: {context['module']}\n"

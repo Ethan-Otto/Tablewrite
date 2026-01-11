@@ -23,6 +23,23 @@ export interface ChatResponse {
 
 class ChatService {
   /**
+   * Get the rules version for dnd5e system.
+   * @returns 'legacy' (2014), 'modern' (2024), or null for non-dnd5e systems
+   */
+  private getRulesVersion(): string | null {
+    const systemId = (game as any).system?.id;
+    if (systemId === 'dnd5e') {
+      try {
+        // dnd5e system stores rules version: 'legacy' = 2014, 'modern' = 2024
+        return (game as any).settings?.get('dnd5e', 'rulesVersion') ?? null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  /**
    * Send a message to the backend chat endpoint.
    * @param message - The user's message
    * @param history - Previous conversation history (must NOT include the current message)
@@ -45,7 +62,9 @@ class ChatService {
       },
       gameSystem: {
         id: (game as any).system?.id ?? 'unknown',
-        title: (game as any).system?.title ?? 'Unknown System'
+        title: (game as any).system?.title ?? 'Unknown System',
+        // For dnd5e: 'legacy' = 2014 rules, 'modern' = 2024 rules
+        rulesVersion: this.getRulesVersion()
       }
     };
 
