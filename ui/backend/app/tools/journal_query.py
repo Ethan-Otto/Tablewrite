@@ -653,15 +653,44 @@ Extracted Information:"""
                 continue
             seen_sections.add(section_name)
 
-            page_id = section_map.get(section_name)
+            # Strip common prefixes that Gemini might include from our markers
+            # e.g., "[SOURCE: PAGE: Part 2]" -> "Part 2"
+            clean_section = section_name
+            for prefix in ["PAGE: ", "CHAPTER: ", "SECTION: ", "SUBSECTION: "]:
+                if clean_section.upper().startswith(prefix.upper()):
+                    clean_section = clean_section[len(prefix):]
+                    break
+
+            # Try lookup with clean name first, then original
+            page_id = section_map.get(clean_section) or section_map.get(section_name)
+
+            # Use clean section name for display
+            display_section = clean_section if clean_section != section_name else section_name
 
             sources.append(SourceReference(
                 journal_name=journal["name"],
                 journal_uuid=journal["_id"],
                 chapter=None,  # Could be enhanced to detect chapters
-                section=section_name,
+                section=display_section,
                 page_id=page_id
             ))
+
+        # If we have a target_page and any source has null page_id, fill in from target_page
+        if target_page:
+            target_page_id = target_page.get("_id")
+            target_page_name = target_page.get("name")
+            for source in sources:
+                if source.page_id is None:
+                    # Create a new SourceReference with the target page info
+                    # (SourceReference is immutable via Pydantic)
+                    idx = sources.index(source)
+                    sources[idx] = SourceReference(
+                        journal_name=source.journal_name,
+                        journal_uuid=source.journal_uuid,
+                        chapter=source.chapter,
+                        section=source.section or target_page_name,
+                        page_id=target_page_id
+                    )
 
         # If no sources found, use target page if available, else fall back to first page
         if not sources:

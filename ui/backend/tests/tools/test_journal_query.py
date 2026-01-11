@@ -823,6 +823,71 @@ class TestSourceParsing:
         assert sources[0].page_id == "page1"
         assert sources[0].section is None
 
+    def test_parse_source_with_page_prefix(self):
+        """Test parsing source with PAGE: prefix matches section_map without prefix."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+
+        # Gemini returns "[SOURCE: PAGE: Part 2]" but section_map has "Part 2"
+        response = "The content is Banana. [SOURCE: PAGE: Part 2]"
+        journal = {"_id": "j1", "name": "Cool Adventure", "pages": [
+            {"_id": "page1", "name": "Part 1"},
+            {"_id": "page2", "name": "Part 2"},
+        ]}
+        section_map = {"Part 2": "page2"}
+
+        answer, sources = tool._parse_response_with_sources(
+            response, journal, section_map
+        )
+
+        assert len(sources) == 1
+        # Should strip "PAGE: " prefix and find the page
+        assert sources[0].page_id == "page2"
+        assert sources[0].section == "Part 2"  # Clean section name
+
+    def test_parse_source_with_chapter_prefix(self):
+        """Test parsing source with CHAPTER: prefix."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+
+        response = "Info from here. [SOURCE: CHAPTER: Cragmaw Hideout]"
+        journal = {"_id": "j1", "name": "Lost Mine", "pages": []}
+        section_map = {"Cragmaw Hideout": "page1"}
+
+        answer, sources = tool._parse_response_with_sources(
+            response, journal, section_map
+        )
+
+        assert len(sources) == 1
+        assert sources[0].page_id == "page1"
+        assert sources[0].section == "Cragmaw Hideout"
+
+    def test_parse_source_null_page_id_filled_from_target_page(self):
+        """Test that null page_id is filled from target_page when available."""
+        from app.tools.journal_query import JournalQueryTool
+
+        tool = JournalQueryTool()
+
+        # Gemini returns a source marker that doesn't match section_map
+        response = "The content is here. [SOURCE: Unknown Section]"
+        journal = {"_id": "j1", "name": "Cool Adventure", "pages": [
+            {"_id": "page1", "name": "Part 1"},
+            {"_id": "page2", "name": "Part 2"},
+        ]}
+        section_map = {"Part 2": "page2"}  # "Unknown Section" not in map
+        target_page = {"_id": "page2", "name": "Part 2"}
+
+        answer, sources = tool._parse_response_with_sources(
+            response, journal, section_map, target_page
+        )
+
+        assert len(sources) == 1
+        # Should fill in page_id from target_page when lookup fails
+        assert sources[0].page_id == "page2"
+        assert sources[0].section == "Unknown Section"
+
 
 # ============================================================================
 # INTEGRATION TESTS - Require real Foundry connection with test data
