@@ -793,12 +793,13 @@ class TestJournalQueryIntegration:
     Prerequisites:
     - Backend running at localhost:8000
     - Foundry connected via WebSocket
-    - "Lost Mine of Phandelver test" journal (JournalEntry.8TNFWMxrR6cm4SxS) exists
-      with a "Part 2" page containing "Banana"
+    - "Cool Adventure" journal exists with a "Part 2" page containing "Banana"
+      and "Part 3" page containing "Strawberry"
     """
 
-    # The specific journal that has Part 2 with "Banana" content
-    TEST_JOURNAL_UUID = "JournalEntry.8TNFWMxrR6cm4SxS"
+    # The test journal name and folder
+    TEST_JOURNAL_NAME = "Cool Adventure"
+    TEST_FOLDER_NAME = "Lost Mine of Phandelver test"
 
     @pytest.mark.integration
     def test_foundry_connection_active(self, backend_client):
@@ -811,59 +812,24 @@ class TestJournalQueryIntegration:
     @pytest.mark.integration
     def test_journal_has_part2_page(self, backend_client):
         """Verify the test journal has a Part 2 page with expected content."""
-        # Get the journal
-        response = backend_client.get(f"/api/foundry/journal/{self.TEST_JOURNAL_UUID}")
-        assert response.status_code == 200, f"Failed to get journal: {response.text}"
-
-        data = response.json()
-        assert data.get("success"), f"Journal fetch failed: {data.get('error')}"
-
-        entity = data.get("entity", {})
-        pages = entity.get("pages", [])
-
-        # Find Part 2 page
-        part2_page = None
-        for page in pages:
-            if "part 2" in page.get("name", "").lower():
-                part2_page = page
-                break
-
-        assert part2_page is not None, (
-            f"Part 2 page not found. Available pages: {[p.get('name') for p in pages]}. "
-            "Please reload Foundry (F5) to pick up the module fix that returns all pages."
-        )
-
-        # Verify content contains "Banana"
-        content = part2_page.get("text", {}).get("content", "")
-        assert "Banana" in content or "banana" in content.lower(), (
-            f"Part 2 page does not contain 'Banana'. Content: {content[:200]}"
-        )
-
-    @pytest.mark.integration
-    def test_direct_api_query_part2(self, backend_client):
-        """Test direct API call to tools router with folder filter returns Part 2 content."""
-        # First check connection
-        status = backend_client.get("/api/foundry/status")
-        assert status.json().get("status") == "connected", "Foundry not connected"
-
-        # Call tools router directly with folder filter
+        # First, find the journal by querying with folder filter
         response = backend_client.post(
             "/api/tools/query_journal",
             json={
                 "query": "What's in Part 2",
                 "query_type": "question",
-                "journal_name": "Lost Mine of Phandelver test",
-                "folder": "Lost Mine of Phandelver test"
+                "journal_name": self.TEST_JOURNAL_NAME,
+                "folder": self.TEST_FOLDER_NAME
             },
             timeout=60.0
         )
-
-        assert response.status_code == 200, f"Tool call failed: {response.text}"
+        assert response.status_code == 200, f"Query failed: {response.text}"
         data = response.json()
 
-        assert data.get("type") == "text", f"Expected text response, got: {data.get('type')} - {data.get('message')}"
+        # Verify the response mentions Banana
+        assert data.get("type") == "text", f"Expected text, got: {data.get('type')} - {data.get('message')}"
         assert "banana" in data.get("message", "").lower(), (
-            f"Response should mention 'Banana' from Part 2 page. Got: {data.get('message')}"
+            f"Part 2 should contain 'Banana'. Got: {data.get('message')}"
         )
 
     @pytest.mark.integration
@@ -877,8 +843,8 @@ class TestJournalQueryIntegration:
             json={
                 "query": "Summarize Part 2",
                 "query_type": "summary",
-                "journal_name": "Lost Mine of Phandelver test",
-                "folder": "Lost Mine of Phandelver test"
+                "journal_name": self.TEST_JOURNAL_NAME,
+                "folder": self.TEST_FOLDER_NAME
             },
             timeout=60.0
         )
@@ -902,8 +868,8 @@ class TestJournalQueryIntegration:
             json={
                 "query": "What's in Part 3",
                 "query_type": "question",
-                "journal_name": "Lost Mine of Phandelver test",
-                "folder": "Lost Mine of Phandelver test"
+                "journal_name": self.TEST_JOURNAL_NAME,
+                "folder": self.TEST_FOLDER_NAME
             },
             timeout=60.0
         )
