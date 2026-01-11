@@ -64,6 +64,10 @@ class JournalQueryTool(BaseTool):
                         "type": "string",
                         "enum": ["question", "summary", "extraction"],
                         "description": "Type of query: question for Q&A, summary for overviews, extraction for listing entities"
+                    },
+                    "folder": {
+                        "type": "string",
+                        "description": "Optional - folder name to search within (e.g., 'Tablewrite'). Only searches journals in this folder."
                     }
                 },
                 "required": ["query", "query_type"]
@@ -75,6 +79,7 @@ class JournalQueryTool(BaseTool):
         query: str,
         query_type: str,
         journal_name: str = None,
+        folder: str = None,
         session_id: str = None
     ) -> ToolResponse:
         """
@@ -84,6 +89,7 @@ class JournalQueryTool(BaseTool):
             query: User's question or request
             query_type: One of "question", "summary", "extraction"
             journal_name: Optional specific journal name
+            folder: Optional folder name to filter journals
             session_id: Optional session ID for context
 
         Returns:
@@ -92,12 +98,12 @@ class JournalQueryTool(BaseTool):
         try:
             # 1. Resolve which journal to query
             if journal_name:
-                journal = await self._fetch_journal_by_name(journal_name)
+                journal = await self._fetch_journal_by_name(journal_name, folder=folder)
             elif session_id and self._has_context(session_id):
                 context = self._get_context(session_id)
                 journal = await self._fetch_journal_by_uuid(context.journal_uuid)
             else:
-                journal = await self._select_journal_via_gemini(query)
+                journal = await self._select_journal_via_gemini(query, folder=folder)
                 if journal is None:
                     journal_names = await self._list_journal_names()
                     return ToolResponse(
@@ -164,17 +170,40 @@ class JournalQueryTool(BaseTool):
                 data=None
             )
 
-    async def _fetch_journal_by_name(self, name: str) -> Optional[dict]:
-        """Fetch journal by name from Foundry."""
+    async def _fetch_journal_by_name(self, name: str, folder: str = None) -> Optional[dict]:
+        """Fetch journal by name from Foundry, optionally filtering by folder."""
         journals_result = await list_journals()
         if not journals_result.success:
             return None
 
-        journals = [{"uuid": j.uuid, "name": j.name} for j in journals_result.journals]
+        # Get folder ID if folder name is provided
+        folder_id = None
+        if folder:
+            folder_id = await self._get_folder_id(folder)
+            if not folder_id:
+                logger.warning(f"Folder not found: {folder}, searching all journals")
+
+        # Build journal list, filtering by folder if specified
+        journals = []
+        for j in journals_result.journals:
+            if folder_id and j.folder != folder_id:
+                continue  # Skip journals not in the specified folder
+            journals.append({"uuid": j.uuid, "name": j.name, "folder": j.folder})
+
         matched = self._fuzzy_match_journal(name, journals)
 
         if matched:
             return await self._fetch_journal_by_uuid(matched["uuid"])
+        return None
+
+    async def _get_folder_id(self, folder_name: str) -> Optional[str]:
+        """Get folder ID by name for JournalEntry type."""
+        from app.websocket import list_folders
+        result = await list_folders(folder_type="JournalEntry")
+        if result.success and result.folders:
+            for f in result.folders:
+                if f.name.lower() == folder_name.lower():
+                    return f.id
         return None
 
     async def _fetch_journal_by_uuid(self, uuid: str) -> Optional[dict]:
@@ -191,13 +220,24 @@ class JournalQueryTool(BaseTool):
             return [j.name for j in result.journals]
         return []
 
-    async def _select_journal_via_gemini(self, query: str) -> Optional[dict]:
-        """Ask Gemini to pick the most relevant journal."""
+    async def _select_journal_via_gemini(self, query: str, folder: str = None) -> Optional[dict]:
+        """Ask Gemini to pick the most relevant journal, optionally filtering by folder."""
         journals_result = await list_journals()
         if not journals_result.success:
             return None
 
-        journals = [{"uuid": j.uuid, "name": j.name} for j in journals_result.journals]
+        # Get folder ID if folder name is provided
+        folder_id = None
+        if folder:
+            folder_id = await self._get_folder_id(folder)
+
+        # Build journal list, filtering by folder if specified
+        journals = []
+        for j in journals_result.journals:
+            if folder_id and j.folder != folder_id:
+                continue
+            journals.append({"uuid": j.uuid, "name": j.name, "folder": j.folder})
+
         if not journals:
             return None
 

@@ -22,6 +22,15 @@ class ToolRequest(BaseModel):
     extra: Optional[Dict[str, Any]] = None
 
 
+class JournalQueryRequest(BaseModel):
+    """Request model for query_journal tool."""
+    query: str
+    query_type: str  # "question", "summary", "extraction"
+    journal_name: Optional[str] = None
+    folder: Optional[str] = None
+    session_id: Optional[str] = None
+
+
 class ToolResponse(BaseModel):
     """Generic tool response model."""
     type: str
@@ -59,6 +68,35 @@ async def execute_delete_assets(request: ToolRequest) -> ToolResponse:
             kwargs.update(request.extra)
 
         result = await registry.execute_tool("delete_assets", **kwargs)
+
+        return ToolResponse(
+            type=result.type,
+            message=result.message,
+            data=result.data
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/query_journal", response_model=ToolResponse)
+async def execute_query_journal(request: JournalQueryRequest) -> ToolResponse:
+    """
+    Execute the query_journal tool directly.
+
+    This endpoint is primarily for integration testing and allows
+    filtering by folder to target specific journals.
+    """
+    try:
+        result = await registry.execute_tool(
+            "query_journal",
+            query=request.query,
+            query_type=request.query_type,
+            journal_name=request.journal_name,
+            folder=request.folder,
+            session_id=request.session_id
+        )
 
         return ToolResponse(
             type=result.type,

@@ -1,6 +1,7 @@
 """Unit tests for JournalQueryTool."""
 import pytest
 from datetime import datetime, timedelta
+import httpx
 
 
 class TestJournalQueryModels:
@@ -774,3 +775,143 @@ class TestSourceParsing:
         # Should still have at least the journal-level source
         assert len(sources) >= 1
         assert sources[0].journal_name == "Test"
+
+
+# ============================================================================
+# INTEGRATION TESTS - Require real Foundry connection with test data
+# ============================================================================
+
+@pytest.fixture
+def backend_client():
+    """HTTP client for backend API calls."""
+    return httpx.Client(base_url="http://localhost:8000", timeout=60.0)
+
+
+class TestJournalQueryIntegration:
+    """Integration tests for JournalQueryTool with real Foundry data.
+
+    Prerequisites:
+    - Backend running at localhost:8000
+    - Foundry connected via WebSocket
+    - "Lost Mine of Phandelver test" journal (JournalEntry.8TNFWMxrR6cm4SxS) exists
+      with a "Part 2" page containing "Banana"
+    """
+
+    # The specific journal that has Part 2 with "Banana" content
+    TEST_JOURNAL_UUID = "JournalEntry.8TNFWMxrR6cm4SxS"
+
+    @pytest.mark.integration
+    def test_foundry_connection_active(self, backend_client):
+        """Verify Foundry connection is active before running tests."""
+        response = backend_client.get("/api/foundry/status")
+        assert response.status_code == 200
+        data = response.json()
+        assert data.get("status") == "connected", "Foundry not connected - connect Foundry module first"
+
+    @pytest.mark.integration
+    def test_journal_has_part2_page(self, backend_client):
+        """Verify the test journal has a Part 2 page with expected content."""
+        # Get the journal
+        response = backend_client.get(f"/api/foundry/journal/{self.TEST_JOURNAL_UUID}")
+        assert response.status_code == 200, f"Failed to get journal: {response.text}"
+
+        data = response.json()
+        assert data.get("success"), f"Journal fetch failed: {data.get('error')}"
+
+        entity = data.get("entity", {})
+        pages = entity.get("pages", [])
+
+        # Find Part 2 page
+        part2_page = None
+        for page in pages:
+            if "part 2" in page.get("name", "").lower():
+                part2_page = page
+                break
+
+        assert part2_page is not None, (
+            f"Part 2 page not found. Available pages: {[p.get('name') for p in pages]}. "
+            "Please reload Foundry (F5) to pick up the module fix that returns all pages."
+        )
+
+        # Verify content contains "Banana"
+        content = part2_page.get("text", {}).get("content", "")
+        assert "Banana" in content or "banana" in content.lower(), (
+            f"Part 2 page does not contain 'Banana'. Content: {content[:200]}"
+        )
+
+    @pytest.mark.integration
+    def test_direct_api_query_part2(self, backend_client):
+        """Test direct API call to tools router with folder filter returns Part 2 content."""
+        # First check connection
+        status = backend_client.get("/api/foundry/status")
+        assert status.json().get("status") == "connected", "Foundry not connected"
+
+        # Call tools router directly with folder filter
+        response = backend_client.post(
+            "/api/tools/query_journal",
+            json={
+                "query": "What's in Part 2",
+                "query_type": "question",
+                "journal_name": "Lost Mine of Phandelver test",
+                "folder": "Lost Mine of Phandelver test"
+            },
+            timeout=60.0
+        )
+
+        assert response.status_code == 200, f"Tool call failed: {response.text}"
+        data = response.json()
+
+        assert data.get("type") == "text", f"Expected text response, got: {data.get('type')} - {data.get('message')}"
+        assert "banana" in data.get("message", "").lower(), (
+            f"Response should mention 'Banana' from Part 2 page. Got: {data.get('message')}"
+        )
+
+    @pytest.mark.integration
+    def test_direct_api_query_part2_summary(self, backend_client):
+        """Test summary query type via direct API with folder filter."""
+        status = backend_client.get("/api/foundry/status")
+        assert status.json().get("status") == "connected", "Foundry not connected"
+
+        response = backend_client.post(
+            "/api/tools/query_journal",
+            json={
+                "query": "Summarize Part 2",
+                "query_type": "summary",
+                "journal_name": "Lost Mine of Phandelver test",
+                "folder": "Lost Mine of Phandelver test"
+            },
+            timeout=60.0
+        )
+
+        assert response.status_code == 200, f"Tool call failed: {response.text}"
+        data = response.json()
+
+        assert data.get("type") == "text", f"Expected text response, got: {data.get('type')}"
+        assert "banana" in data.get("message", "").lower(), (
+            f"Response should mention 'Banana'. Got: {data.get('message')}"
+        )
+
+    @pytest.mark.integration
+    def test_direct_api_query_part3_strawberry(self, backend_client):
+        """Test querying Part 3 which contains 'Strawberry'."""
+        status = backend_client.get("/api/foundry/status")
+        assert status.json().get("status") == "connected", "Foundry not connected"
+
+        response = backend_client.post(
+            "/api/tools/query_journal",
+            json={
+                "query": "What's in Part 3",
+                "query_type": "question",
+                "journal_name": "Lost Mine of Phandelver test",
+                "folder": "Lost Mine of Phandelver test"
+            },
+            timeout=60.0
+        )
+
+        assert response.status_code == 200, f"Tool call failed: {response.text}"
+        data = response.json()
+
+        assert data.get("type") == "text", f"Expected text response, got: {data.get('type')}"
+        assert "strawberry" in data.get("message", "").lower(), (
+            f"Response should mention 'Strawberry'. Got: {data.get('message')}"
+        )
