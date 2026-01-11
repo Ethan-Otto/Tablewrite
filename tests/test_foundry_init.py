@@ -18,14 +18,14 @@ from tests.foundry_init import (
 class TestFoundryInitFunctions:
     """Test individual functions from foundry_init module."""
 
-    @pytest.mark.smoke
+    @pytest.mark.integration
     def test_check_backend_health_real_connection(self, require_foundry):
         """Backend health check returns True when backend is running."""
         # require_foundry ensures backend is running
         is_healthy = check_backend_health()
         assert is_healthy is True, f"Backend at {BACKEND_URL} should be healthy"
 
-    @pytest.mark.smoke
+    @pytest.mark.integration
     def test_check_foundry_connected_real_connection(self, require_foundry):
         """Foundry connection check returns True with client count when connected."""
         is_connected, client_count = check_foundry_connected()
@@ -81,7 +81,7 @@ class TestFoundryInitFunctions:
 class TestFoundryFixtures:
     """Test that the pytest fixtures work correctly."""
 
-    @pytest.mark.smoke
+    @pytest.mark.integration
     def test_require_foundry_fixture_provides_status(self, require_foundry):
         """The require_foundry fixture provides connection status dict."""
         assert require_foundry is not None
@@ -91,7 +91,7 @@ class TestFoundryFixtures:
         assert require_foundry["backend_running"] is True
         assert require_foundry["foundry_connected"] is True
 
-    @pytest.mark.smoke
+    @pytest.mark.integration
     def test_foundry_status_fixture_same_as_require(self, foundry_status, require_foundry):
         """Both fixtures return the same initialization result."""
         # foundry_status is the raw result
