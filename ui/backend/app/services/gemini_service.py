@@ -187,17 +187,16 @@ Answer (YES or NO):"""
         else:
             rules_info = ""
 
-        prompt = f"""You are an expert {system_title} rules advisor. Answer the following question thoroughly and accurately.
+        prompt = f"""You are an expert {system_title} rules advisor. Give a clear, concise answer.
 
 {rules_info}
 
-Include:
-- The core rule mechanics for THIS specific rules version
-- Relevant page references if known (PHB, DMG, etc.)
-- Common edge cases or clarifications
-- Practical examples when helpful
+Be brief but accurate. Only include:
+- The core mechanic (1-3 sentences)
+- Key details players need to know
+- Page reference if known
 
-Think through this step by step before answering.
+Do NOT include lengthy explanations, multiple examples, or edge cases unless specifically asked.
 
 """
 
