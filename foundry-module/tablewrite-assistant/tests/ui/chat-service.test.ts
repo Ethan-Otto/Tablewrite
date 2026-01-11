@@ -4,6 +4,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 const mockFetch = vi.fn();
 globalThis.fetch = mockFetch;
 
+// Mock game object with system info
+(globalThis as any).game = {
+  system: {
+    id: 'dnd5e',
+    title: 'DnD5e'
+  }
+};
+
 // Mock settings functions
 vi.mock('../../src/settings.js', () => ({
   getBackendUrl: () => 'http://localhost:8000',
@@ -52,6 +60,10 @@ describe('ChatService', () => {
         settings: {
           tokenArtEnabled: true,
           artStyle: 'watercolor'
+        },
+        gameSystem: {
+          id: 'dnd5e',
+          title: 'DnD5e'
         }
       });
       expect(body.conversation_history).toHaveLength(2);

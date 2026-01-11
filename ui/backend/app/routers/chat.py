@@ -79,7 +79,8 @@ async def chat(request: ChatRequest) -> ChatResponse:
             response = await gemini_service.generate_with_tools(
                 message=request.message,
                 conversation_history=history_dicts,
-                tools=tool_schemas
+                tools=tool_schemas,
+                context=request.context
             )
             print(f"[DEBUG] Gemini response type: {response.get('type')}")
             print(f"[DEBUG] Gemini response: {response}")

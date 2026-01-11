@@ -43,7 +43,8 @@ class GeminiService:
         self,
         message: str,
         conversation_history: List[Dict[str, str]],
-        tools: List['ToolSchema']
+        tools: List['ToolSchema'],
+        context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Generate response with tool calling support.
@@ -52,6 +53,7 @@ class GeminiService:
             message: User message
             conversation_history: Previous messages
             tools: Available tool schemas
+            context: Request context (game system, settings, etc.)
 
         Returns:
             Response dict with type and content
@@ -59,8 +61,8 @@ class GeminiService:
         # Convert tool schemas to Gemini format
         gemini_functions = [self._schema_to_gemini_tool(t) for t in tools]
 
-        # Build prompt with history
-        prompt = self._build_chat_prompt(message, {}, conversation_history)
+        # Build prompt with history and context
+        prompt = self._build_chat_prompt(message, context or {}, conversation_history)
 
         # Generate with function calling
         if gemini_functions:
@@ -248,6 +250,14 @@ Available commands:
 - /help - Show help
 
 """
+
+        # Add game system context
+        game_system = context.get("gameSystem", {})
+        if game_system:
+            system_id = game_system.get("id", "unknown")
+            system_title = game_system.get("title", "Unknown System")
+            prompt += f"\n**Game System:** {system_title} (system id: {system_id})\n"
+            prompt += "Tailor all content, rules references, and mechanics to this specific game system.\n\n"
 
         if context.get("module"):
             prompt += f"Current module: {context['module']}\n"

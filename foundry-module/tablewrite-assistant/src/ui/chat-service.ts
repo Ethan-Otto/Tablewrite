@@ -37,11 +37,15 @@ class ChatService {
       timestamp: msg.timestamp?.toISOString() ?? new Date().toISOString()
     }));
 
-    // Include user settings in context
+    // Include user settings and game system in context
     const context = {
       settings: {
         tokenArtEnabled: isTokenArtEnabled(),
         artStyle: getArtStyle()
+      },
+      gameSystem: {
+        id: (game as any).system?.id ?? 'unknown',
+        title: (game as any).system?.title ?? 'Unknown System'
       }
     };
 
