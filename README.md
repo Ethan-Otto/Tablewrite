@@ -1,6 +1,11 @@
-# D&D Module Converter
+# Tablewrite
 
-Convert official D&D PDFs into FoundryVTT content. Uses Google Gemini AI to extract chapters, stat blocks, NPCs, maps, and scenes into structured data, then uploads complete journal entries, actors, and scenes to FoundryVTT.
+Goal: Foundary setup at the speed of imagination. 
+
+Convert PDFs into FoundryVTT content. Uses Google Gemini AI to extract chapters, stat blocks, NPCs, maps, and scenes into structured data, then uploads complete journal entries, actors, and scenes to FoundryVTT.
+
+Use Chat UI to make edits, create actors, journals, scenes, etc
+
 
 ## Features
 
