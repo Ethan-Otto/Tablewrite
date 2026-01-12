@@ -1,0 +1,78 @@
+name: Release Tablewrite Module
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'foundry-module/tablewrite-assistant/**'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get module version
+        id: version
+        run: |
+          VERSION=$(jq -r '.version' foundry-module/tablewrite-assistant/module.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Module version: $VERSION"
+
+      - name: Check if release exists
+        id: check_release
+        run: |
+          if gh release view "v${{ steps.version.outputs.version }}" &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Release v${{ steps.version.outputs.version }} already exists, skipping"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Release v${{ steps.version.outputs.version }} does not exist, will create"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create module zip
+        if: steps.check_release.outputs.exists == 'false'
+        run: |
+          cd foundry-module
+          zip -r tablewrite-assistant.zip tablewrite-assistant/
+          mv tablewrite-assistant.zip ../
+          echo "Created tablewrite-assistant.zip"
+          unzip -l ../tablewrite-assistant.zip | head -20
+
+      - name: Create Release
+        if: steps.check_release.outputs.exists == 'false'
+        run: |
+          gh release create "v${{ steps.version.outputs.version }}" \
+            tablewrite-assistant.zip \
+            --title "Tablewrite Assistant v${{ steps.version.outputs.version }}" \
+            --notes "## Installation
+
+          1. Download \`tablewrite-assistant.zip\`
+          2. Extract to your FoundryVTT modules directory:
+             - Windows: \`%localappdata%/FoundryVTT/Data/modules/\`
+             - macOS: \`~/Library/Application Support/FoundryVTT/Data/modules/\`
+             - Linux: \`~/.local/share/FoundryVTT/Data/modules/\`
+          3. Enable 'Tablewrite Assistant' in your world's module settings
+          4. Look for the feather icon in the sidebar
+
+          **Requires:** Backend running (see Docker instructions in README)"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          if [ "${{ steps.check_release.outputs.exists }}" == "true" ]; then
+            echo "### Skipped Release" >> $GITHUB_STEP_SUMMARY
+            echo "Release v${{ steps.version.outputs.version }} already exists." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "To create a new release, bump the version in \`foundry-module/tablewrite-assistant/module.json\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Created Release" >> $GITHUB_STEP_SUMMARY
+            echo "Released **v${{ steps.version.outputs.version }}**" >> $GITHUB_STEP_SUMMARY
+          fi
