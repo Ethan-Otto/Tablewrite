@@ -5,11 +5,17 @@ import { test, expect, Page } from '@playwright/test';
  *
  * Requirements:
  * - FoundryVTT running at http://localhost:30000
+ * - Backend running at http://localhost:8000
  * - A world loaded with the Tablewrite Assistant module active
  * - An available user to join as (Testing, Player, or any non-GM user)
  *
- * Tests skip gracefully if Foundry is not available.
+ * Tests create their own test entities and clean them up after.
  */
+
+const BACKEND_URL = 'http://localhost:8000';
+
+// Track created entity UUIDs for cleanup
+const createdEntities: { type: string; uuid: string }[] = [];
 
 /**
  * Check if Foundry is accessible before running tests.
@@ -21,6 +27,170 @@ async function isFoundryAvailable(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * Check if backend is accessible.
+ */
+async function isBackendAvailable(): Promise<boolean> {
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/foundry/status`);
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Create a test actor via the backend API.
+ */
+async function createTestActor(name: string): Promise<string | null> {
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/foundry/actor`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        type: 'npc',
+        system: {
+          abilities: {
+            str: { value: 10 },
+            dex: { value: 10 },
+            con: { value: 10 },
+            int: { value: 10 },
+            wis: { value: 10 },
+            cha: { value: 10 }
+          }
+        }
+      })
+    });
+    if (response.ok) {
+      const data = await response.json();
+      const uuid = data.uuid || data.id;
+      if (uuid) {
+        createdEntities.push({ type: 'Actor', uuid });
+        return uuid;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Create a test journal entry via the backend API.
+ */
+async function createTestJournal(name: string): Promise<string | null> {
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/foundry/journal`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        pages: [{ name: 'Page 1', type: 'text', text: { content: 'Test content' } }]
+      })
+    });
+    if (response.ok) {
+      const data = await response.json();
+      const uuid = data.uuid || data.id;
+      if (uuid) {
+        createdEntities.push({ type: 'JournalEntry', uuid });
+        return uuid;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Create a test item via the backend API.
+ */
+async function createTestItem(name: string): Promise<string | null> {
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/foundry/item`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        type: 'weapon'
+      })
+    });
+    if (response.ok) {
+      const data = await response.json();
+      const uuid = data.uuid || data.id;
+      if (uuid) {
+        createdEntities.push({ type: 'Item', uuid });
+        return uuid;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Delete a test entity via the backend API.
+ */
+async function deleteEntity(type: string, uuid: string): Promise<void> {
+  try {
+    // Extract the ID from the UUID (format: Actor.xyz or just xyz)
+    const id = uuid.includes('.') ? uuid.split('.').pop() : uuid;
+    await fetch(`${BACKEND_URL}/api/foundry/${type.toLowerCase()}/${id}`, {
+      method: 'DELETE'
+    });
+  } catch {
+    // Ignore cleanup errors
+  }
+}
+
+/**
+ * Set up test entities for the E2E tests.
+ */
+async function setupTestEntities(): Promise<boolean> {
+  const backendAvailable = await isBackendAvailable();
+  if (!backendAvailable) {
+    console.log('Backend not available, skipping entity creation');
+    return false;
+  }
+
+  console.log('Creating test entities...');
+
+  // Create multiple test entities for the autocomplete to find
+  const actors = await Promise.all([
+    createTestActor('Test Goblin Scout'),
+    createTestActor('Test Dragon Wyrmling'),
+    createTestActor('Test Skeleton Warrior')
+  ]);
+
+  const journals = await Promise.all([
+    createTestJournal('Test Adventure Notes'),
+    createTestJournal('Test Location Guide')
+  ]);
+
+  const items = await Promise.all([
+    createTestItem('Test Magic Sword'),
+    createTestItem('Test Healing Potion')
+  ]);
+
+  const createdCount = [...actors, ...journals, ...items].filter(Boolean).length;
+  console.log(`Created ${createdCount} test entities`);
+
+  return createdCount >= 2; // Need at least 2 for navigation tests
+}
+
+/**
+ * Clean up test entities after tests.
+ */
+async function cleanupTestEntities(): Promise<void> {
+  console.log(`Cleaning up ${createdEntities.length} test entities...`);
+  for (const entity of createdEntities) {
+    await deleteEntity(entity.type, entity.uuid);
+  }
+  createdEntities.length = 0;
 }
 
 /**
@@ -112,12 +282,25 @@ async function typeInInput(page: Page, text: string): Promise<void> {
 }
 
 test.describe('Mention Autocomplete E2E', () => {
-  // Skip all tests if Foundry is not available
+  // Set up test entities before all tests
   test.beforeAll(async () => {
-    const available = await isFoundryAvailable();
-    if (!available) {
+    const foundryAvailable = await isFoundryAvailable();
+    if (!foundryAvailable) {
+      console.log('Foundry not available, skipping all tests');
       test.skip();
+      return;
     }
+
+    // Create test entities for the autocomplete to find
+    const entitiesCreated = await setupTestEntities();
+    if (!entitiesCreated) {
+      console.log('Could not create test entities, some tests may fail');
+    }
+  });
+
+  // Clean up test entities after all tests
+  test.afterAll(async () => {
+    await cleanupTestEntities();
   });
 
   test.beforeEach(async ({ page }) => {
@@ -201,19 +384,14 @@ test.describe('Mention Autocomplete E2E', () => {
   test('inserts mention on Enter when item is selected', async ({ page }) => {
     const input = page.locator('.tablewrite-input');
 
-    // Type @ to trigger dropdown
-    await typeInInput(page, '@');
+    // Type @ to trigger dropdown - filter by "Test" to find our test entities
+    await typeInInput(page, '@Test');
 
     // Wait for dropdown with items
     await expect(page.locator('.mention-dropdown')).toBeVisible({ timeout: 3000 });
 
-    // Check if there are any items
-    const itemCount = await page.locator('.mention-item').count();
-    if (itemCount === 0) {
-      // No entities in the world - skip the insertion test
-      test.skip();
-      return;
-    }
+    // Wait for items to appear
+    await expect(page.locator('.mention-item').first()).toBeVisible({ timeout: 3000 });
 
     // First item should be selected by default
     const firstItem = page.locator('.mention-item').first();
@@ -233,18 +411,14 @@ test.describe('Mention Autocomplete E2E', () => {
   test('navigates items with ArrowDown key', async ({ page }) => {
     const input = page.locator('.tablewrite-input');
 
-    // Type @ to trigger dropdown
-    await typeInInput(page, '@');
+    // Type @ to trigger dropdown - filter by "Test" to find our test entities
+    await typeInInput(page, '@Test');
 
     // Wait for dropdown
     await expect(page.locator('.mention-dropdown')).toBeVisible({ timeout: 3000 });
 
-    // Check we have at least 2 items
-    const itemCount = await page.locator('.mention-item').count();
-    if (itemCount < 2) {
-      test.skip();
-      return;
-    }
+    // Wait for at least 2 items
+    await expect(page.locator('.mention-item').nth(1)).toBeVisible({ timeout: 3000 });
 
     // First item should be selected initially
     const firstItem = page.locator('.mention-item').first();
@@ -264,18 +438,14 @@ test.describe('Mention Autocomplete E2E', () => {
   test('navigates items with ArrowUp key', async ({ page }) => {
     const input = page.locator('.tablewrite-input');
 
-    // Type @ to trigger dropdown
-    await typeInInput(page, '@');
+    // Type @ to trigger dropdown - filter by "Test" to find our test entities
+    await typeInInput(page, '@Test');
 
     // Wait for dropdown
     await expect(page.locator('.mention-dropdown')).toBeVisible({ timeout: 3000 });
 
-    // Check we have at least 2 items
-    const itemCount = await page.locator('.mention-item').count();
-    if (itemCount < 2) {
-      test.skip();
-      return;
-    }
+    // Wait for at least 2 items
+    await expect(page.locator('.mention-item').nth(1)).toBeVisible({ timeout: 3000 });
 
     // Press ArrowUp (should wrap to last item)
     await input.press('ArrowUp');
@@ -288,18 +458,14 @@ test.describe('Mention Autocomplete E2E', () => {
   test('selects item on click', async ({ page }) => {
     const input = page.locator('.tablewrite-input');
 
-    // Type @ to trigger dropdown
-    await typeInInput(page, '@');
+    // Type @ to trigger dropdown - filter by "Test" to find our test entities
+    await typeInInput(page, '@Test');
 
     // Wait for dropdown
     await expect(page.locator('.mention-dropdown')).toBeVisible({ timeout: 3000 });
 
-    // Check if there are any items
-    const itemCount = await page.locator('.mention-item').count();
-    if (itemCount === 0) {
-      test.skip();
-      return;
-    }
+    // Wait for items to appear
+    await expect(page.locator('.mention-item').first()).toBeVisible({ timeout: 3000 });
 
     // Click the first item
     await page.locator('.mention-item').first().click();
@@ -313,18 +479,14 @@ test.describe('Mention Autocomplete E2E', () => {
   });
 
   test('updates selection on mouseenter', async ({ page }) => {
-    // Type @ to trigger dropdown
-    await typeInInput(page, '@');
+    // Type @ to trigger dropdown - filter by "Test" to find our test entities
+    await typeInInput(page, '@Test');
 
     // Wait for dropdown
     await expect(page.locator('.mention-dropdown')).toBeVisible({ timeout: 3000 });
 
-    // Check we have at least 2 items
-    const itemCount = await page.locator('.mention-item').count();
-    if (itemCount < 2) {
-      test.skip();
-      return;
-    }
+    // Wait for at least 2 items
+    await expect(page.locator('.mention-item').nth(1)).toBeVisible({ timeout: 3000 });
 
     const firstItem = page.locator('.mention-item').first();
     const secondItem = page.locator('.mention-item').nth(1);
@@ -345,18 +507,14 @@ test.describe('Mention Autocomplete E2E', () => {
   test('inserts Tab key to select item', async ({ page }) => {
     const input = page.locator('.tablewrite-input');
 
-    // Type @ to trigger dropdown
-    await typeInInput(page, '@');
+    // Type @ to trigger dropdown - filter by "Test" to find our test entities
+    await typeInInput(page, '@Test');
 
     // Wait for dropdown with items
     await expect(page.locator('.mention-dropdown')).toBeVisible({ timeout: 3000 });
 
-    // Check if there are any items
-    const itemCount = await page.locator('.mention-item').count();
-    if (itemCount === 0) {
-      test.skip();
-      return;
-    }
+    // Wait for items to appear
+    await expect(page.locator('.mention-item').first()).toBeVisible({ timeout: 3000 });
 
     // Press Tab to insert (same as Enter per implementation)
     await input.press('Tab');
