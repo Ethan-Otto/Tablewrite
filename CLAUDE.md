@@ -95,20 +95,19 @@ new_model = model.model_copy(update={"field": "new_value"})
 **Location:** `src/api.py`
 
 ```python
-from api import create_actor, extract_maps, process_pdf_to_journal, create_scene, APIError
+from api import create_actor, create_scene, APIError
 
 result = create_actor("A kobold scout", challenge_rating=0.5)  # → ActorCreationResult
-maps = extract_maps("data/pdfs/module.pdf", chapter="Chapter 1")  # → MapExtractionResult
-journal = process_pdf_to_journal("module.pdf", "Module Name")  # → JournalCreationResult
 scene = create_scene("maps/castle.webp")  # → SceneCreationResult
 # All raise APIError on failure
 ```
 
 **Return Types:**
 - `ActorCreationResult`: UUID, name, CR, output_dir, timestamp
-- `MapExtractionResult`: maps list, output_dir, total_maps, timestamp
-- `JournalCreationResult`: UUID, name, output_dir, chapter_count, timestamp
 - `SceneCreationResult`: UUID, name, wall_count, grid_size, timestamp
+
+**For PDF Processing:** Use Module tab UI or `scripts/full_pipeline.py`
+**For Map Extraction:** Import directly from `pdf_processing.image_asset_processing.extract_map_assets`
 
 ## Backend & Foundry Integration
 

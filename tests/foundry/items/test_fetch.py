@@ -149,7 +149,7 @@ class TestFetchAllSpells:
         assert call_args[1]['backend_url'] == 'http://test:8000'
 
 
-@pytest.mark.integration
+@pytest.mark.foundry
 class TestFetchItemsIntegration:
     """Integration tests that make real API calls."""
 

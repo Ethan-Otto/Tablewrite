@@ -159,7 +159,7 @@ Cantrips (at will): eldritch blast, mage hand
         assert is_regular_spellcasting is False
 
 
-@pytest.mark.integration
+@pytest.mark.gemini
 @pytest.mark.slow
 class TestSpellcastingParsing:
     """Integration tests for spellcasting parsing with real Gemini calls."""

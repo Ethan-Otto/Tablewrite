@@ -16,8 +16,7 @@ from actor_pipeline.process_actors import process_actors_for_run
 from actor_pipeline.models import StatBlock, NPC
 
 
-@pytest.mark.integration
-@pytest.mark.requires_api
+@pytest.mark.gemini
 class TestFullActorExtractionWorkflow:
     """Integration tests for complete actor extraction workflow with real Gemini API."""
 
@@ -257,8 +256,7 @@ class TestFullActorExtractionWorkflow:
                 "Sildar description should mention Lords' Alliance"
 
 
-@pytest.mark.integration
-@pytest.mark.requires_api
+@pytest.mark.gemini
 @pytest.mark.slow
 class TestEndToEndWithRealPDF:
     """

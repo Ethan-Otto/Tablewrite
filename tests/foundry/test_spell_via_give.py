@@ -7,8 +7,7 @@ from foundry.client import FoundryClient
 from caches import SpellCache
 
 
-@pytest.mark.integration
-@pytest.mark.requires_api
+@pytest.mark.foundry
 @pytest.mark.asyncio
 async def test_spell_via_give_workflow(check_foundry_credentials):
     """Test that spells added via /give have full compendium data."""
@@ -79,8 +78,7 @@ async def test_spell_via_give_workflow(check_foundry_credentials):
                 f"Spell {spell_item['name']} should have activities"
 
 
-@pytest.mark.integration
-@pytest.mark.requires_api
+@pytest.mark.foundry
 @pytest.mark.asyncio
 async def test_backward_compatibility_with_include_spells_flag(check_foundry_credentials):
     """Test that include_spells_in_payload=True still works (for backward compatibility)."""
@@ -118,8 +116,7 @@ async def test_backward_compatibility_with_include_spells_flag(check_foundry_cre
     assert len(spell_uuids) == 1, "Should still collect spell UUIDs"
 
 
-@pytest.mark.integration
-@pytest.mark.requires_api
+@pytest.mark.foundry
 @pytest.mark.asyncio
 async def test_multiple_actors_with_spells(check_foundry_credentials):
     """Test creating multiple actors with spells doesn't cause race conditions."""

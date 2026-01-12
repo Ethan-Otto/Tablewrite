@@ -203,7 +203,7 @@ class TestFoundryClientFileManager:
         assert client.files.backend_url == "http://custom:9000"
 
 
-@pytest.mark.integration
+@pytest.mark.foundry
 @pytest.mark.slow
 class TestFileManagerIntegration:
     """Integration tests for file upload (requires running backend + Foundry)."""

@@ -15,7 +15,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "ui/backend"))
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 
-@pytest.mark.integration
+@pytest.mark.foundry
+@pytest.mark.gemini
 @pytest.mark.asyncio
 async def test_batch_actor_creation_roundtrip():
     """
@@ -109,7 +110,8 @@ async def test_batch_actor_creation_roundtrip():
                     print(f"Warning: Failed to delete {uuid}: {e}")
 
 
-@pytest.mark.integration
+@pytest.mark.foundry
+@pytest.mark.gemini
 @pytest.mark.asyncio
 async def test_batch_actor_with_duplicates():
     """Test that batch handles multiple of the same creature type."""

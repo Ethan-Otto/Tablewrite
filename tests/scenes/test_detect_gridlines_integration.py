@@ -25,7 +25,7 @@ def gemini_api_key():
     return api_key
 
 
-@pytest.mark.integration
+@pytest.mark.gemini
 @pytest.mark.asyncio
 async def test_detect_gridlines_real_api(gemini_api_key):
     """Test grid detection with real Gemini API call.
@@ -84,7 +84,7 @@ async def test_detect_gridlines_real_api(gemini_api_key):
         )
 
 
-@pytest.mark.integration
+@pytest.mark.gemini
 @pytest.mark.asyncio
 async def test_detect_gridlines_real_api_with_webp(gemini_api_key):
     """Test grid detection with a WEBP image format.

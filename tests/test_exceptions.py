@@ -86,9 +86,9 @@ class TestExceptionHierarchy:
 
 
 @pytest.mark.smoke
-@pytest.mark.integration
-class TestExceptionIntegration:
-    """Integration tests verifying exceptions are raised in real scenarios."""
+@pytest.mark.unit
+class TestExceptionBehavior:
+    """Unit tests verifying exception classes work correctly."""
 
     def test_api_error_is_foundry_error(self):
         """Verify APIError from api.py is now FoundryError."""

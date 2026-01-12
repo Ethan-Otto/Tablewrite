@@ -8,7 +8,7 @@ import pytest
 from caches import SpellCache, IconCache
 
 
-@pytest.mark.integration
+@pytest.mark.foundry
 class TestSpellCacheIntegration:
     """Integration tests for SpellCache with real Foundry connection."""
 
@@ -47,7 +47,7 @@ class TestSpellCacheIntegration:
         assert result is None, "Unknown spell should return None"
 
 
-@pytest.mark.integration
+@pytest.mark.foundry
 class TestIconCacheIntegration:
     """Integration tests for IconCache with real Foundry connection."""
 
@@ -86,7 +86,7 @@ class TestIconCacheIntegration:
 
 
 @pytest.mark.smoke
-@pytest.mark.integration
+@pytest.mark.foundry
 class TestCachesSmoke:
     """Smoke tests for caches module - verify basic functionality works."""
 

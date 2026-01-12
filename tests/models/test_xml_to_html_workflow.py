@@ -14,7 +14,7 @@ from models import XMLDocument, Journal, ImageRef, StatBlockRaw
 
 
 @pytest.mark.smoke
-@pytest.mark.integration
+@pytest.mark.unit
 def test_xml_document_to_journal_to_html_complete_workflow():
     """Smoke test: Validates complete XML→XMLDocument→Journal→HTML transformation
 

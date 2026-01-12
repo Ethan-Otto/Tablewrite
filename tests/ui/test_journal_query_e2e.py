@@ -64,7 +64,8 @@ def get_or_create_test_folder() -> str:
 
 
 @pytest.mark.playwright
-@pytest.mark.integration
+@pytest.mark.foundry
+@pytest.mark.gemini
 @pytest.mark.slow
 def test_journal_query_via_chat_ui():
     """
@@ -126,7 +127,8 @@ def test_journal_query_via_chat_ui():
 
 
 @pytest.mark.playwright
-@pytest.mark.integration
+@pytest.mark.foundry
+@pytest.mark.gemini
 @pytest.mark.slow
 def test_journal_summary_via_chat_ui():
     """
@@ -184,7 +186,8 @@ def test_journal_summary_via_chat_ui():
 
 
 @pytest.mark.playwright
-@pytest.mark.integration
+@pytest.mark.foundry
+@pytest.mark.gemini
 @pytest.mark.slow
 def test_journal_extraction_via_chat_ui():
     """

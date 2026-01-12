@@ -164,9 +164,8 @@ class TestTextExtraction:
         doc.close()
 
 
-@pytest.mark.integration
+@pytest.mark.gemini
 @pytest.mark.slow
-@pytest.mark.requires_api
 class TestGeminiIntegration:
     """Test Gemini API integration (makes real API calls)."""
 

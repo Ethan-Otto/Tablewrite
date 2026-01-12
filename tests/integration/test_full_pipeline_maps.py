@@ -73,7 +73,7 @@ def test_map_extraction_creates_metadata_file(tmp_path):
             assert "errors" in result or "maps_extracted" in result
 
 
-@pytest.mark.integration
+@pytest.mark.gemini
 @pytest.mark.slow
 def test_map_extraction_with_real_pdf(tmp_path):
     """Integration test: run map extraction on real test PDF.

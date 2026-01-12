@@ -8,7 +8,7 @@ from pdf_processing.image_asset_processing.segment_maps import (
 
 
 @pytest.mark.map
-@pytest.mark.integration
+@pytest.mark.gemini
 @pytest.mark.slow
 class TestSegmentWithImagen:
     def test_segmentation_on_page_with_map(self, test_pdf_path, test_output_dir, check_api_key):

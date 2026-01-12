@@ -17,9 +17,42 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'foundry-module' / 
 FOUNDRY_URL = "http://localhost:30000"
 
 
-@pytest.mark.integration
+def wait_for_game_ready(page, timeout=30):
+    """Wait for Foundry's game.ready to be true and tablewrite tab to exist."""
+    start = time.time()
+    # First wait for URL to change to /game
+    while time.time() - start < timeout:
+        if '/game' in page.url:
+            print(f"URL changed to {page.url} after {time.time() - start:.1f}s")
+            break
+        time.sleep(0.5)
+    else:
+        print(f"URL never changed to /game. Current: {page.url}")
+        return False
+
+    # Now wait for game.ready
+    last_state = None
+    while time.time() - start < timeout:
+        state = page.evaluate('''() => {
+            const ready = typeof game !== "undefined" && game.ready === true;
+            const tabExists = !!document.querySelector('button[data-tab="tablewrite"]') ||
+                              !!document.querySelector('a[data-tab="tablewrite"]');
+            return { ready, tabExists, gameExists: typeof game !== "undefined" };
+        }''')
+        if state != last_state:
+            print(f"State at {time.time() - start:.1f}s: {state}")
+            last_state = state
+        if state.get('ready') and state.get('tabExists'):
+            return True
+        time.sleep(0.5)
+    print(f"Timeout after {time.time() - start:.1f}s. Last state: {last_state}")
+    page.screenshot(path="/tmp/test_timeout_state.png")
+    print("Screenshot saved to /tmp/test_timeout_state.png")
+    return False
+
+
+@pytest.mark.foundry
 @pytest.mark.playwright
-@pytest.mark.requires_foundry
 class TestTablewriteGoblinGeneration:
     """E2E tests for goblin generation via Tablewrite in Foundry v13."""
 
@@ -46,8 +79,13 @@ class TestTablewriteGoblinGeneration:
                         user_select.select_option(value)
                         break
                 page.locator('button:has-text("JOIN GAME SESSION")').click()
-                page.wait_for_load_state('networkidle')
-                time.sleep(5)
+                # Wait for URL to change to /game (navigation happens asynchronously)
+                try:
+                    page.wait_for_url("**/game", timeout=30000)
+                except Exception as e:
+                    print(f"Wait for URL failed: {e}. Current URL: {page.url}")
+
+            assert wait_for_game_ready(page), "Game did not become ready within timeout"
 
             # Verify module is loaded and active
             module_info = page.evaluate('''() => {
@@ -100,8 +138,13 @@ class TestTablewriteGoblinGeneration:
                         user_select.select_option(value)
                         break
                 page.locator('button:has-text("JOIN GAME SESSION")').click()
-                page.wait_for_load_state('networkidle')
-                time.sleep(5)
+                # Wait for URL to change to /game (navigation happens asynchronously)
+                try:
+                    page.wait_for_url("**/game", timeout=30000)
+                except Exception as e:
+                    print(f"Wait for URL failed: {e}. Current URL: {page.url}")
+
+            assert wait_for_game_ready(page), "Game did not become ready within timeout"
 
             # Click tablewrite tab
             tw_tab = page.locator('button[data-tab="tablewrite"]')
@@ -157,8 +200,13 @@ class TestTablewriteGoblinGeneration:
                         user_select.select_option(value)
                         break
                 page.locator('button:has-text("JOIN GAME SESSION")').click()
-                page.wait_for_load_state('networkidle')
-                time.sleep(5)
+                # Wait for URL to change to /game (navigation happens asynchronously)
+                try:
+                    page.wait_for_url("**/game", timeout=30000)
+                except Exception as e:
+                    print(f"Wait for URL failed: {e}. Current URL: {page.url}")
+
+            assert wait_for_game_ready(page), "Game did not become ready within timeout"
 
             # Get initial actor count
             initial_actors = page.evaluate('''() => {

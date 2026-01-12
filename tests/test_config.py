@@ -54,9 +54,9 @@ class TestProjectConfig:
 
 
 @pytest.mark.smoke
-@pytest.mark.integration
-class TestConfigIntegration:
-    """Integration tests for config module with real environment."""
+@pytest.mark.unit
+class TestConfigEnvironment:
+    """Tests for config module with real environment variables."""
 
     def test_gemini_api_key_loaded_from_env(self, check_api_key):
         """Verify GeminiImageAPI key is loaded from .env file."""

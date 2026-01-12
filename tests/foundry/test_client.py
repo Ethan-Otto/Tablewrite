@@ -125,7 +125,7 @@ class TestFoundryIntegration:
         return FoundryClient()
 
     @pytest.mark.smoke
-    @pytest.mark.integration
+    @pytest.mark.foundry
     @pytest.mark.slow
     @pytest.mark.asyncio
     async def test_create_and_delete(self, require_websocket):
@@ -211,7 +211,7 @@ class TestActorOperations:
         with pytest.raises(NotImplementedError):
             mock_client.create_creature_actor(stat_block)
 
-    @pytest.mark.integration
+    @pytest.mark.foundry
     def test_client_create_npc_actor_success(self, mock_client):
         """Test client.create_npc_actor creates minimal NPC actor (requires backend)."""
         from actor_pipeline.models import NPC

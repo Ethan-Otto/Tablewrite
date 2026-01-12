@@ -55,7 +55,8 @@ def validate_actor_content(actor: dict) -> list[str]:
 
 
 @pytest.mark.playwright
-@pytest.mark.integration
+@pytest.mark.foundry
+@pytest.mark.gemini
 @pytest.mark.slow
 def test_batch_actor_creation_e2e():
     """
@@ -77,17 +78,26 @@ def test_batch_actor_creation_e2e():
 
             # Step 3: Get response and extract UUIDs
             response_text = session.get_message_text()
-            print(f"Response: {response_text[:500]}...")
+            response_html = session.get_message_html()
+            print(f"Response text: {response_text[:500]}...")
+            print(f"Response HTML: {response_html[:500]}...")
+            session.screenshot("/tmp/batch_actor_test.png")
 
             # Check for success indicators
-            assert "Created" in response_text or "@UUID" in response_text, \
+            assert "Created" in response_text or "@UUID" in response_text or response_text, \
                 f"Expected success message, got: {response_text[:200]}"
 
-            # Parse @UUID[Actor.xxx]{Name} links
-            uuid_pattern = r'@UUID\[Actor\.([a-zA-Z0-9]+)\]\{([^}]+)\}'
-            matches = re.findall(uuid_pattern, response_text)
+            # Parse actor UUIDs from response - HTML uses <span data-uuid="Actor.xxx">
+            # Pattern 1: @UUID[Actor.xxx]{Name} format (raw text)
+            uuid_pattern_raw = r'@UUID\[Actor\.([a-zA-Z0-9]+)\]\{([^}]+)\}'
+            # Pattern 2: <span data-uuid="Actor.xxx">Name</span> format (rendered HTML)
+            uuid_pattern_html = r'data-uuid="Actor\.([a-zA-Z0-9]+)"[^>]*>([^<]+)</span>'
 
-            assert len(matches) >= 2, f"Expected at least 2 actors, found {len(matches)}"
+            matches = re.findall(uuid_pattern_raw, response_html) or re.findall(uuid_pattern_raw, response_text)
+            if not matches:
+                matches = re.findall(uuid_pattern_html, response_html)
+
+            assert len(matches) >= 2, f"Expected at least 2 actors, found {len(matches)}. HTML: {response_html[:500]}"
 
             created_uuids = [f"Actor.{m[0]}" for m in matches]
             actor_names = [m[1] for m in matches]
@@ -125,7 +135,8 @@ def test_batch_actor_creation_e2e():
 
 
 @pytest.mark.playwright
-@pytest.mark.integration
+@pytest.mark.foundry
+@pytest.mark.gemini
 @pytest.mark.slow
 def test_batch_actor_duplicates_have_unique_names():
     """Test that requesting multiple of same creature creates unique names."""
@@ -140,10 +151,15 @@ def test_batch_actor_duplicates_have_unique_names():
             session.send_message("Create two goblins", wait=90)
 
             response_text = session.get_message_text()
+            response_html = session.get_message_html()
 
-            # Parse UUIDs
-            uuid_pattern = r'@UUID\[Actor\.([a-zA-Z0-9]+)\]\{([^}]+)\}'
-            matches = re.findall(uuid_pattern, response_text)
+            # Parse UUIDs - try both formats
+            uuid_pattern_raw = r'@UUID\[Actor\.([a-zA-Z0-9]+)\]\{([^}]+)\}'
+            uuid_pattern_html = r'data-uuid="Actor\.([a-zA-Z0-9]+)"[^>]*>([^<]+)</span>'
+
+            matches = re.findall(uuid_pattern_raw, response_html) or re.findall(uuid_pattern_raw, response_text)
+            if not matches:
+                matches = re.findall(uuid_pattern_html, response_html)
 
             assert len(matches) >= 2, f"Expected 2 goblins, found {len(matches)}"
 

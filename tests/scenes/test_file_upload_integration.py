@@ -15,7 +15,7 @@ from PIL import Image
 from foundry.client import FoundryClient
 
 
-@pytest.mark.integration
+@pytest.mark.foundry
 class TestFileUploadRoundtrip:
     """
     Integration tests for file upload to FoundryVTT.

@@ -801,7 +801,7 @@ class TestRealXMLIntegration:
     """Test XMLDocument can parse real generated XML files."""
 
     @pytest.mark.smoke
-    @pytest.mark.integration
+    @pytest.mark.unit
     def test_xmldocument_parses_real_xml(self):
         """Smoke test: Parse real XML files from pdf_to_xml.py
 

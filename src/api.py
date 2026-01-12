@@ -1,58 +1,58 @@
 """
-Public API - Thin HTTP client for D&D Module Processing.
+Public API for D&D Module Processing.
 
-This module provides the official interface for external applications
-(chat UI, CLI tools, etc.) to interact with the module processing system.
+This module provides the official interface for creating actors and scenes.
 
-IMPORTANT: This API requires the backend to be running at BACKEND_URL.
+IMPORTANT: Requires backend running at BACKEND_URL for actor creation.
 Start the backend with:
     cd ui/backend && uvicorn app.main:app --reload --port 8000
-
-Configuration:
-- Set BACKEND_URL environment variable (default: http://localhost:8000)
-- Backend reads credentials from project .env file
 
 Quick Start:
 -----------
 
-    from api import create_actor, APIError
+    from api import create_actor, create_scene, APIError
 
     # Create actor from description
     result = create_actor("A fierce goblin warrior", challenge_rating=1.0)
     print(f"Created: {result.name} ({result.foundry_uuid})")
+
+    # Create scene from battle map
+    result = create_scene("maps/castle.png", name="Castle Ruins")
+    print(f"Created: {result.name} ({result.uuid})")
 
 Error Handling:
 --------------
 
 All functions raise APIError on failure:
 
-    from api import APIError
-
     try:
         result = create_actor("invalid description")
     except APIError as e:
         logger.error(f"Failed: {e}")
-        logger.error(f"Original cause: {e.__cause__}")
 
-Direct Library Usage:
---------------------
+For PDF Processing:
+------------------
 
-For operations not yet available via HTTP API, import from the
-internal modules directly:
+Use the Module tab in the Foundry chat UI, or run:
+    uv run python scripts/full_pipeline.py --journal-name "My Module"
 
-    from actor_pipeline.orchestrate import create_actor_from_description_sync
+For Map Extraction:
+------------------
+
     from pdf_processing.image_asset_processing.extract_map_assets import extract_maps_from_pdf
+    import asyncio
+    maps = asyncio.run(extract_maps_from_pdf(pdf_path, output_dir, chapter_name))
 """
 
 import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Optional
 
 import requests
 
-from exceptions import FoundryError, ConversionError, ConfigurationError
+from exceptions import FoundryError
 from scenes.orchestrate import create_scene_from_map_sync
 from scenes.models import SceneCreationResult
 
@@ -67,13 +67,9 @@ __all__ = [
     "APIError",
     # Result types
     "ActorCreationResult",
-    "MapExtractionResult",
-    "JournalCreationResult",
     "SceneCreationResult",
     # Functions
     "create_actor",
-    "extract_maps",
-    "process_pdf_to_journal",
     "create_scene",
     # Configuration
     "BACKEND_URL",
@@ -98,40 +94,6 @@ class ActorCreationResult:
     challenge_rating: float
     output_dir: Optional[Path] = None
     timestamp: Optional[str] = None
-
-
-@dataclass
-class MapExtractionResult:
-    """Result from extracting maps from a PDF.
-
-    Attributes:
-        maps: List of map metadata dictionaries
-        output_dir: Directory containing extracted map images
-        total_maps: Total number of maps extracted
-        timestamp: ISO timestamp of extraction
-    """
-    maps: List[Dict[str, Any]]
-    output_dir: Path
-    total_maps: int
-    timestamp: str
-
-
-@dataclass
-class JournalCreationResult:
-    """Result from creating a FoundryVTT journal.
-
-    Attributes:
-        journal_uuid: FoundryVTT UUID of created journal (e.g., "JournalEntry.xyz789")
-        journal_name: Name of the journal
-        output_dir: Directory containing XML/HTML files
-        chapter_count: Number of chapters processed
-        timestamp: ISO timestamp of creation
-    """
-    journal_uuid: str
-    journal_name: str
-    output_dir: Path
-    chapter_count: int
-    timestamp: str
 
 
 def create_actor(
@@ -200,68 +162,6 @@ def create_actor(
     except Exception as e:
         logger.error(f"Actor creation failed: {e}")
         raise APIError(f"Failed to create actor: {e}") from e
-
-
-def extract_maps(
-    pdf_path: str,
-    chapter: Optional[str] = None
-) -> MapExtractionResult:
-    """
-    Extract battle maps and navigation maps from a PDF.
-
-    NOTE: This endpoint is not yet available via HTTP API.
-    For direct library usage, import from the internal module:
-
-        from pdf_processing.image_asset_processing.extract_map_assets import extract_maps_from_pdf
-        import asyncio
-        maps = asyncio.run(extract_maps_from_pdf(pdf_path, output_dir, chapter_name))
-
-    Args:
-        pdf_path: Path to source PDF file (absolute or relative)
-        chapter: Optional chapter name for metadata
-
-    Returns:
-        MapExtractionResult with extracted maps and metadata
-
-    Raises:
-        APIError: Always - endpoint not yet implemented
-    """
-    raise APIError(
-        "Map extraction is not yet available via HTTP API. "
-        "Use direct library import: "
-        "from pdf_processing.image_asset_processing.extract_map_assets import extract_maps_from_pdf"
-    )
-
-
-def process_pdf_to_journal(
-    pdf_path: str,
-    journal_name: str,
-    skip_upload: bool = False
-) -> JournalCreationResult:
-    """
-    Process a D&D PDF into FoundryVTT journal entries.
-
-    NOTE: This endpoint is not yet available via HTTP API.
-    For direct pipeline usage, run:
-
-        uv run python scripts/full_pipeline.py --journal-name "My Module"
-
-    Args:
-        pdf_path: Path to source PDF file
-        journal_name: Name for the FoundryVTT journal
-        skip_upload: If True, generate XML but don't upload to Foundry
-
-    Returns:
-        JournalCreationResult with journal UUID and output paths
-
-    Raises:
-        APIError: Always - endpoint not yet implemented
-    """
-    raise APIError(
-        "PDF to journal processing is not yet available via HTTP API. "
-        "Use the full pipeline script: "
-        "uv run python scripts/full_pipeline.py --journal-name 'My Module'"
-    )
 
 
 def create_scene(

@@ -5,12 +5,8 @@ from unittest.mock import Mock, patch
 from api import (
     APIError,
     ActorCreationResult,
-    MapExtractionResult,
-    JournalCreationResult,
     SceneCreationResult,
     create_actor,
-    extract_maps,
-    process_pdf_to_journal,
     create_scene,
     BACKEND_URL,
 )
@@ -61,33 +57,6 @@ def test_actor_creation_result_with_optional_fields():
     assert result.foundry_uuid == "Actor.abc123"
     assert result.output_dir is None
     assert result.timestamp is None
-
-
-def test_map_extraction_result_instantiation():
-    """Test MapExtractionResult can be created."""
-    result = MapExtractionResult(
-        maps=[{"name": "Test Map", "type": "battle_map"}],
-        output_dir=Path("output/runs/test"),
-        total_maps=1,
-        timestamp="2025-11-05T12:00:00"
-    )
-
-    assert result.total_maps == 1
-    assert len(result.maps) == 1
-
-
-def test_journal_creation_result_instantiation():
-    """Test JournalCreationResult can be created."""
-    result = JournalCreationResult(
-        journal_uuid="JournalEntry.xyz789",
-        journal_name="Test Journal",
-        output_dir=Path("output/runs/test"),
-        chapter_count=5,
-        timestamp="2025-11-05T12:00:00"
-    )
-
-    assert result.journal_uuid == "JournalEntry.xyz789"
-    assert result.chapter_count == 5
 
 
 @patch('api.requests.post')
@@ -187,24 +156,6 @@ def test_create_actor_preserves_cause(mock_post):
     except APIError as e:
         assert isinstance(e.__cause__, requests.exceptions.Timeout)
         assert str(e.__cause__) == "Request timed out"
-
-
-def test_extract_maps_not_implemented():
-    """Test extract_maps raises APIError with helpful message."""
-    with pytest.raises(APIError) as exc_info:
-        extract_maps("test.pdf", chapter="Chapter 1")
-
-    assert "not yet available via HTTP API" in str(exc_info.value)
-    assert "extract_maps_from_pdf" in str(exc_info.value)
-
-
-def test_process_pdf_to_journal_not_implemented():
-    """Test process_pdf_to_journal raises APIError with helpful message."""
-    with pytest.raises(APIError) as exc_info:
-        process_pdf_to_journal("test.pdf", "Test Journal")
-
-    assert "not yet available via HTTP API" in str(exc_info.value)
-    assert "full_pipeline.py" in str(exc_info.value)
 
 
 def test_backend_url_default():

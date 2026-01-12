@@ -44,8 +44,7 @@ class TestExtractStatBlocksFromXML:
             extract_stat_blocks_from_xml_file(temp_path)
 
 
-@pytest.mark.integration
-@pytest.mark.requires_api
+@pytest.mark.gemini
 class TestExtractAndParseStatBlocks:
     """Integration test: extract from XML and parse with Gemini."""
 

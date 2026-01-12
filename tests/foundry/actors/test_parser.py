@@ -88,7 +88,7 @@ def pit_fiend_statblock():
 
 # Unit tests for individual parsing functions
 
-@pytest.mark.integration
+@pytest.mark.gemini
 @pytest.mark.asyncio
 async def test_parse_single_action_simple_melee():
     """Test parsing a simple melee attack (Scimitar)."""
@@ -108,7 +108,7 @@ async def test_parse_single_action_simple_melee():
     assert result.damage[0].type == "slashing"
 
 
-@pytest.mark.integration
+@pytest.mark.gemini
 @pytest.mark.asyncio
 async def test_parse_single_action_ranged():
     """Test parsing a ranged attack (Shortbow)."""
@@ -127,7 +127,7 @@ async def test_parse_single_action_ranged():
     assert result.damage[0].type == "piercing"
 
 
-@pytest.mark.integration
+@pytest.mark.gemini
 @pytest.mark.asyncio
 async def test_parse_single_action_with_save():
     """Test parsing attack with saving throw (Poison Bite)."""
@@ -152,7 +152,7 @@ async def test_parse_single_action_with_save():
     assert result.attack_save.ongoing_damage[0].type == "poison"
 
 
-@pytest.mark.integration
+@pytest.mark.gemini
 @pytest.mark.asyncio
 async def test_parse_single_action_multiattack():
     """Test parsing multiattack."""
@@ -166,7 +166,7 @@ async def test_parse_single_action_multiattack():
     assert "four attacks" in result.description.lower()
 
 
-@pytest.mark.integration
+@pytest.mark.gemini
 @pytest.mark.asyncio
 async def test_parse_single_trait_passive():
     """Test parsing passive trait (Nimble Escape)."""
@@ -180,7 +180,7 @@ async def test_parse_single_trait_passive():
     assert "Disengage" in result.description or "Hide" in result.description
 
 
-@pytest.mark.integration
+@pytest.mark.gemini
 @pytest.mark.asyncio
 async def test_parse_single_trait_action():
     """Test parsing action trait (Fear Aura)."""
@@ -194,7 +194,7 @@ async def test_parse_single_trait_action():
     assert "DC 21" in result.description or "frightened" in result.description.lower()
 
 
-@pytest.mark.integration
+@pytest.mark.gemini
 @pytest.mark.asyncio
 async def test_parse_innate_spellcasting(mock_spell_cache):
     """Test parsing innate spellcasting with spell UUID resolution."""
@@ -235,7 +235,7 @@ At will: detect magic, fireball
 
 # Integration tests for full stat block parsing
 
-@pytest.mark.integration
+@pytest.mark.gemini
 @pytest.mark.asyncio
 async def test_parse_stat_block_parallel_goblin(goblin_statblock, mock_spell_cache):
     """Test full Goblin parsing (2 attacks + 1 trait)."""
@@ -263,7 +263,7 @@ async def test_parse_stat_block_parallel_goblin(goblin_statblock, mock_spell_cac
     assert result.innate_spellcasting is None
 
 
-@pytest.mark.integration
+@pytest.mark.gemini
 @pytest.mark.asyncio
 async def test_parse_stat_block_parallel_pit_fiend(pit_fiend_statblock, mock_spell_cache):
     """Test full Pit Fiend parsing (9 parallel calls: 4 attacks + 4 traits + 1 multiattack)."""
@@ -306,7 +306,7 @@ async def test_parse_stat_block_parallel_pit_fiend(pit_fiend_statblock, mock_spe
     assert "Innate Spellcasting" not in trait_names  # Should be in innate_spellcasting
 
 
-@pytest.mark.integration
+@pytest.mark.gemini
 @pytest.mark.asyncio
 async def test_parse_multiple_stat_blocks(goblin_statblock, pit_fiend_statblock, mock_spell_cache):
     """Test batch processing of multiple stat blocks."""
@@ -327,7 +327,7 @@ async def test_parse_multiple_stat_blocks(goblin_statblock, pit_fiend_statblock,
     assert pit_fiend_result.multiattack is not None
 
 
-@pytest.mark.integration
+@pytest.mark.gemini
 @pytest.mark.asyncio
 async def test_parse_stat_block_with_no_spells(goblin_statblock):
     """Test parsing without spell cache (spells should still parse, just no UUIDs)."""
@@ -338,7 +338,7 @@ async def test_parse_stat_block_with_no_spells(goblin_statblock):
     # Should work fine without spell cache since Goblin has no spells
 
 
-@pytest.mark.integration
+@pytest.mark.gemini
 @pytest.mark.asyncio
 async def test_parse_stat_block_empty_lists():
     """Test parsing stat block with empty action/trait lists."""
@@ -365,7 +365,7 @@ async def test_parse_stat_block_empty_lists():
 
 # Performance test
 
-@pytest.mark.integration
+@pytest.mark.gemini
 @pytest.mark.asyncio
 async def test_parallel_processing_performance(pit_fiend_statblock, mock_spell_cache):
     """Verify parallel processing is actually faster than sequential."""

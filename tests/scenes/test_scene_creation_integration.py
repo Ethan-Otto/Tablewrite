@@ -52,7 +52,7 @@ def unique_scene_name() -> str:
     return f"Test Scene {uuid.uuid4().hex[:8]}"
 
 
-@pytest.mark.integration
+@pytest.mark.foundry
 class TestSceneCreationRoundtrip:
     """
     Integration tests for scene creation round-trip.

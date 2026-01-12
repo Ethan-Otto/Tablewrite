@@ -139,8 +139,10 @@ Answer NO if the message is:
 - A request to CREATE something (actor, scene, image, etc.)
 - A command or action request
 - A greeting or casual conversation
+- A question about a JOURNAL, document, or module content (e.g., "What's in the Lost Mine journal?", "Summarize chapter 1", "List NPCs in the module")
+- A query asking about specific content from a named source
 
-Answer YES only if the message is genuinely ASKING about rules/mechanics.
+Answer YES only if the message is genuinely ASKING about generic D&D rules/mechanics (e.g., "How does sneak attack work?", "What are the rules for grappling?").
 
 Message: "{message}"
 

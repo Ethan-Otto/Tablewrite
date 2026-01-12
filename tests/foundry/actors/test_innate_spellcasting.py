@@ -135,8 +135,7 @@ class TestInnateSpellcastingConversion:
         # Limited-use spell should have uses
         assert hold_monster["system"]["uses"]["max"] == 3
 
-    @pytest.mark.integration
-    @pytest.mark.requires_foundry
+    @pytest.mark.foundry
     @pytest.mark.asyncio
     async def test_looks_up_spell_uuids_from_cache(self, require_foundry):
         """Should use SpellCache to get proper spell UUIDs."""

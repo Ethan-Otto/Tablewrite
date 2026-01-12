@@ -11,8 +11,7 @@ from actor_pipeline.models import StatBlock
 from models import XMLDocument
 
 
-@pytest.mark.integration
-@pytest.mark.requires_api
+@pytest.mark.gemini
 class TestStatBlockParsing:
     """Test stat block parsing with real Gemini API calls."""
 

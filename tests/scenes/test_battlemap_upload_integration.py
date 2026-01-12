@@ -19,7 +19,7 @@ BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 TEST_MAP = Path(__file__).parent / "fixtures" / "gridded_map.webp"
 
 
-@pytest.mark.integration
+@pytest.mark.foundry
 @pytest.mark.slow
 def test_battlemap_upload_creates_scene_with_walls(require_foundry):
     """Test full pipeline: upload map -> detect walls -> create scene.
@@ -61,7 +61,7 @@ def test_battlemap_upload_creates_scene_with_walls(require_foundry):
     assert delete_response.status_code == 200, f"Cleanup failed: {delete_response.text}"
 
 
-@pytest.mark.integration
+@pytest.mark.foundry
 def test_battlemap_upload_skip_walls(require_foundry):
     """Test upload with wall detection skipped (faster).
 
@@ -98,7 +98,7 @@ def test_battlemap_upload_skip_walls(require_foundry):
     assert delete_response.status_code == 200, f"Cleanup failed: {delete_response.text}"
 
 
-@pytest.mark.integration
+@pytest.mark.foundry
 def test_battlemap_upload_custom_grid_size(require_foundry):
     """Test upload with custom grid size override.
 

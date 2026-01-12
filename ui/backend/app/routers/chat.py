@@ -27,16 +27,16 @@ async def chat(request: ChatRequest) -> ChatResponse:
 
         # Handle different command types
         if cmd.type == CommandType.HELP:
-            return _handle_help_command()
+            return await _handle_help_command()
 
         elif cmd.type == CommandType.GENERATE_SCENE:
             return await _handle_generate_scene(cmd.args, request.context)
 
         elif cmd.type == CommandType.LIST_SCENES:
-            return _handle_list_scenes(cmd.args, request.context)
+            return await _handle_list_scenes()
 
         elif cmd.type == CommandType.LIST_ACTORS:
-            return _handle_list_actors(request.context)
+            return await _handle_list_actors()
 
         elif cmd.type == CommandType.UNKNOWN:
             return ChatResponse(
@@ -113,18 +113,23 @@ async def chat(request: ChatRequest) -> ChatResponse:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def _handle_help_command() -> ChatResponse:
-    """Handle /help command."""
-    help_text = """**Available Commands:**
+async def _handle_help_command() -> ChatResponse:
+    """Handle /help command by calling the help tool."""
+    tool_response = await registry.execute_tool("help")
 
-- `/generate-scene [description]` - Generate a new scene with AI
-- `/list-scenes [chapter]` - List all scenes (optionally filtered by chapter)
-- `/list-actors` - List all actors and NPCs
-- `/help` - Show this help message
+    # Add slash command info to the tool response
+    help_text = tool_response.message + "\n\n**Slash Commands:**\n"
+    help_text += "- `/help` - Show this help\n"
+    help_text += "- `/list-actors` - List all actors\n"
+    help_text += "- `/list-scenes` - List all scenes\n"
+    help_text += "- `/generate-scene [description]` - Generate scene artwork\n"
+    help_text += "\nYou can also chat naturally without commands!"
 
-You can also chat naturally without using commands!"""
-
-    return ChatResponse(message=help_text, type="text")
+    return ChatResponse(
+        message=help_text,
+        type=tool_response.type,
+        data=tool_response.data
+    )
 
 
 async def _handle_generate_scene(args: str, context: dict) -> ChatResponse:
@@ -176,31 +181,21 @@ async def _handle_generate_scene(args: str, context: dict) -> ChatResponse:
     )
 
 
-def _handle_list_scenes(chapter_filter: str, context: dict) -> ChatResponse:
-    """Handle /list-scenes command."""
-    # TODO: Integrate with actual scene database
-    # For now, return placeholder
-
-    message = f"**Scenes in {chapter_filter or 'All Chapters'}**\n\n"
-    message += "1. Cragmaw Hideout Entrance\n"
-    message += "2. Twin Pools Cave\n"
-    message += "3. Goblin Den\n"
-    message += "4. Klarg's Cave\n\n"
-    message += "_Note: Scene database integration coming soon!_"
-
-    return ChatResponse(message=message, type="list")
+async def _handle_list_scenes() -> ChatResponse:
+    """Handle /list-scenes command by calling the list_scenes tool."""
+    tool_response = await registry.execute_tool("list_scenes")
+    return ChatResponse(
+        message=tool_response.message,
+        type=tool_response.type,
+        data=tool_response.data
+    )
 
 
-def _handle_list_actors(context: dict) -> ChatResponse:
-    """Handle /list-actors command."""
-    # TODO: Integrate with actual actor database
-    # For now, return placeholder
-
-    message = "**Available Actors**\n\n"
-    message += "1. Klarg (Bugbear)\n"
-    message += "2. Sildar Hallwinter (Human Fighter)\n"
-    message += "3. Goblin\n"
-    message += "4. Wolf\n\n"
-    message += "_Note: Actor database integration coming soon!_"
-
-    return ChatResponse(message=message, type="list")
+async def _handle_list_actors() -> ChatResponse:
+    """Handle /list-actors command by calling the list_actors tool."""
+    tool_response = await registry.execute_tool("list_actors")
+    return ChatResponse(
+        message=tool_response.message,
+        type=tool_response.type,
+        data=tool_response.data
+    )

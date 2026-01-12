@@ -55,20 +55,63 @@ class FoundrySession:
                     user_select.select_option(value)
                     break
             self.page.locator('button:has-text("JOIN GAME SESSION")').click()
-            self.page.wait_for_load_state('networkidle')
-            time.sleep(3)
+            # Wait for URL to change to /game (navigation happens asynchronously)
+            try:
+                self.page.wait_for_url("**/game", timeout=30000)
+            except Exception:
+                pass  # Continue anyway, _wait_for_game_ready will handle it
+            self._wait_for_game_ready()
+
+    def _wait_for_game_ready(self, timeout: float = 30.0):
+        """Wait for Foundry's game.ready to be true."""
+        start = time.time()
+        while time.time() - start < timeout:
+            is_ready = self.page.evaluate('() => typeof game !== "undefined" && game.ready === true')
+            if is_ready:
+                # Also wait for tablewrite tab to exist (module needs to register it)
+                tab_exists = self.page.evaluate(
+                    '() => !!document.querySelector(\'button[data-tab="tablewrite"]\') || '
+                    '!!document.querySelector(\'a[data-tab="tablewrite"]\')'
+                )
+                if tab_exists:
+                    return
+            time.sleep(0.5)
+        raise TimeoutError(f"Game did not become ready within {timeout} seconds")
 
     def goto_tablewrite(self):
-        """Click the Tablewrite tab."""
-        tab = self.page.locator('a[data-tab="tablewrite"]')
-        if tab.count() > 0:
-            tab.click()
-            time.sleep(1)
+        """Click the Tablewrite tab and wait for it to initialize."""
+        # Use JavaScript click for reliability in Foundry v13
+        result = self.page.evaluate('''() => {
+            const btn = document.querySelector('button[data-tab="tablewrite"]')
+                     || document.querySelector('a[data-tab="tablewrite"]');
+            if (btn) {
+                btn.click();
+                return true;
+            }
+            return false;
+        }''')
+        if result:
+            # Wait for tab content to be initialized (lazy load on first click)
+            for _ in range(20):  # 10 second timeout
+                initialized = self.page.evaluate('''() => {
+                    const container = document.getElementById('tablewrite');
+                    return container?.dataset?.initialized === 'true';
+                }''')
+                if initialized:
+                    break
+                time.sleep(0.5)
+            # Extra wait for DOM to settle
+            time.sleep(0.5)
         return self
 
     def goto_chat(self):
         """Click the native Chat tab."""
-        self.page.locator('a[data-tab="chat"]').click()
+        # Use JavaScript click for reliability in Foundry v13
+        self.page.evaluate('''() => {
+            const btn = document.querySelector('button[data-tab="chat"]')
+                     || document.querySelector('a[data-tab="chat"]');
+            if (btn) btn.click();
+        }''')
         time.sleep(0.5)
         return self
 

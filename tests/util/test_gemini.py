@@ -59,9 +59,8 @@ class TestGeminiAPIBasics:
 class TestGeminiAPIIntegration:
     """Integration tests that make real API calls."""
 
-    @pytest.mark.integration
+    @pytest.mark.gemini
     @pytest.mark.slow
-    @pytest.mark.requires_api
     def test_generate_text_content(self, check_api_key):
         """Test basic text generation."""
         api = GeminiAPI()
@@ -70,9 +69,8 @@ class TestGeminiAPIIntegration:
         assert hasattr(response, "text")
         assert "Hello" in response.text or "hello" in response.text
 
-    @pytest.mark.integration
+    @pytest.mark.gemini
     @pytest.mark.slow
-    @pytest.mark.requires_api
     def test_file_upload_and_deletion(self, check_api_key):
         """Test file upload and deletion."""
         api = GeminiAPI()
@@ -90,9 +88,8 @@ class TestGeminiAPIIntegration:
             if os.path.exists(temp_file_path):
                 os.remove(temp_file_path)
 
-    @pytest.mark.integration
+    @pytest.mark.gemini
     @pytest.mark.slow
-    @pytest.mark.requires_api
     @pytest.mark.flaky(reruns=2, reruns_delay=5)
     def test_context_manager(self, check_api_key):
         """Test context manager auto-cleanup."""
@@ -114,7 +111,7 @@ class TestGeminiAPIIntegration:
             if os.path.exists(temp_file_path):
                 os.remove(temp_file_path)
 
-    @pytest.mark.integration
+    @pytest.mark.gemini
     @pytest.mark.asyncio
     async def test_generate_content_async_wrapper(self, check_api_key):
         """Test async wrapper for generate_content."""

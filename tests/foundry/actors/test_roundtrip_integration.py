@@ -13,8 +13,7 @@ from foundry.client import FoundryClient
 load_dotenv()
 
 
-@pytest.mark.integration
-@pytest.mark.requires_foundry
+@pytest.mark.foundry
 class TestActorRoundTrip:
     """
     Integration tests for complete actor upload/download cycle.

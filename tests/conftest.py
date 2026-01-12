@@ -42,10 +42,44 @@ def pytest_configure(config):
         if config.option.markexpr == "smoke":
             config.option.markexpr = ""  # Run all tests
 
-    # In CI, run non-integration tests (most smoke tests require Foundry)
+    # In CI, run tests that don't need Foundry (gemini-only is OK)
     if is_ci:
-        config.option.markexpr = "not integration and not slow"
-        print(f"\n[CI] Running non-integration tests")
+        config.option.markexpr = "not foundry and not slow"
+        print(f"\n[CI] Running non-foundry tests (gemini OK)")
+
+
+def pytest_collection_modifyitems(items):
+    """Add integration marker to foundry/gemini tests automatically.
+
+    Marker hierarchy:
+        integration (base)
+        ├── foundry (requires Foundry WebSocket)
+        └── gemini (requires Gemini API)
+
+    Tests marked with 'foundry' or 'gemini' automatically get 'integration' added.
+    Legacy markers 'requires_foundry' and 'requires_api' are treated as aliases.
+    """
+    for item in items:
+        # Check for new markers
+        has_foundry = item.get_closest_marker("foundry")
+        has_gemini = item.get_closest_marker("gemini")
+
+        # Check for legacy markers (treat as aliases)
+        has_requires_foundry = item.get_closest_marker("requires_foundry")
+        has_requires_api = item.get_closest_marker("requires_api")
+
+        # Add new markers for legacy ones
+        if has_requires_foundry and not has_foundry:
+            item.add_marker(pytest.mark.foundry)
+            has_foundry = True
+        if has_requires_api and not has_gemini:
+            item.add_marker(pytest.mark.gemini)
+            has_gemini = True
+
+        # Add integration marker
+        if has_foundry or has_gemini:
+            if not item.get_closest_marker("integration"):
+                item.add_marker(pytest.mark.integration)
 
 
 def pytest_sessionstart(session):

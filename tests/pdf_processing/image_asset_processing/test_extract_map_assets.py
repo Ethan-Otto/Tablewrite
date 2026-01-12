@@ -13,7 +13,7 @@ from pdf_processing.image_asset_processing.models import MapMetadata, MapDetecti
 
 
 @pytest.mark.map
-@pytest.mark.integration
+@pytest.mark.gemini
 @pytest.mark.slow
 class TestExtractMapsFromPDF:
     """Tests that share a single extraction run via session-scoped fixture.
@@ -111,7 +111,7 @@ class TestExtractMapsFromPDF:
 
 
 @pytest.mark.map
-@pytest.mark.integration
+@pytest.mark.gemini
 @pytest.mark.slow
 @pytest.mark.smoke
 class TestExtractionPerformance:
@@ -210,7 +210,7 @@ class TestMetadataSaving:
 
 
 @pytest.mark.map
-@pytest.mark.integration
+@pytest.mark.gemini
 @pytest.mark.slow
 class TestExtractSinglePage:
     @pytest.mark.timeout(120)  # 2 minute timeout (single page)

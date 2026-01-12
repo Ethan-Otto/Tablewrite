@@ -19,7 +19,8 @@ class TestActorOrchestrationIntegration:
     """Integration tests for full actor creation pipeline."""
 
     @pytest.mark.smoke
-    @pytest.mark.integration
+    @pytest.mark.foundry
+    @pytest.mark.gemini
     @pytest.mark.asyncio
     @pytest.mark.order("last")
     async def test_full_pipeline_end_to_end(self, tmp_path):

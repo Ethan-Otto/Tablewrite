@@ -55,7 +55,7 @@ class TestExtractImageWithPyMuPDF:
 
 
 @pytest.mark.map
-@pytest.mark.integration
+@pytest.mark.gemini
 @pytest.mark.slow
 class TestExtractWithAIClassification:
     def test_extract_with_ai_classification(self, test_pdf_path, test_output_dir, check_api_key):

@@ -6,8 +6,7 @@ from actor_pipeline.extract_npcs import identify_npcs_with_gemini
 from actor_pipeline.models import NPC
 
 
-@pytest.mark.integration
-@pytest.mark.requires_api
+@pytest.mark.gemini
 class TestNPCExtraction:
     """Test NPC extraction with real Gemini API calls."""
 

@@ -15,8 +15,7 @@ from caches import SpellCache
 load_dotenv()
 
 
-@pytest.mark.integration
-@pytest.mark.requires_foundry
+@pytest.mark.foundry
 class TestPitFiendIntegration:
     """Full integration test for Pit Fiend."""
 

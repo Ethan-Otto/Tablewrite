@@ -293,7 +293,7 @@ class TestJournalBasedUpload:
         assert "To begin your quest" in html
 
 
-@pytest.mark.integration
+@pytest.mark.foundry
 def test_upload_journal_includes_positioned_images(tmp_path):
     """Test that upload includes automatically positioned images."""
     # Create mock run directory structure

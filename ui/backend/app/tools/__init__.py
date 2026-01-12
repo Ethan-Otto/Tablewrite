@@ -9,6 +9,9 @@ from .journal_creator import JournalCreatorTool
 from .scene_creator import SceneCreatorTool
 from .asset_deleter import AssetDeleterTool
 from .journal_query import JournalQueryTool
+from .list_actors import ListActorsTool
+from .list_scenes import ListScenesTool
+from .help import HelpTool
 
 # Auto-register tools
 registry.register(ImageGeneratorTool())
@@ -19,6 +22,9 @@ registry.register(JournalCreatorTool())
 registry.register(SceneCreatorTool())
 registry.register(AssetDeleterTool())
 registry.register(JournalQueryTool())
+registry.register(ListActorsTool())
+registry.register(ListScenesTool())
+registry.register(HelpTool())
 
 __all__ = [
     'BaseTool',
@@ -34,4 +40,7 @@ __all__ = [
     'SceneCreatorTool',
     'AssetDeleterTool',
     'JournalQueryTool',
+    'ListActorsTool',
+    'ListScenesTool',
+    'HelpTool',
 ]

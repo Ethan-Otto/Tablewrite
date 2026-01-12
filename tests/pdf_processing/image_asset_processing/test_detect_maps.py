@@ -6,7 +6,7 @@ from pdf_processing.image_asset_processing.models import MapDetectionResult
 
 
 @pytest.mark.map
-@pytest.mark.integration
+@pytest.mark.gemini
 @pytest.mark.slow
 class TestDetectMapsAsync:
     def test_detect_maps_returns_results_for_all_pages(self, test_pdf_path, check_api_key):

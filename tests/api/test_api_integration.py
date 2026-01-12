@@ -1,13 +1,12 @@
 """Integration tests for public API (require real API keys + backend running)."""
 import pytest
 import httpx
-from pathlib import Path
-import api
-from api import create_actor, extract_maps, process_pdf_to_journal
+from api import create_actor
 
 
 @pytest.mark.smoke
-@pytest.mark.integration
+@pytest.mark.foundry
+@pytest.mark.gemini
 @pytest.mark.slow
 @pytest.mark.asyncio
 async def test_create_actor_integration(check_api_key, ensure_foundry_connected):
@@ -42,7 +41,8 @@ async def test_create_actor_integration(check_api_key, ensure_foundry_connected)
         # output_dir presence confirms the pipeline completed successfully.
 
 
-@pytest.mark.integration
+@pytest.mark.foundry
+@pytest.mark.gemini
 @pytest.mark.slow
 def test_create_actor_via_thin_client(check_api_key, ensure_foundry_connected):
     """Test api.create_actor thin HTTP client wrapper.
@@ -58,25 +58,3 @@ def test_create_actor_via_thin_client(check_api_key, ensure_foundry_connected):
     assert result.foundry_uuid.startswith("Actor.")
     assert len(result.name) > 0
     assert result.challenge_rating == 0.5
-
-
-@pytest.mark.integration
-def test_extract_maps_not_available():
-    """Test extract_maps raises helpful error (not yet implemented)."""
-    # Use api.APIError to avoid class identity issues from module reloads
-    with pytest.raises(api.APIError) as exc_info:
-        extract_maps("test.pdf")
-
-    assert "not yet available via HTTP API" in str(exc_info.value)
-    assert "extract_maps_from_pdf" in str(exc_info.value)
-
-
-@pytest.mark.integration
-def test_process_pdf_to_journal_not_available():
-    """Test process_pdf_to_journal raises helpful error (not yet implemented)."""
-    # Use api.APIError to avoid class identity issues from module reloads
-    with pytest.raises(api.APIError) as exc_info:
-        process_pdf_to_journal("test.pdf", "Test Journal")
-
-    assert "not yet available via HTTP API" in str(exc_info.value)
-    assert "full_pipeline.py" in str(exc_info.value)

@@ -5,8 +5,7 @@ import json
 from pathlib import Path
 
 
-@pytest.mark.integration
-@pytest.mark.requires_api
+@pytest.mark.gemini
 def test_generate_scene_art_saves_metadata(tmp_path):
     """Test that scene artwork generation saves metadata JSON."""
     from scripts.generate_scene_art import process_chapter

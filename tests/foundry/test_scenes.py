@@ -451,7 +451,7 @@ class TestFoundryClientSceneManager:
         assert client.scenes.backend_url == "http://custom:9000"
 
 
-@pytest.mark.integration
+@pytest.mark.foundry
 @pytest.mark.slow
 class TestSceneManagerIntegration:
     """Integration tests for scene creation (requires running backend + Foundry)."""

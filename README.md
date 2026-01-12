@@ -4,27 +4,65 @@ Convert official D&D PDFs into FoundryVTT content. Uses Google Gemini AI to extr
 
 ## Features
 
+### PDF Processing Pipeline
 - **PDF to Journal** - Extract chapter text, formatting, tables, and boxed text into FoundryVTT journal entries
 - **Actor Extraction** - Parse stat blocks into complete FoundryVTT actors with attacks, spells, and abilities
 - **Map Extraction** - Automatically detect and extract battle maps from PDF pages
-- **Wall Detection** - AI-powered wall detection for battle maps, exports to FoundryVTT scene format
-- **Scene Creation** - Create FoundryVTT scenes with walls and grid detection
 - **Scene Artwork** - Generate AI artwork for locations described in the module
-- **Chat Interface** - Natural language actor creation via Tablewrite module in FoundryVTT
 
-## Quick Start
+### Scene Creation
+- **Wall Detection** - AI-powered wall detection for battle maps
+- **Grid Detection** - Automatic grid size detection for battle maps
+- **Scene Upload** - Create FoundryVTT scenes with walls and proper grid settings
 
-### 1. Install Dependencies
+### Chat Interface (Tablewrite Module)
+Natural language interface directly in FoundryVTT with 11 tools:
+
+| Tool | Description |
+|------|-------------|
+| `create_actor` | Create a D&D actor from natural language description |
+| `batch_create_actors` | Create multiple actors at once |
+| `edit_actor` | Modify an existing actor's properties |
+| `create_journal` | Create a journal entry |
+| `create_scene` | Create a scene from a battle map image |
+| `generate_images` | Generate D&D scene artwork via AI |
+| `delete_assets` | Delete actors, journals, or scenes |
+| `query_journal` | Ask questions about journal content, get summaries |
+| `list_actors` | List all actors in the world with clickable links |
+| `list_scenes` | List all scenes in the world with clickable links |
+| `help` | List all available tools and commands |
+
+### Additional Features
+- **Rules Q&A** - Ask D&D rules questions with extended thinking mode
+- **2014/2024 Rules Support** - Automatically detects your dnd5e rules version
+- **Foundry v12-v13 Compatible** - Works with both Foundry versions
+
+## Setup
+
+### Prerequisites
+
+- Python 3.11+
+- [uv](https://github.com/astral-sh/uv) package manager
+- Google Gemini API key
+- FoundryVTT v12+ running locally or on The Forge
+
+### Option 1: Local Installation
+
+#### 1. Install Dependencies
 
 ```bash
 # Install uv (Python package manager)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
+# Clone the repository
+git clone https://github.com/your-repo/dnd_module_gen.git
+cd dnd_module_gen
+
 # Create virtual environment and install dependencies
 uv sync
 ```
 
-### 2. Configure Environment
+#### 2. Configure Environment
 
 Create a `.env` file in the project root:
 
@@ -36,57 +74,175 @@ GeminiImageAPI=your_gemini_api_key
 FOUNDRY_URL=http://localhost:30000
 ```
 
-### 3. Install FoundryVTT Module
+#### 3. Install FoundryVTT Module
 
-Copy `foundry-module/tablewrite-assistant/` to your FoundryVTT `Data/modules/` directory, then enable "Tablewrite Assistant" in your world.
+**Option A: Symlink (recommended for development)**
+```bash
+ln -s "$(pwd)/foundry-module/tablewrite-assistant" \
+  "/path/to/FoundryVTT/Data/modules/tablewrite-assistant"
+```
 
-### 4. Start the Backend
+**Option B: Copy**
+```bash
+cp -r foundry-module/tablewrite-assistant \
+  "/path/to/FoundryVTT/Data/modules/"
+```
+
+Then enable "Tablewrite" in your FoundryVTT world settings.
+
+#### 4. Start the Backend
 
 ```bash
 cd ui/backend
 uv run uvicorn app.main:app --reload --port 8000
 ```
 
-### 5. Run the Pipeline
+#### 5. Connect Foundry
+
+1. Open your FoundryVTT world
+2. The Tablewrite module auto-connects to `ws://localhost:8000`
+3. Look for the feather icon in the sidebar tabs
+
+### Option 2: Docker Installation
+
+#### 1. Build and Run
 
 ```bash
-# Place your PDF in data/pdfs/, then run:
-uv run python scripts/full_pipeline.py --journal-name "Your Module Name"
+# Using docker-compose (recommended)
+docker-compose -f docker-compose.tablewrite.yml up -d
+
+# Or build manually
+docker build -t tablewrite .
+docker run -d -p 8000:8000 --env-file .env -v ./data:/app/data -v ./output:/app/output tablewrite
 ```
 
-## Example Output
+#### 2. Configure Environment
 
-### Map Extraction
-Battle maps are automatically detected and extracted from PDF pages:
+Create a `.env` file before running:
 
-![Extracted Map](docs/screenshots/map-extraction/page_004_cragmaw_hideout.png)
+```bash
+# Required
+GeminiImageAPI=your_gemini_api_key
+FOUNDRY_URL=http://host.docker.internal:30000  # Use this for local Foundry
 
-### Wall Detection
-AI detects walls in battle maps and exports them for FoundryVTT scenes:
+# For Foundry on a different machine
+FOUNDRY_URL=http://192.168.1.100:30000
+```
 
-| Original | AI Wall Detection |
-|----------|-------------------|
-| ![Original](docs/screenshots/wall-detection/01_original.png) | ![Walls](docs/screenshots/wall-detection/05_final_overlay.png) |
+#### 3. Docker Commands
 
-### Scene Artwork
-AI-generated artwork for locations in the module:
+```bash
+# Start
+docker-compose -f docker-compose.tablewrite.yml up -d
 
-![Scene Artwork](docs/screenshots/scene-artwork/scene_001.png)
+# View logs
+docker-compose -f docker-compose.tablewrite.yml logs -f
+
+# Stop
+docker-compose -f docker-compose.tablewrite.yml down
+
+# Rebuild after code changes
+docker-compose -f docker-compose.tablewrite.yml up -d --build
+```
+
+#### 4. Health Check
+
+```bash
+curl http://localhost:8000/health
+# Returns: {"status": "healthy"}
+```
+
+### Option 3: The Forge Hosting
+
+If using The Forge for FoundryVTT hosting:
+
+```bash
+# .env configuration
+FOUNDRY_FORGE_URL=https://your-game.forge-vtt.com
+FOUNDRY_FORGE_API_KEY=your_forge_key
+FOUNDRY_TARGET=forge
+```
 
 ## Usage
 
-### Full Pipeline
+### Getting Help
 
-```bash
-# Complete workflow
-uv run python scripts/full_pipeline.py --journal-name "Lost Mine of Phandelver"
+In the Foundry chat, type `/help` or ask "what can you do?" to see all available tools:
 
-# Skip steps as needed
-uv run python scripts/full_pipeline.py --skip-split --skip-xml   # Reuse existing XML
-uv run python scripts/full_pipeline.py --skip-actors             # Skip actor extraction
+```
+/help
 ```
 
-### Individual Steps
+Response:
+```
+**Available Tools:**
+
+- **batch_create_actors**: Create multiple D&D actors from descriptions.
+- **create_actor**: Create a D&D actor from a natural language description.
+- **create_journal**: Create a journal entry in FoundryVTT.
+- **create_scene**: Create a FoundryVTT scene from a battle map image.
+- **delete_assets**: Delete actors, journals, or scenes from FoundryVTT.
+- **edit_actor**: Edit an existing actor in FoundryVTT.
+- **generate_images**: Generate D&D scene artwork using AI.
+- **help**: List all available tools and commands.
+- **list_actors**: List all actors in the Foundry world with clickable links.
+- **list_scenes**: List all scenes in the Foundry world with clickable links.
+- **query_journal**: Query journal entries for information, summaries, or answers.
+
+**Slash Commands:**
+- `/help` - Show this help
+- `/list-actors` - List all actors
+- `/list-scenes` - List all scenes
+- `/generate-scene [description]` - Generate scene artwork
+```
+
+### Chat Examples
+
+**Create an Actor:**
+```
+Create a goblin shaman with CR 1 that can cast minor illusion and fog cloud
+```
+
+**List Actors:**
+```
+list actors
+```
+or
+```
+/list-actors
+```
+
+**Query a Journal:**
+```
+What treasure is in Cragmaw Hideout?
+```
+
+**Generate Scene Art:**
+```
+Generate an image of a dark forest clearing with ancient standing stones
+```
+
+**Delete Assets:**
+```
+Delete all actors named "Test Goblin"
+```
+
+### Full PDF Pipeline
+
+Process an entire D&D module PDF:
+
+```bash
+# Place your PDF in data/pdfs/, then run:
+uv run python scripts/full_pipeline.py --journal-name "Lost Mine of Phandelver"
+
+# Skip specific steps
+uv run python scripts/full_pipeline.py --skip-actors    # Skip actor extraction
+uv run python scripts/full_pipeline.py --skip-split     # Reuse existing chapters
+```
+
+Or use the Module tab in the Foundry chat interface to upload and process PDFs directly.
+
+### Individual Pipeline Steps
 
 ```bash
 # Split PDF into chapters
@@ -96,7 +252,8 @@ uv run python src/pdf_processing/split_pdf.py
 uv run python src/pdf_processing/pdf_to_xml.py
 
 # Extract maps from PDF
-uv run python src/pdf_processing/image_asset_processing/extract_map_assets.py --pdf data/pdfs/module.pdf
+uv run python src/pdf_processing/image_asset_processing/extract_map_assets.py \
+  --pdf data/pdfs/module.pdf
 
 # Generate scene artwork
 uv run python scripts/generate_scene_art.py --run-dir output/runs/latest
@@ -108,51 +265,18 @@ uv run python src/foundry/upload_journal_to_foundry.py
 ### Python API
 
 ```python
-from api import create_actor, extract_maps, process_pdf_to_journal, create_scene
+from api import create_actor, create_scene, APIError
 
 # Create actor from natural language description
 result = create_actor("A cunning kobold scout with a poisoned dagger", challenge_rating=0.5)
 print(f"Created: {result.name} - {result.foundry_uuid}")
 
-# Extract maps from PDF
-maps = extract_maps("data/pdfs/module.pdf", chapter="Chapter 1")
-print(f"Extracted {maps.total_maps} maps")
-
 # Create scene from battle map with automatic wall detection
-scene = create_scene("maps/castle.webp")
+scene = create_scene("maps/castle.webp", name="Castle Ruins")
 print(f"Created scene with {scene.wall_count} walls, grid size {scene.grid_size}px")
 ```
 
-### Chat Interface
-
-The Tablewrite module provides a chat interface directly in FoundryVTT:
-
-```
-You: Create a goblin shaman with CR 1
-Assistant: Created "Goblin Shaman" (Actor.abc123) with 2 spells and 3 abilities.
-
-You: Generate an image of a dark forest clearing
-Assistant: [Generated image displayed in chat]
-```
-
-## Project Structure
-
-```
-src/
-├── api.py                    # Public API for external tools
-├── pdf_processing/           # PDF splitting, XML generation, map extraction
-├── actors/                   # Actor/NPC extraction and creation
-├── scenes/                   # Scene creation with wall/grid detection
-├── foundry/                  # FoundryVTT client and managers
-├── foundry_converters/       # Data conversion (actors, journals, scenes)
-├── models/                   # Core data models (XMLDocument, Journal)
-└── wall_detection/           # AI wall detection for battle maps
-
-ui/backend/                   # FastAPI backend for Foundry WebSocket
-foundry-module/               # FoundryVTT Tablewrite Assistant module
-scripts/                      # Pipeline orchestration scripts
-output/runs/                  # Timestamped output directories
-```
+For PDF processing, use the Module tab UI or CLI scripts directly.
 
 ## Configuration
 
@@ -173,6 +297,9 @@ FOUNDRY_TARGET=local  # or "forge"
 # Optional: Scene artwork settings
 ENABLE_SCENE_ARTWORK=true
 IMAGE_STYLE_PROMPT=fantasy illustration, D&D 5e art style
+
+# Optional: Backend URL (for Python API client)
+BACKEND_URL=http://localhost:8000
 ```
 
 ## Architecture
@@ -183,23 +310,76 @@ PDF → Gemini AI → XML → FoundryVTT Entities
     Backend (FastAPI) ←WebSocket→ Foundry Module → FoundryVTT
 ```
 
-The system uses two integration paths:
-1. **Batch Pipeline** - Process entire PDFs via command line scripts
-2. **Real-time Chat** - Create individual entities via Tablewrite chat interface
+### Components
 
-Both paths communicate with FoundryVTT through the backend's WebSocket connection to the Tablewrite module.
+| Component | Description |
+|-----------|-------------|
+| `src/` | Core processing library (PDF, actors, scenes, journals) |
+| `ui/backend/` | FastAPI backend with WebSocket and chat tools |
+| `foundry-module/` | FoundryVTT Tablewrite Assistant module |
+| `scripts/` | Pipeline orchestration scripts |
+
+### Data Flow
+
+1. **Batch Pipeline** - Process entire PDFs via CLI: `full_pipeline.py`
+2. **Module Tab** - Upload PDFs via Foundry UI for processing
+3. **Chat Interface** - Create individual entities via natural language
+
+All paths communicate with FoundryVTT through the backend's WebSocket connection.
+
+## Project Structure
+
+```
+src/
+├── api.py                    # Public API (create_actor, create_scene)
+├── config.py                 # Centralized configuration
+├── exceptions.py             # Custom exceptions
+├── caches/                   # SpellCache, IconCache
+├── actor_pipeline/           # Actor creation from descriptions
+├── pdf_processing/           # PDF splitting, XML generation, map extraction
+├── scenes/                   # Scene creation with wall/grid detection
+├── foundry/                  # FoundryVTT client and upload
+├── foundry_converters/       # Data conversion (actors, journals)
+├── models/                   # Core data models (XMLDocument, Journal)
+└── wall_detection/           # AI wall detection for battle maps
+
+ui/backend/
+├── app/
+│   ├── main.py               # FastAPI application
+│   ├── routers/              # API endpoints (chat, actors, scenes, journals)
+│   ├── tools/                # Chat tools (11 registered tools)
+│   ├── services/             # Gemini service, command parser
+│   └── websocket/            # WebSocket connection to Foundry
+└── tests/                    # Backend tests
+
+foundry-module/tablewrite-assistant/
+├── src/                      # TypeScript source
+├── dist/                     # Compiled JavaScript
+├── styles/                   # CSS
+└── lang/                     # Localization
+
+scripts/                      # Pipeline orchestration
+output/runs/                  # Timestamped output directories
+```
 
 ## Testing
 
 ```bash
-# Smoke tests (fast, <2 min)
+# Smoke tests (fast, ~1 min, 25 tests)
 uv run pytest
 
-# Full test suite (~450 tests, requires backend + Foundry running)
+# Full test suite (~600 tests, requires backend + Foundry running)
 uv run pytest --full
+
+# Parallel execution (fastest)
+uv run pytest --full -n auto --dist loadscope
 
 # Unit tests only (no API calls)
 uv run pytest -m "not integration and not slow"
+
+# Docker tests (no Foundry required)
+docker build --target test -t tablewrite-test .
+docker run tablewrite-test
 ```
 
 ## Troubleshooting
@@ -208,7 +388,7 @@ uv run pytest -m "not integration and not slow"
 ```bash
 # Check if port 8000 is in use
 lsof -i :8000
-# Kill existing process if needed
+# Kill existing process
 lsof -ti :8000 | xargs kill -9
 ```
 
@@ -216,21 +396,54 @@ lsof -ti :8000 | xargs kill -9
 1. Ensure backend is running on port 8000
 2. Check Foundry console (F12) for WebSocket errors
 3. Verify module is enabled in your world
+4. For v13: Refresh the page after enabling the module
+
+**Tablewrite tab not appearing**
+```bash
+# Rebuild the TypeScript (if using symlink)
+cd foundry-module/tablewrite-assistant
+npm run build
+# Then refresh Foundry (F5)
+```
 
 **Map extraction fails**
 - Ensure PDF has embedded images (not scanned/flattened)
-- Check `output/runs/<timestamp>/map_assets/temp/` for debug images
+- Check `output/runs/<timestamp>/map_assets/` for debug images
 
 **Actor creation times out**
 - Actor creation takes 10-30 seconds (Gemini API calls)
-- Check backend logs for detailed error messages
+- Check backend logs: `docker-compose logs -f` or terminal output
+
+**Docker: Foundry connection refused**
+- Use `host.docker.internal` instead of `localhost` in FOUNDRY_URL
+- Ensure Foundry is accessible from the Docker network
+
+## Example Output
+
+### Map Extraction
+Battle maps are automatically detected and extracted from PDF pages:
+
+![Extracted Map](docs/screenshots/map-extraction/page_004_cragmaw_hideout.png)
+
+### Wall Detection
+AI detects walls in battle maps and exports them for FoundryVTT scenes:
+
+| Original | AI Wall Detection |
+|----------|-------------------|
+| ![Original](docs/screenshots/wall-detection/01_original.png) | ![Walls](docs/screenshots/wall-detection/05_final_overlay.png) |
+
+### Scene Artwork
+AI-generated artwork for locations in the module:
+
+![Scene Artwork](docs/screenshots/scene-artwork/scene_001.png)
 
 ## Requirements
 
 - Python 3.11+
 - [uv](https://github.com/astral-sh/uv) package manager
 - Google Gemini API key
-- FoundryVTT v10+ with Tablewrite Assistant module
+- FoundryVTT v12+ with Tablewrite Assistant module
+- Docker (optional, for containerized deployment)
 
 ## License
 
