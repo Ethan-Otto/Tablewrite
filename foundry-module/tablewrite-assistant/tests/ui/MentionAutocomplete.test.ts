@@ -74,4 +74,99 @@ describe('MentionAutocomplete', () => {
       });
     });
   });
+
+  describe('filterEntities', () => {
+    it('filters entities by case-insensitive substring match', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      const results = autocomplete.filterEntities('gob');
+
+      expect(results).toHaveLength(2);
+      // Results sorted alphabetically within same score tier
+      expect(results[0].name).toBe('Goblin Boss');
+      expect(results[1].name).toBe('Goblin Scout');
+    });
+
+    it('returns empty array for no matches', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      const results = autocomplete.filterEntities('zzz');
+
+      expect(results).toHaveLength(0);
+    });
+
+    it('prioritizes exact prefix matches over contains', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      const results = autocomplete.filterEntities('lost');
+
+      expect(results[0].name).toBe('Lost Mine of Phandelver');
+    });
+
+    it('limits results to 6 total', async () => {
+      // Add more mock actors
+      // @ts-ignore
+      globalThis.game.actors = {
+        contents: [
+          { id: '1', name: 'Goblin 1', uuid: 'Actor.1' },
+          { id: '2', name: 'Goblin 2', uuid: 'Actor.2' },
+          { id: '3', name: 'Goblin 3', uuid: 'Actor.3' },
+          { id: '4', name: 'Goblin 4', uuid: 'Actor.4' },
+          { id: '5', name: 'Goblin 5', uuid: 'Actor.5' },
+          { id: '6', name: 'Goblin 6', uuid: 'Actor.6' },
+          { id: '7', name: 'Goblin 7', uuid: 'Actor.7' },
+          { id: '8', name: 'Goblin 8', uuid: 'Actor.8' }
+        ],
+        map: function<T>(fn: (doc: any) => T): T[] { return this.contents.map(fn); }
+      };
+
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      const results = autocomplete.filterEntities('goblin');
+
+      expect(results.length).toBeLessThanOrEqual(6);
+    });
+
+    it('distributes results across entity types', async () => {
+      // Reset mocks to have multiple matching types
+      // @ts-ignore
+      globalThis.game = {
+        actors: {
+          contents: [
+            { id: '1', name: 'Cave Bear', uuid: 'Actor.1' },
+            { id: '2', name: 'Cave Spider', uuid: 'Actor.2' }
+          ],
+          map: function<T>(fn: (doc: any) => T): T[] { return this.contents.map(fn); }
+        },
+        journal: {
+          contents: [{ id: '1', name: 'Cave Notes', uuid: 'JournalEntry.1' }],
+          map: function<T>(fn: (doc: any) => T): T[] { return this.contents.map(fn); }
+        },
+        items: {
+          contents: [{ id: '1', name: 'Cave Map', uuid: 'Item.1' }],
+          map: function<T>(fn: (doc: any) => T): T[] { return this.contents.map(fn); }
+        },
+        scenes: {
+          contents: [{ id: '1', name: 'Cave Entrance', uuid: 'Scene.1' }],
+          map: function<T>(fn: (doc: any) => T): T[] { return this.contents.map(fn); }
+        }
+      };
+
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      const results = autocomplete.filterEntities('cave');
+
+      // Should have at least one from each type
+      const types = results.map(r => r.type);
+      expect(types).toContain('Actor');
+      expect(types).toContain('JournalEntry');
+      expect(types).toContain('Item');
+      expect(types).toContain('Scene');
+    });
+  });
 });
