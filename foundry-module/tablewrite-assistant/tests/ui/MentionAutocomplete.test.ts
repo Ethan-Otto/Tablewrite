@@ -47,4 +47,31 @@ describe('MentionAutocomplete', () => {
       expect(autocomplete.isOpen).toBe(false);
     });
   });
+
+  describe('getEntities', () => {
+    it('returns all entity types from game object', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      const entities = autocomplete.getEntities();
+
+      expect(entities.actors).toHaveLength(2);
+      expect(entities.journals).toHaveLength(1);
+      expect(entities.items).toHaveLength(1);
+      expect(entities.scenes).toHaveLength(1);
+    });
+
+    it('maps entities to standardized format', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      const entities = autocomplete.getEntities();
+
+      expect(entities.actors[0]).toEqual({
+        name: 'Goblin Scout',
+        uuid: 'Actor.abc123',
+        type: 'Actor'
+      });
+    });
+  });
 });
