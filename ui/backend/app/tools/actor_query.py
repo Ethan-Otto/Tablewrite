@@ -1,8 +1,17 @@
 """Actor query tool for answering questions about actor abilities and stats."""
+import asyncio
 import logging
-from typing import Optional
+import sys
+from pathlib import Path
 
 from .base import BaseTool, ToolSchema, ToolResponse
+from app.websocket import fetch_actor
+
+# Add project src to path for GeminiAPI
+project_root = Path(__file__).parent.parent.parent.parent.parent
+sys.path.insert(0, str(project_root / "src"))
+
+from util.gemini import GeminiAPI  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -62,12 +71,52 @@ class ActorQueryTool(BaseTool):
         Returns:
             ToolResponse with answer about the actor
         """
-        # Placeholder - will implement in next task
-        return ToolResponse(
-            type="error",
-            message="Not implemented yet",
-            data=None
-        )
+        try:
+            # 1. Fetch the actor from Foundry
+            result = await fetch_actor(actor_uuid)
+
+            if not result.success:
+                return ToolResponse(
+                    type="error",
+                    message=f"Failed to fetch actor: {result.error or 'Actor not found'}",
+                    data=None
+                )
+
+            actor = result.entity
+
+            # 2. Extract structured content
+            content = self._extract_actor_content(actor)
+
+            # 3. Build prompt and query Gemini
+            prompt = self._build_prompt(query, query_type, content)
+            answer = await self._query_gemini(prompt)
+
+            # 4. Return formatted response
+            return ToolResponse(
+                type="text",
+                message=answer,
+                data={
+                    "actor_name": actor.get("name"),
+                    "actor_uuid": actor_uuid,
+                    "query_type": query_type
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Actor query failed: {e}")
+            return ToolResponse(
+                type="error",
+                message=f"Failed to query actor: {str(e)}",
+                data=None
+            )
+
+    async def _query_gemini(self, prompt: str) -> str:
+        """Send prompt to Gemini and get response."""
+        def _generate():
+            api = GeminiAPI(model_name="gemini-2.0-flash")
+            return api.generate_content(prompt).text
+
+        return await asyncio.to_thread(_generate)
 
     def _build_prompt(self, query: str, query_type: str, content: str) -> str:
         """

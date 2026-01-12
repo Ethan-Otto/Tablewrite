@@ -201,3 +201,73 @@ class TestPromptBuilding:
 
         assert "Tell me about this creature" in prompt
         assert "Goblin" in prompt
+
+
+class TestExecuteMethod:
+    """Test the execute method with mocked dependencies."""
+
+    @pytest.mark.asyncio
+    async def test_execute_returns_error_for_missing_actor(self):
+        """Test execute returns error when actor not found."""
+        from app.tools.actor_query import ActorQueryTool
+        from unittest.mock import AsyncMock, patch
+
+        tool = ActorQueryTool()
+
+        # Mock fetch_actor to return failure
+        mock_result = AsyncMock()
+        mock_result.success = False
+        mock_result.error = "Actor not found"
+
+        with patch("app.tools.actor_query.fetch_actor", return_value=mock_result):
+            response = await tool.execute(
+                actor_uuid="Actor.nonexistent",
+                query="What can this do?",
+                query_type="general"
+            )
+
+        assert response.type == "error"
+        assert "not found" in response.message.lower() or "failed" in response.message.lower()
+
+    @pytest.mark.asyncio
+    async def test_execute_returns_answer_for_valid_actor(self):
+        """Test execute returns answer for valid actor."""
+        from app.tools.actor_query import ActorQueryTool
+        from unittest.mock import AsyncMock, patch, MagicMock
+
+        tool = ActorQueryTool()
+
+        # Mock fetch_actor to return success
+        mock_fetch_result = AsyncMock()
+        mock_fetch_result.success = True
+        mock_fetch_result.entity = {
+            "name": "Goblin",
+            "system": {
+                "details": {"cr": 0.25, "type": {"value": "humanoid"}},
+                "attributes": {"ac": {"value": 15}, "hp": {"value": 7}},
+                "abilities": {
+                    "str": {"value": 8, "mod": -1},
+                    "dex": {"value": 14, "mod": 2},
+                    "con": {"value": 10, "mod": 0},
+                    "int": {"value": 10, "mod": 0},
+                    "wis": {"value": 8, "mod": -1},
+                    "cha": {"value": 8, "mod": -1}
+                }
+            },
+            "items": []
+        }
+
+        # Mock Gemini response
+        mock_gemini = MagicMock()
+        mock_gemini.generate_content.return_value.text = "The goblin is a small humanoid with decent dexterity."
+
+        with patch("app.tools.actor_query.fetch_actor", return_value=mock_fetch_result):
+            with patch("app.tools.actor_query.GeminiAPI", return_value=mock_gemini):
+                response = await tool.execute(
+                    actor_uuid="Actor.abc123",
+                    query="What is this creature?",
+                    query_type="general"
+                )
+
+        assert response.type == "text"
+        assert "goblin" in response.message.lower()
