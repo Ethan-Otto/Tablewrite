@@ -80,13 +80,26 @@ declare global {
     i18n: Localization;
     actors: ActorCollection | null;
     scenes: SceneCollection | null;
+    journal: JournalCollection | null;
+    items: ItemCollection | null;
     folders: FolderCollection | null;
     packs: CompendiumCollection;
     world: World;
   }
 
   interface ActorCollection {
+    contents: FoundryDocument[];
     map<T>(fn: (actor: FoundryDocument) => T): T[];
+  }
+
+  interface JournalCollection {
+    contents: FoundryDocument[];
+    map<T>(fn: (journal: FoundryDocument) => T): T[];
+  }
+
+  interface ItemCollection {
+    contents: FoundryDocument[];
+    map<T>(fn: (item: FoundryDocument) => T): T[];
   }
 
   interface SceneDocument extends FoundryDocument {
@@ -129,6 +142,7 @@ declare global {
   // FoundryVTT Document interface (for fetched documents)
   interface FoundryDocument {
     id: string;
+    uuid: string;
     name: string;
     folder?: { id: string } | null;
     toObject(): Record<string, unknown>;

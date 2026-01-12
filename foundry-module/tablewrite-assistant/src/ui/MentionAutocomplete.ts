@@ -16,13 +16,6 @@ export interface EntityGroups {
   scenes: MentionEntity[];
 }
 
-declare const game: {
-  actors?: Array<{ name: string; uuid: string }>;
-  journal?: Array<{ name: string; uuid: string }>;
-  items?: Array<{ name: string; uuid: string }>;
-  scenes?: Array<{ name: string; uuid: string }>;
-};
-
 export class MentionAutocomplete {
   private textarea: HTMLTextAreaElement;
   private _isOpen: boolean = false;
@@ -36,25 +29,31 @@ export class MentionAutocomplete {
   }
 
   getEntities(): EntityGroups {
+    // Access collections using .contents pattern consistent with the codebase
+    const actorContents = game.actors?.contents ?? [];
+    const journalContents = game.journal?.contents ?? [];
+    const itemContents = game.items?.contents ?? [];
+    const sceneContents = game.scenes?.contents ?? [];
+
     return {
-      actors: (game.actors ?? []).map((a: any) => ({
-        name: a.name,
-        uuid: a.uuid,
+      actors: actorContents.map((doc: FoundryDocument) => ({
+        name: doc.name,
+        uuid: doc.uuid,
         type: 'Actor' as const
       })),
-      journals: (game.journal ?? []).map((j: any) => ({
-        name: j.name,
-        uuid: j.uuid,
+      journals: journalContents.map((doc: FoundryDocument) => ({
+        name: doc.name,
+        uuid: doc.uuid,
         type: 'JournalEntry' as const
       })),
-      items: (game.items ?? []).map((i: any) => ({
-        name: i.name,
-        uuid: i.uuid,
+      items: itemContents.map((doc: FoundryDocument) => ({
+        name: doc.name,
+        uuid: doc.uuid,
         type: 'Item' as const
       })),
-      scenes: (game.scenes ?? []).map((s: any) => ({
-        name: s.name,
-        uuid: s.uuid,
+      scenes: sceneContents.map((doc: FoundryDocument) => ({
+        name: doc.name,
+        uuid: doc.uuid,
         type: 'Scene' as const
       }))
     };
