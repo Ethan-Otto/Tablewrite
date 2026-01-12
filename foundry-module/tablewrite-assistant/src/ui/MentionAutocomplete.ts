@@ -266,7 +266,8 @@ export class MentionAutocomplete {
     }
 
     const selected = this.currentResults[this.selectedIndex];
-    const mention = `@[${selected.name}](${selected.type}.${selected.uuid}) `;
+    // UUID already includes type prefix (e.g., "Actor.abc123"), so don't duplicate it
+    const mention = `@[${selected.name}](${selected.uuid}) `;
 
     const cursorPos = this.textarea.selectionStart;
     const textBeforeCursor = this.textarea.value.substring(0, cursorPos);
