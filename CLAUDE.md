@@ -398,3 +398,131 @@ lsof -ti :8000 | xargs kill -9; cd ui/backend && uvicorn app.main:app --reload -
 - Short, imperative mood summaries
 - Group related changes
 - Copy `.env` when creating new worktree
+
+## Playwright Testing for FoundryVTT
+
+Use the `FoundrySession` helper for E2E testing. Located at:
+`foundry-module/tablewrite-assistant/scripts/feedback/foundry_helper.py`
+
+### Using FoundrySession Helper
+
+```python
+# Add helper to path
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent / "foundry-module/tablewrite-assistant/scripts/feedback"))
+
+from foundry_helper import FoundrySession
+
+# Basic usage - headless=False for debugging
+with FoundrySession(headless=False, user="Testing") as session:
+    # Navigate to Tablewrite tab
+    session.goto_tablewrite()
+
+    # Send a message and wait for response
+    session.send_message("Create a goblin", wait=30)
+
+    # Get response
+    response_text = session.get_message_text()
+    response_html = session.get_message_html()
+
+    # Take screenshot
+    session.screenshot("/tmp/result.png")
+
+    # Check tab switching works
+    results = session.check_tab_switching()
+    print(f"Tab switching: {results}")
+```
+
+### Quick One-Liners
+
+```python
+from foundry_helper import quick_screenshot, test_message
+
+# Take screenshot of current state
+quick_screenshot("/tmp/foundry.png")
+
+# Send message and get response
+result = test_message("Create a goblin scout")
+print(result['text'])
+```
+
+### FoundrySession Methods
+
+| Method | Description |
+|--------|-------------|
+| `goto_tablewrite()` | Click Tablewrite tab |
+| `goto_chat()` | Click native Chat tab |
+| `send_message(text, wait=3)` | Send message, wait for response |
+| `screenshot(path, selector="#sidebar")` | Take screenshot |
+| `get_message_text()` | Get latest assistant message text |
+| `get_message_html()` | Get latest assistant message HTML |
+| `get_all_messages()` | Get all messages as list |
+| `check_tab_switching()` | Verify tab visibility |
+
+### Raw Playwright (for debugging)
+
+```python
+from playwright.sync_api import sync_playwright
+
+with sync_playwright() as p:
+    browser = p.chromium.launch(headless=False)
+    page = browser.new_page(viewport={'width': 1920, 'height': 1080})
+
+    # Capture console
+    page.on("console", lambda msg: print(f"[{msg.type}] {msg.text}"))
+
+    page.goto("http://localhost:30000")
+    page.wait_for_load_state('networkidle')
+
+    # Check module status
+    module_info = page.evaluate('''() => {
+        const mod = game.modules.get('tablewrite-assistant');
+        return mod ? { id: mod.id, active: mod.active } : null;
+    }''')
+    print(f"Module: {module_info}")
+
+    browser.close()
+```
+
+### Key Selectors for FoundryVTT
+
+| Element | Selector |
+|---------|----------|
+| Join form | `#join-game` |
+| User dropdown | `select[name="userid"]` |
+| Join button | `button[name="join"]` |
+| Sidebar | `#sidebar` |
+| Sidebar tabs | `#sidebar-tabs` |
+| Tab by name | `[data-tab="tablewrite"]` |
+| Chat tab | `[data-tab="chat"]` |
+
+### Checking Module Status via JS
+
+```python
+# Check if module is loaded and active
+module_info = page.evaluate('''() => {
+    const mod = game.modules.get('tablewrite-assistant');
+    return mod ? { id: mod.id, active: mod.active, title: mod.title } : null;
+}''')
+
+# Check registered hooks
+hooks = page.evaluate('''() => {
+    return Object.keys(Hooks.events || {}).filter(k => k.includes('Sidebar'));
+}''')
+```
+
+### Symlink for Development
+
+The module must be symlinked to Foundry's modules directory:
+
+```bash
+# Check current symlink
+ls -la "/Users/ethanotto/Library/Application Support/FoundryVTT/Data/modules/tablewrite-assistant"
+
+# Update symlink for worktree development
+rm "/Users/ethanotto/Library/Application Support/FoundryVTT/Data/modules/tablewrite-assistant"
+ln -s "$(pwd)/foundry-module/tablewrite-assistant" "/Users/ethanotto/Library/Application Support/FoundryVTT/Data/modules/tablewrite-assistant"
+
+# Restart Foundry or refresh world after symlink change
+```

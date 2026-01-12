@@ -174,4 +174,86 @@ describe('main.ts', () => {
     // Client should be null after close
     expect(client).toBeNull();
   });
+
+  it('renderSidebar hook adds tab with native DOM (v12 fallback)', async () => {
+    // Create mock HTMLElement sidebar for v12 structure (a.item)
+    const mockSidebar = document.createElement('div');
+    mockSidebar.innerHTML = `
+      <nav id="sidebar-tabs">
+        <a class="item" data-tab="chat"><i class="fas fa-comments"></i></a>
+      </nav>
+    `;
+
+    // Mock game.i18n
+    // @ts-ignore
+    globalThis.game.i18n = {
+      localize: vi.fn().mockReturnValue('Tablewrite Assistant')
+    };
+
+    await import('../src/main');
+
+    // Trigger renderSidebar hook with HTMLElement (not JQuery)
+    const renderCallback = hookCallbacks['renderSidebar']?.[0];
+    expect(renderCallback).toBeDefined();
+
+    // Call with HTMLElement as v13 does
+    renderCallback?.({}, mockSidebar, {}, {});
+
+    // Verify tab was added (v12 fallback uses 'a' tag)
+    const tabButton = mockSidebar.querySelector('[data-tab="tablewrite"]');
+    expect(tabButton).not.toBeNull();
+    expect(tabButton?.tagName).toBe('A');
+    expect(tabButton?.classList.contains('item')).toBe(true);
+
+    // Verify tab content container was added
+    const tabContent = mockSidebar.querySelector('#tablewrite');
+    expect(tabContent).not.toBeNull();
+    expect(tabContent?.classList.contains('tab')).toBe(true);
+  });
+
+  it('renderSidebar hook adds tab with v13 button-in-li structure', async () => {
+    // Create mock HTMLElement sidebar for v13 structure (button in li in menu)
+    const mockSidebar = document.createElement('div');
+    mockSidebar.innerHTML = `
+      <nav id="sidebar-tabs">
+        <menu class="flexcol">
+          <li>
+            <button type="button" class="ui-control plain icon fa-solid fa-comments" data-action="tab" data-tab="chat" role="tab"></button>
+          </li>
+        </menu>
+      </nav>
+    `;
+
+    // Mock game.i18n
+    // @ts-ignore
+    globalThis.game.i18n = {
+      localize: vi.fn().mockReturnValue('Tablewrite Assistant')
+    };
+
+    await import('../src/main');
+
+    // Trigger renderSidebar hook
+    const renderCallback = hookCallbacks['renderSidebar']?.[0];
+    expect(renderCallback).toBeDefined();
+
+    // v13 passes parts array including 'tabs'
+    renderCallback?.({}, mockSidebar, {}, { parts: ['tabs', 'footer'] });
+
+    // Verify tab was added (v13 uses 'button' tag in 'li' wrapper)
+    const tabButton = mockSidebar.querySelector('button[data-tab="tablewrite"]');
+    expect(tabButton).not.toBeNull();
+    expect(tabButton?.tagName).toBe('BUTTON');
+    expect(tabButton?.classList.contains('ui-control')).toBe(true);
+    expect(tabButton?.getAttribute('role')).toBe('tab');
+
+    // Verify li wrapper was created
+    const tabLi = tabButton?.closest('li');
+    expect(tabLi).not.toBeNull();
+
+    // Verify tab content container was added with v13 attributes
+    const tabContent = mockSidebar.querySelector('#tablewrite');
+    expect(tabContent).not.toBeNull();
+    expect(tabContent?.classList.contains('tab')).toBe(true);
+    expect(tabContent?.dataset.group).toBe('primary');
+  });
 });

@@ -4,9 +4,27 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 const mockFetch = vi.fn();
 globalThis.fetch = mockFetch;
 
-// Mock getBackendUrl
+// Mock game object with system info and settings
+(globalThis as any).game = {
+  system: {
+    id: 'dnd5e',
+    title: 'DnD5e'
+  },
+  settings: {
+    get: (module: string, key: string) => {
+      if (module === 'dnd5e' && key === 'rulesVersion') {
+        return 'legacy';  // 2014 rules
+      }
+      return undefined;
+    }
+  }
+};
+
+// Mock settings functions
 vi.mock('../../src/settings.js', () => ({
-  getBackendUrl: () => 'http://localhost:8000'
+  getBackendUrl: () => 'http://localhost:8000',
+  isTokenArtEnabled: () => true,
+  getArtStyle: () => 'watercolor'
 }));
 
 describe('ChatService', () => {
@@ -46,13 +64,23 @@ describe('ChatService', () => {
       const callArgs = mockFetch.mock.calls[0];
       const body = JSON.parse(callArgs[1].body);
       expect(body.message).toBe('How are you?');
-      expect(body.context).toEqual({});
+      expect(body.context).toEqual({
+        settings: {
+          tokenArtEnabled: true,
+          artStyle: 'watercolor'
+        },
+        gameSystem: {
+          id: 'dnd5e',
+          title: 'DnD5e',
+          rulesVersion: 'legacy'
+        }
+      });
       expect(body.conversation_history).toHaveLength(2);
       expect(body.conversation_history[0].role).toBe('user');
       expect(body.conversation_history[0].content).toBe('Hi');
     });
 
-    it('returns the message from response', async () => {
+    it('returns the full ChatResponse object', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ message: 'I am doing well!', type: 'text' })
@@ -62,7 +90,7 @@ describe('ChatService', () => {
 
       const result = await chatService.send('Hello', []);
 
-      expect(result).toBe('I am doing well!');
+      expect(result).toEqual({ message: 'I am doing well!', type: 'text' });
     });
 
     it('throws error when response is not ok', async () => {

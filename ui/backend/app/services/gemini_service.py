@@ -43,7 +43,8 @@ class GeminiService:
         self,
         message: str,
         conversation_history: List[Dict[str, str]],
-        tools: List['ToolSchema']
+        tools: List['ToolSchema'],
+        context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Generate response with tool calling support.
@@ -52,6 +53,7 @@ class GeminiService:
             message: User message
             conversation_history: Previous messages
             tools: Available tool schemas
+            context: Request context (game system, settings, etc.)
 
         Returns:
             Response dict with type and content
@@ -59,8 +61,8 @@ class GeminiService:
         # Convert tool schemas to Gemini format
         gemini_functions = [self._schema_to_gemini_tool(t) for t in tools]
 
-        # Build prompt with history
-        prompt = self._build_chat_prompt(message, {}, conversation_history)
+        # Build prompt with history and context
+        prompt = self._build_chat_prompt(message, context or {}, conversation_history)
 
         # Generate with function calling
         if gemini_functions:
@@ -155,7 +157,8 @@ Answer (YES or NO):"""
     def generate_with_thinking(
         self,
         message: str,
-        conversation_history: Optional[list] = None
+        conversation_history: Optional[list] = None,
+        context: Optional[Dict[str, Any]] = None
     ) -> str:
         """
         Generate a response using extended thinking for thorough reasoning.
@@ -163,20 +166,37 @@ Answer (YES or NO):"""
         Args:
             message: User message
             conversation_history: Previous messages
+            context: Request context (game system, settings, etc.)
 
         Returns:
             Generated response with thorough reasoning
         """
         # Build prompt optimized for rules explanation
-        prompt = """You are an expert D&D 5e rules advisor. Answer the following question thoroughly and accurately.
+        game_system = (context or {}).get("gameSystem", {})
+        system_title = game_system.get("title", "D&D 5e")
+        rules_version = game_system.get("rulesVersion")
 
-Include:
-- The core rule mechanics
-- Relevant page references if known (PHB, DMG, etc.)
-- Common edge cases or clarifications
-- Practical examples when helpful
+        # Determine which ruleset to use
+        if rules_version == "modern":
+            rules_info = "**Rules Version:** 2024 rules\nUse the 2024 Player's Handbook rules. Note key differences from 2014 rules where relevant."
+        elif rules_version == "legacy":
+            rules_info = "**Rules Version:** 2014 rules\nUse the 2014 Player's Handbook rules."
+        elif rules_version:
+            # Other systems might have their own version strings
+            rules_info = f"**Rules Version:** {rules_version}"
+        else:
+            rules_info = ""
 
-Think through this step by step before answering.
+        prompt = f"""You are an expert {system_title} rules advisor. Give a clear, concise answer.
+
+{rules_info}
+
+Be brief but accurate. Only include:
+- The core mechanic (1-3 sentences)
+- Key details players need to know
+- Page reference if known
+
+Do NOT include lengthy explanations, multiple examples, or edge cases unless specifically asked.
 
 """
 
@@ -248,6 +268,29 @@ Available commands:
 - /help - Show help
 
 """
+
+        # Add game system context
+        game_system = context.get("gameSystem", {})
+        print(f"[DEBUG] Game system context: {game_system}")
+        if game_system:
+            system_id = game_system.get("id", "unknown")
+            system_title = game_system.get("title", "Unknown System")
+            rules_version = game_system.get("rulesVersion")
+
+            prompt += f"\n**Game System:** {system_title} (system id: {system_id})"
+
+            # Add rules version context
+            if rules_version:
+                if system_id == "dnd5e":
+                    if rules_version == "legacy":
+                        prompt += " - Using 2014 (Legacy) Rules"
+                    elif rules_version == "modern":
+                        prompt += " - Using 2024 Rules"
+                else:
+                    # Pass through any rules version for other systems
+                    prompt += f" - Rules: {rules_version}"
+
+            prompt += "\nTailor all content, rules references, and mechanics to this specific game system and rules version.\n\n"
 
         if context.get("module"):
             prompt += f"Current module: {context['module']}\n"

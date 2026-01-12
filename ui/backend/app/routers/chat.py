@@ -58,9 +58,11 @@ async def chat(request: ChatRequest) -> ChatResponse:
             # Check if this is a rules question
             if gemini_service.is_rules_question(request.message):
                 print("[DEBUG] Detected rules question, using thinking mode")
+                print(f"[DEBUG] Rules question context: {request.context.get('gameSystem', {})}")
                 response_text = gemini_service.generate_with_thinking(
                     message=request.message,
-                    conversation_history=history_dicts
+                    conversation_history=history_dicts,
+                    context=request.context
                 )
                 return ChatResponse(
                     message=response_text,
@@ -79,7 +81,8 @@ async def chat(request: ChatRequest) -> ChatResponse:
             response = await gemini_service.generate_with_tools(
                 message=request.message,
                 conversation_history=history_dicts,
-                tools=tool_schemas
+                tools=tool_schemas,
+                context=request.context
             )
             print(f"[DEBUG] Gemini response type: {response.get('type')}")
             print(f"[DEBUG] Gemini response: {response}")
