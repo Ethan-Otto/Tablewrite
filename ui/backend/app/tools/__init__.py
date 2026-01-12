@@ -10,6 +10,7 @@ from .journal_editor import JournalEditorTool
 from .scene_creator import SceneCreatorTool
 from .asset_deleter import AssetDeleterTool
 from .journal_query import JournalQueryTool
+from .actor_query import ActorQueryTool
 from .list_actors import ListActorsTool
 from .list_scenes import ListScenesTool
 from .help import HelpTool
@@ -24,6 +25,7 @@ registry.register(JournalEditorTool())
 registry.register(SceneCreatorTool())
 registry.register(AssetDeleterTool())
 registry.register(JournalQueryTool())
+registry.register(ActorQueryTool())
 registry.register(ListActorsTool())
 registry.register(ListScenesTool())
 registry.register(HelpTool())
@@ -43,6 +45,7 @@ __all__ = [
     'SceneCreatorTool',
     'AssetDeleterTool',
     'JournalQueryTool',
+    'ActorQueryTool',
     'ListActorsTool',
     'ListScenesTool',
     'HelpTool',
