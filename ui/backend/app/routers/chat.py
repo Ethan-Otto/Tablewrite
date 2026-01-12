@@ -1,13 +1,119 @@
 """Chat router for Module Assistant API."""
 
+import re
 from fastapi import APIRouter, HTTPException
 from app.models.chat import ChatRequest, ChatResponse
 from app.services.command_parser import CommandParser, CommandType
 from app.services.gemini_service import GeminiService
 from app.tools import registry
 from app.tools.actor_creator import set_request_context
+from app.websocket import fetch_actor, fetch_journal
 
 router = APIRouter(prefix="/api", tags=["chat"])
+
+# Regex to match mentions: @[Name](Type.uuid)
+MENTION_PATTERN = re.compile(r'@\[([^\]]+)\]\(([^)]+)\)')
+
+
+async def parse_and_resolve_mentions(message: str) -> tuple[str, list[dict]]:
+    """
+    Parse mentions in message and resolve them to entity context.
+
+    Args:
+        message: Raw message with mentions like @[Goblin](Actor.abc123)
+
+    Returns:
+        tuple: (cleaned_message, list of resolved entity contexts)
+    """
+    mentions = MENTION_PATTERN.findall(message)
+    if not mentions:
+        return message, []
+
+    resolved_entities = []
+    cleaned_message = message
+
+    for name, uuid_str in mentions:
+        # Parse the type from UUID (format: Type.id or just id)
+        if '.' in uuid_str:
+            entity_type = uuid_str.split('.')[0]
+            entity_id = uuid_str.split('.', 1)[1]
+        else:
+            entity_type = "Unknown"
+            entity_id = uuid_str
+
+        entity_context = {
+            "name": name,
+            "type": entity_type,
+            "uuid": uuid_str,
+            "details": None
+        }
+
+        # Try to fetch entity details based on type
+        try:
+            if entity_type == "Actor":
+                result = await fetch_actor(entity_id)
+                if result.success and result.entity:
+                    entity_context["details"] = _extract_actor_summary(result.entity)
+            elif entity_type == "JournalEntry":
+                result = await fetch_journal(entity_id)
+                if result.success and result.entity:
+                    entity_context["details"] = _extract_journal_summary(result.entity)
+            # Items and Scenes could be added similarly
+        except Exception as e:
+            print(f"[DEBUG] Failed to fetch entity {uuid_str}: {e}")
+
+        resolved_entities.append(entity_context)
+
+        # Replace mention with cleaner reference in message
+        original_mention = f"@[{name}]({uuid_str})"
+        clean_ref = f"[{entity_type}: {name}]"
+        cleaned_message = cleaned_message.replace(original_mention, clean_ref)
+
+    return cleaned_message, resolved_entities
+
+
+def _extract_actor_summary(actor: dict) -> str:
+    """Extract a summary of actor details for context."""
+    name = actor.get("name", "Unknown")
+    system = actor.get("system", {})
+
+    parts = [f"Name: {name}"]
+
+    # HP
+    hp = system.get("attributes", {}).get("hp", {})
+    if hp.get("max"):
+        parts.append(f"HP: {hp.get('value', hp.get('max'))}/{hp.get('max')}")
+
+    # AC
+    ac = system.get("attributes", {}).get("ac", {})
+    if ac.get("value"):
+        parts.append(f"AC: {ac.get('value')}")
+
+    # CR
+    cr = system.get("details", {}).get("cr")
+    if cr is not None:
+        parts.append(f"CR: {cr}")
+
+    # Type
+    creature_type = system.get("details", {}).get("type", {}).get("value")
+    if creature_type:
+        parts.append(f"Type: {creature_type}")
+
+    return "; ".join(parts)
+
+
+def _extract_journal_summary(journal: dict) -> str:
+    """Extract a summary of journal details for context."""
+    name = journal.get("name", "Unknown")
+    pages = journal.get("pages", [])
+
+    parts = [f"Name: {name}", f"Pages: {len(pages)}"]
+
+    if pages:
+        page_names = [p.get("name", "Untitled") for p in pages[:5]]
+        parts.append(f"Page titles: {', '.join(page_names)}")
+
+    return "; ".join(parts)
 
 # Initialize services
 command_parser = CommandParser()
@@ -45,6 +151,15 @@ async def chat(request: ChatRequest) -> ChatResponse:
             )
 
         else:  # Regular chat
+            # Parse and resolve any @mentions in the message
+            cleaned_message, resolved_entities = await parse_and_resolve_mentions(request.message)
+
+            # If we have resolved entities, add their context
+            enhanced_context = dict(request.context) if request.context else {}
+            if resolved_entities:
+                enhanced_context["mentioned_entities"] = resolved_entities
+                print(f"[DEBUG] Resolved {len(resolved_entities)} mentions: {[e['name'] for e in resolved_entities]}")
+
             # Convert conversation history to dict format
             history_dicts = [
                 {
@@ -56,13 +171,13 @@ async def chat(request: ChatRequest) -> ChatResponse:
             ]
 
             # Check if this is a rules question
-            if gemini_service.is_rules_question(request.message):
+            if gemini_service.is_rules_question(cleaned_message):
                 print("[DEBUG] Detected rules question, using thinking mode")
-                print(f"[DEBUG] Rules question context: {request.context.get('gameSystem', {})}")
+                print(f"[DEBUG] Rules question context: {enhanced_context.get('gameSystem', {})}")
                 response_text = gemini_service.generate_with_thinking(
-                    message=request.message,
+                    message=cleaned_message,
                     conversation_history=history_dicts,
-                    context=request.context
+                    context=enhanced_context
                 )
                 return ChatResponse(
                     message=response_text,
@@ -71,7 +186,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
                 )
 
             # Set request context for tool execution
-            set_request_context(request.context)
+            set_request_context(enhanced_context)
 
             # Get all available tool schemas
             tool_schemas = registry.get_schemas()
@@ -79,10 +194,10 @@ async def chat(request: ChatRequest) -> ChatResponse:
 
             # Call Gemini with function calling enabled
             response = await gemini_service.generate_with_tools(
-                message=request.message,
+                message=cleaned_message,
                 conversation_history=history_dicts,
                 tools=tool_schemas,
-                context=request.context
+                context=enhanced_context
             )
             print(f"[DEBUG] Gemini response type: {response.get('type')}")
             print(f"[DEBUG] Gemini response: {response}")
