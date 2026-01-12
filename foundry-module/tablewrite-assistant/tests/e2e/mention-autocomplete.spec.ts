@@ -32,31 +32,43 @@ async function joinFoundry(page: Page): Promise<void> {
   await page.waitForLoadState('networkidle');
 
   // Check if we need to join (join form visible)
-  const userSelect = page.locator('select[name="userid"]');
-  const isJoinVisible = await userSelect.isVisible({ timeout: 3000 }).catch(() => false);
+  const joinForm = page.locator('#join-game');
+  const isJoinVisible = await joinForm.isVisible({ timeout: 3000 }).catch(() => false);
 
   if (isJoinVisible) {
-    // Get all available options
-    const options = await userSelect.locator('option').all();
+    const userSelect = page.locator('select[name="userid"]');
+
+    // Wait for options to be populated
+    await page.waitForFunction(() => {
+      const select = document.querySelector('select[name="userid"]');
+      return select && select.options.length > 1; // More than just the placeholder
+    }, { timeout: 5000 }).catch(() => null);
+
+    // Get all available options using JavaScript evaluation for reliability
+    const optionsData = await page.evaluate(() => {
+      const select = document.querySelector('select[name="userid"]') as HTMLSelectElement;
+      if (!select) return [];
+      return Array.from(select.options).map(opt => ({
+        value: opt.value,
+        text: opt.textContent?.trim() || ''
+      }));
+    });
+
     let selectedValue: string | null = null;
 
     // Look for Testing user first
-    for (const option of options) {
-      const text = await option.textContent();
-      const value = await option.getAttribute('value');
-      if (text?.toLowerCase().includes('testing') && value) {
-        selectedValue = value;
+    for (const opt of optionsData) {
+      if (opt.text.toLowerCase().includes('testing') && opt.value) {
+        selectedValue = opt.value;
         break;
       }
     }
 
     // If no Testing user, select first non-empty, non-GM option
     if (!selectedValue) {
-      for (const option of options) {
-        const text = await option.textContent();
-        const value = await option.getAttribute('value');
-        if (value && text && !text.toLowerCase().includes('gamemaster') && text.trim() !== '') {
-          selectedValue = value;
+      for (const opt of optionsData) {
+        if (opt.value && opt.text && !opt.text.toLowerCase().includes('gamemaster') && opt.text.trim() !== '') {
+          selectedValue = opt.value;
           break;
         }
       }
@@ -64,11 +76,11 @@ async function joinFoundry(page: Page): Promise<void> {
 
     // If we found a user, select and join
     if (selectedValue) {
-      await userSelect.selectOption({ value: selectedValue });
+      await userSelect.selectOption(selectedValue);
       await page.click('button[name="join"]');
       await page.waitForLoadState('networkidle');
     } else {
-      throw new Error('No available user to join as');
+      throw new Error('No available user to join as - found options: ' + JSON.stringify(optionsData));
     }
   }
 
@@ -80,9 +92,9 @@ async function joinFoundry(page: Page): Promise<void> {
  * Helper to navigate to Tablewrite tab.
  */
 async function gotoTablewriteTab(page: Page): Promise<void> {
-  // Click on the Tablewrite tab button (not the section)
-  // Use role selector to get the tab button specifically
-  const tablewriteTab = page.getByRole('tab', { name: 'Tablewrite' });
+  // Click on the Tablewrite tab button specifically (button element with data-tab)
+  // The section also has data-tab="tablewrite", so we need to target the button
+  const tablewriteTab = page.locator('button[data-tab="tablewrite"]');
   await tablewriteTab.click();
 
   // Wait for the input to be visible
