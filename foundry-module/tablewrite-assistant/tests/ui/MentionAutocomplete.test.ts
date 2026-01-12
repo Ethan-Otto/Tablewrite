@@ -401,4 +401,141 @@ describe('MentionAutocomplete', () => {
       expect(autocomplete.handleKeyDown(new KeyboardEvent('keydown', { key: 'Shift' }))).toBe(false);
     });
   });
+
+  describe('insertSelected', () => {
+    // Mock data for insertion tests
+    const mockActors = [
+      { id: 'abc123', name: 'Goblin Boss', uuid: 'Actor.abc123' },
+      { id: 'def456', name: 'Goblin Scout', uuid: 'Actor.def456' }
+    ];
+    const mockJournals = [
+      { id: 'xyz789', name: 'Lost Mine of Phandelver', uuid: 'JournalEntry.xyz789' }
+    ];
+    const mockItems = [
+      { id: 'item001', name: 'Longsword', uuid: 'Item.item001' }
+    ];
+    const mockScenes = [
+      { id: 'scene001', name: 'Cragmaw Hideout', uuid: 'Scene.scene001' }
+    ];
+
+    beforeEach(() => {
+      // @ts-ignore
+      globalThis.game = {
+        actors: {
+          contents: mockActors,
+          map: function<T>(fn: (doc: any) => T): T[] { return this.contents.map(fn); }
+        },
+        journal: {
+          contents: mockJournals,
+          map: function<T>(fn: (doc: any) => T): T[] { return this.contents.map(fn); }
+        },
+        items: {
+          contents: mockItems,
+          map: function<T>(fn: (doc: any) => T): T[] { return this.contents.map(fn); }
+        },
+        scenes: {
+          contents: mockScenes,
+          map: function<T>(fn: (doc: any) => T): T[] { return this.contents.map(fn); }
+        }
+      };
+    });
+
+    it('inserts formatted mention at cursor position', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      textarea.value = '@gob';
+      textarea.selectionStart = 4;
+      textarea.selectionEnd = 4;
+
+      autocomplete.open('@gob'.substring(1)); // 'gob'
+
+      // Wait for any async operations
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      autocomplete.insertSelected();
+
+      // Should replace @gob with formatted mention
+      expect(textarea.value).toMatch(/@\[.+\]\(.+\) /);
+    });
+
+    it('replaces @query text with mention', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      textarea.value = 'Hello @test world';
+      textarea.selectionStart = 11; // After @test
+      textarea.selectionEnd = 11;
+
+      // Update game mock with matching entity for 'test'
+      // @ts-ignore
+      globalThis.game.actors = {
+        contents: [{ id: 'test1', name: 'Test Monster', uuid: 'Actor.test1' }],
+        map: function<T>(fn: (doc: any) => T): T[] { return this.contents.map(fn); }
+      };
+
+      autocomplete.open('test');
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      autocomplete.insertSelected();
+
+      expect(textarea.value).toContain('Hello @[');
+      expect(textarea.value).toMatch(/\) +world/); // Trailing space from mention + existing space
+      expect(textarea.value).not.toContain('@test ');
+    });
+
+    it('positions cursor after inserted mention', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      textarea.value = '@gob';
+      textarea.selectionStart = 4;
+      textarea.selectionEnd = 4;
+
+      autocomplete.open('gob');
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      autocomplete.insertSelected();
+
+      // Cursor should be after the mention (after the trailing space)
+      expect(textarea.selectionStart).toBeGreaterThan(4);
+      expect(textarea.selectionStart).toBe(textarea.selectionEnd);
+    });
+
+    it('closes dropdown after insertion', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      textarea.value = '@gob';
+      textarea.selectionStart = 4;
+      textarea.selectionEnd = 4;
+
+      autocomplete.open('gob');
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(autocomplete.isOpen).toBe(true);
+
+      autocomplete.insertSelected();
+
+      expect(autocomplete.isOpen).toBe(false);
+    });
+
+    it('does nothing when no results available', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      textarea.value = '@xyz123nonexistent';
+      textarea.selectionStart = 18;
+      textarea.selectionEnd = 18;
+
+      // Don't open - currentResults will be empty
+      autocomplete.insertSelected();
+
+      // Value should be unchanged
+      expect(textarea.value).toBe('@xyz123nonexistent');
+    });
+  });
 });

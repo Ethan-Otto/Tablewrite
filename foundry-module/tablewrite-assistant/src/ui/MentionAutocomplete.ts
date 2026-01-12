@@ -217,8 +217,33 @@ export class MentionAutocomplete {
     });
   }
 
-  private insertSelected(): void {
-    // Placeholder - will be implemented in Task 6
+  insertSelected(): void {
+    if (this.currentResults.length === 0) {
+      this.close();
+      return;
+    }
+
+    const selected = this.currentResults[this.selectedIndex];
+    const mention = `@[${selected.name}](${selected.type}.${selected.uuid}) `;
+
+    const cursorPos = this.textarea.selectionStart;
+    const textBeforeCursor = this.textarea.value.substring(0, cursorPos);
+    const atIndex = textBeforeCursor.lastIndexOf('@');
+
+    if (atIndex === -1) {
+      this.close();
+      return;
+    }
+
+    const beforeAt = this.textarea.value.substring(0, atIndex);
+    const afterCursor = this.textarea.value.substring(cursorPos);
+
+    this.textarea.value = beforeAt + mention + afterCursor;
+
+    const newCursorPos = atIndex + mention.length;
+    this.textarea.selectionStart = newCursorPos;
+    this.textarea.selectionEnd = newCursorPos;
+
     this.close();
   }
 
