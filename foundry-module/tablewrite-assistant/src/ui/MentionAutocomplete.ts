@@ -112,6 +112,22 @@ export class MentionAutocomplete {
           item.dataset.uuid = entity.uuid;
           item.dataset.type = entity.type;
           item.dataset.name = entity.name;
+
+          // Capture current index for closures
+          const currentIndex = itemIndex;
+
+          // Add click handler to insert selected mention
+          item.addEventListener('click', () => {
+            this.selectedIndex = currentIndex;
+            this.insertSelected();
+          });
+
+          // Add mouseenter handler to update selection
+          item.addEventListener('mouseenter', () => {
+            this.selectedIndex = currentIndex;
+            this.updateSelectionHighlight();
+          });
+
           group.appendChild(item);
           itemIndex++;
         }
