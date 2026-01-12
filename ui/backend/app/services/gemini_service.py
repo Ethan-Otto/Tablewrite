@@ -259,7 +259,19 @@ Keep it concise (2-3 sentences) and evocative."""
         """Build prompt with context and conversation history."""
         prompt = """You are a helpful D&D Module Assistant. You help users work with D&D module content, generate scenes, and manage actors.
 
-IMPORTANT: When the user asks you to generate, create, draw, or show an image, you MUST call the generate_images tool immediately. Do not ask clarifying questions about where to save the image or any other details - just call the tool with the user's description as the prompt. The tool handles all file management automatically.
+CRITICAL TOOL USAGE - You MUST use tools for these tasks:
+
+1. **JOURNAL QUERIES**: When the user asks about journal content, what's in a journal, page content, NPCs, locations, treasures, or wants summaries - you MUST call the query_journal tool. Do NOT answer from your general knowledge about D&D modules. The user has specific journals in Foundry VTT that you need to query.
+   - "What's in Part 2 page" → call query_journal
+   - "What treasure is in Lost Mine journal" → call query_journal
+   - "Summarize the Cragmaw chapter" → call query_journal
+   - "List NPCs in [journal name]" → call query_journal
+
+2. **IMAGE GENERATION**: When the user asks you to generate, create, draw, or show an image, you MUST call the generate_images tool immediately.
+
+3. **ACTOR CREATION**: When the user asks to create actors, monsters, or NPCs, use the appropriate actor creation tools.
+
+4. **ASSET DELETION**: When the user asks to delete journals, actors, or scenes, use the delete_assets tool.
 
 Available commands:
 - /generate-scene [description] - Generate a new scene
