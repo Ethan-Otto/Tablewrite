@@ -173,6 +173,55 @@ export class MentionAutocomplete {
     };
   }
 
+  handleKeyDown(event: KeyboardEvent): boolean {
+    if (!this._isOpen) return false;
+
+    switch (event.key) {
+      case 'ArrowDown':
+        this.moveSelection(1);
+        return true;
+      case 'ArrowUp':
+        this.moveSelection(-1);
+        return true;
+      case 'Tab':
+      case 'Enter':
+        this.insertSelected();
+        return true;
+      case 'Escape':
+        this.close();
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  private moveSelection(delta: number): void {
+    if (this.currentResults.length === 0) return;
+
+    this.selectedIndex += delta;
+    if (this.selectedIndex < 0) {
+      this.selectedIndex = this.currentResults.length - 1;
+    } else if (this.selectedIndex >= this.currentResults.length) {
+      this.selectedIndex = 0;
+    }
+
+    this.updateSelectionHighlight();
+  }
+
+  private updateSelectionHighlight(): void {
+    if (!this.dropdown) return;
+
+    const items = this.dropdown.querySelectorAll('.mention-item');
+    items.forEach((item, index) => {
+      item.classList.toggle('mention-item--selected', index === this.selectedIndex);
+    });
+  }
+
+  private insertSelected(): void {
+    // Placeholder - will be implemented in Task 6
+    this.close();
+  }
+
   filterEntities(query: string, maxResults: number = 6): MentionEntity[] {
     if (!query) return [];
 

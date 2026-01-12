@@ -275,4 +275,130 @@ describe('MentionAutocomplete', () => {
       expect(dropdown).toBeFalsy();
     });
   });
+
+  describe('keyboard navigation', () => {
+    // Mock data for keyboard navigation tests
+    const mockActors = [
+      { id: 'abc123', name: 'Goblin Boss', uuid: 'Actor.abc123' },
+      { id: 'def456', name: 'Goblin Scout', uuid: 'Actor.def456' }
+    ];
+    const mockJournals = [
+      { id: 'xyz789', name: 'Lost Mine of Phandelver', uuid: 'JournalEntry.xyz789' }
+    ];
+    const mockItems = [
+      { id: 'item001', name: 'Longsword', uuid: 'Item.item001' }
+    ];
+    const mockScenes = [
+      { id: 'scene001', name: 'Cragmaw Hideout', uuid: 'Scene.scene001' }
+    ];
+
+    beforeEach(() => {
+      // @ts-ignore
+      globalThis.game = {
+        actors: {
+          contents: mockActors,
+          map: function<T>(fn: (doc: any) => T): T[] { return this.contents.map(fn); }
+        },
+        journal: {
+          contents: mockJournals,
+          map: function<T>(fn: (doc: any) => T): T[] { return this.contents.map(fn); }
+        },
+        items: {
+          contents: mockItems,
+          map: function<T>(fn: (doc: any) => T): T[] { return this.contents.map(fn); }
+        },
+        scenes: {
+          contents: mockScenes,
+          map: function<T>(fn: (doc: any) => T): T[] { return this.contents.map(fn); }
+        }
+      };
+    });
+
+    it('moves selection down on ArrowDown', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      autocomplete.open('gob');
+      autocomplete.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+
+      const selected = document.querySelector('.mention-item--selected');
+      expect(selected?.textContent).toContain('Goblin Scout');
+    });
+
+    it('wraps to top on ArrowDown at end', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      autocomplete.open('gob');
+      autocomplete.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+      autocomplete.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+
+      const selected = document.querySelector('.mention-item--selected');
+      expect(selected?.textContent).toContain('Goblin Boss');
+    });
+
+    it('moves selection up on ArrowUp', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      autocomplete.open('gob');
+      autocomplete.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+      autocomplete.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowUp' }));
+
+      const selected = document.querySelector('.mention-item--selected');
+      expect(selected?.textContent).toContain('Goblin Boss');
+    });
+
+    it('wraps to bottom on ArrowUp at start', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      autocomplete.open('gob');
+      autocomplete.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowUp' }));
+
+      const selected = document.querySelector('.mention-item--selected');
+      expect(selected?.textContent).toContain('Goblin Scout');
+    });
+
+    it('closes on Escape', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      autocomplete.open('gob');
+      autocomplete.handleKeyDown(new KeyboardEvent('keydown', { key: 'Escape' }));
+
+      expect(autocomplete.isOpen).toBe(false);
+      expect(document.querySelector('.mention-dropdown')).toBeFalsy();
+    });
+
+    it('returns true for handled keys to prevent default', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      autocomplete.open('gob');
+      expect(autocomplete.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowDown' }))).toBe(true);
+      expect(autocomplete.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowUp' }))).toBe(true);
+
+      // Tab closes dropdown, so reopen for next test
+      expect(autocomplete.handleKeyDown(new KeyboardEvent('keydown', { key: 'Tab' }))).toBe(true);
+      autocomplete.open('gob');
+
+      // Enter closes dropdown, so reopen for next test
+      expect(autocomplete.handleKeyDown(new KeyboardEvent('keydown', { key: 'Enter' }))).toBe(true);
+      autocomplete.open('gob');
+
+      // Escape closes dropdown
+      expect(autocomplete.handleKeyDown(new KeyboardEvent('keydown', { key: 'Escape' }))).toBe(true);
+    });
+
+    it('returns false for unhandled keys', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      autocomplete.open('gob');
+
+      expect(autocomplete.handleKeyDown(new KeyboardEvent('keydown', { key: 'a' }))).toBe(false);
+      expect(autocomplete.handleKeyDown(new KeyboardEvent('keydown', { key: 'Shift' }))).toBe(false);
+    });
+  });
 });
