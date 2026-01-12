@@ -73,8 +73,8 @@
 .tablewrite-input {
   flex: 1;
   resize: none;
-  height: 100px;
-  min-height: 50px;
+  height: 150px;
+  min-height: 75px;
   padding: 5px;
   border-radius: 3px;
   font-family: var(--font-primary, "Signika", sans-serif);
