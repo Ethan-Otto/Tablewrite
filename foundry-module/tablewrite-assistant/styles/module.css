@@ -697,3 +697,101 @@
   border-color: #7a4;
   outline: none;
 }
+
+/* ========================================
+   Mention Autocomplete Styles
+   ======================================== */
+
+/* Dropdown container - positioned above input */
+.mention-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  background: rgb(241, 235, 232);
+  border: 1px solid var(--color-border-light, #999);
+  border-radius: 6px 6px 0 0;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  margin-bottom: 2px;
+}
+
+/* Individual mention item */
+.mention-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: var(--font-size-14, 14px);
+  color: #1a1a1a;
+  transition: background 0.1s ease;
+}
+
+.mention-item:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* Selected/highlighted item */
+.mention-item.selected {
+  background: rgba(75, 139, 59, 0.2);
+}
+
+.mention-item.selected:hover {
+  background: rgba(75, 139, 59, 0.25);
+}
+
+/* Entity type icon */
+.mention-item-icon {
+  width: 20px;
+  margin-right: 8px;
+  text-align: center;
+  color: #666;
+  font-size: 12px;
+}
+
+/* Entity name */
+.mention-item-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Entity type label */
+.mention-item-type {
+  font-size: 11px;
+  color: #888;
+  margin-left: 8px;
+  text-transform: capitalize;
+}
+
+/* No matches message */
+.mention-no-matches {
+  padding: 10px;
+  text-align: center;
+  color: #888;
+  font-style: italic;
+  font-size: 13px;
+}
+
+/* Type group header */
+.mention-type-header {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #666;
+  background: rgba(0, 0, 0, 0.05);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Input wrapper for positioning */
+.tablewrite-input-wrapper {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
