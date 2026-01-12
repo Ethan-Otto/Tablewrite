@@ -69,6 +69,49 @@ class ActorQueryTool(BaseTool):
             data=None
         )
 
+    def _build_prompt(self, query: str, query_type: str, content: str) -> str:
+        """
+        Build a prompt for Gemini based on query type.
+
+        Args:
+            query: User's question
+            query_type: One of "abilities", "combat", "general"
+            content: Extracted actor content
+
+        Returns:
+            Formatted prompt string
+        """
+        base_instructions = """You are a D&D assistant answering questions about a specific actor/creature.
+Answer based ONLY on the provided actor data. Be concise and helpful.
+
+Actor Data:
+"""
+
+        if query_type == "abilities":
+            task = """
+
+Focus on the creature's ability scores, skills, saving throws, and any passive abilities.
+Explain what these stats mean for the creature's capabilities.
+
+Question: """
+
+        elif query_type == "combat":
+            task = """
+
+Focus on the creature's attacks, weapons, spells, and combat-related abilities.
+Explain damage, attack bonuses, and tactical capabilities.
+
+Question: """
+
+        else:  # general
+            task = """
+
+Provide a helpful overview based on the question.
+
+Question: """
+
+        return base_instructions + content + task + query + "\n\nAnswer:"
+
     def _extract_actor_content(self, actor: dict) -> str:
         """
         Extract structured content from actor data for Gemini.

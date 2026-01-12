@@ -151,3 +151,53 @@ class TestActorContentExtraction:
 
         assert "Nimble Escape" in content
         assert "Bonus Action" in content or "bonus" in content.lower()
+
+
+class TestPromptBuilding:
+    """Test prompt building for different query types."""
+
+    def test_build_abilities_prompt(self):
+        """Test building prompt for abilities query type."""
+        from app.tools.actor_query import ActorQueryTool
+
+        tool = ActorQueryTool()
+
+        prompt = tool._build_prompt(
+            query="What are this creature's stats?",
+            query_type="abilities",
+            content="[ACTOR: Goblin]\nSTR: 8 (-1) | DEX: 14 (+2)"
+        )
+
+        assert "What are this creature's stats?" in prompt
+        assert "Goblin" in prompt
+        assert "ability scores" in prompt.lower() or "abilities" in prompt.lower()
+
+    def test_build_combat_prompt(self):
+        """Test building prompt for combat query type."""
+        from app.tools.actor_query import ActorQueryTool
+
+        tool = ActorQueryTool()
+
+        prompt = tool._build_prompt(
+            query="What attacks can this monster make?",
+            query_type="combat",
+            content="[ACTOR: Goblin]\n[COMBAT]\n- Shortsword: +4 to hit"
+        )
+
+        assert "attacks" in prompt.lower() or "combat" in prompt.lower()
+        assert "Shortsword" in prompt
+
+    def test_build_general_prompt(self):
+        """Test building prompt for general query type."""
+        from app.tools.actor_query import ActorQueryTool
+
+        tool = ActorQueryTool()
+
+        prompt = tool._build_prompt(
+            query="Tell me about this creature",
+            query_type="general",
+            content="[ACTOR: Goblin]\nCR: 0.25"
+        )
+
+        assert "Tell me about this creature" in prompt
+        assert "Goblin" in prompt
