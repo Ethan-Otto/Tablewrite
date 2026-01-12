@@ -35,6 +35,8 @@ describe('MentionAutocomplete', () => {
   });
 
   afterEach(() => {
+    // Clean up any dropdowns
+    document.querySelectorAll('.mention-dropdown').forEach(el => el.remove());
     document.body.removeChild(container);
   });
 
@@ -167,6 +169,110 @@ describe('MentionAutocomplete', () => {
       expect(types).toContain('JournalEntry');
       expect(types).toContain('Item');
       expect(types).toContain('Scene');
+    });
+  });
+
+  describe('renderDropdown', () => {
+    // Mock data for dropdown tests
+    const mockActors = [
+      { id: 'abc123', name: 'Goblin Scout', uuid: 'Actor.abc123' },
+      { id: 'def456', name: 'Goblin Boss', uuid: 'Actor.def456' }
+    ];
+    const mockJournals = [
+      { id: 'xyz789', name: 'Lost Mine of Phandelver', uuid: 'JournalEntry.xyz789' }
+    ];
+    const mockItems = [
+      { id: 'item001', name: 'Longsword', uuid: 'Item.item001' }
+    ];
+    const mockScenes = [
+      { id: 'scene001', name: 'Cragmaw Hideout', uuid: 'Scene.scene001' }
+    ];
+
+    beforeEach(() => {
+      // Reset mocks
+      // @ts-ignore
+      globalThis.game = {
+        actors: {
+          contents: mockActors,
+          map: function<T>(fn: (doc: any) => T): T[] { return this.contents.map(fn); }
+        },
+        journal: {
+          contents: mockJournals,
+          map: function<T>(fn: (doc: any) => T): T[] { return this.contents.map(fn); }
+        },
+        items: {
+          contents: mockItems,
+          map: function<T>(fn: (doc: any) => T): T[] { return this.contents.map(fn); }
+        },
+        scenes: {
+          contents: mockScenes,
+          map: function<T>(fn: (doc: any) => T): T[] { return this.contents.map(fn); }
+        }
+      };
+    });
+
+    it('creates dropdown element in DOM', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      autocomplete.open('gob');
+
+      const dropdown = document.querySelector('.mention-dropdown');
+      expect(dropdown).toBeTruthy();
+    });
+
+    it('groups results by entity type with headers', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      autocomplete.open('gob');
+
+      const groups = document.querySelectorAll('.mention-group');
+      expect(groups.length).toBeGreaterThan(0);
+
+      const header = document.querySelector('.mention-group-header');
+      expect(header?.textContent).toContain('Actors');
+    });
+
+    it('renders individual items with name', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      autocomplete.open('gob');
+
+      const items = document.querySelectorAll('.mention-item');
+      expect(items.length).toBe(2);
+    });
+
+    it('highlights first item by default', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      autocomplete.open('gob');
+
+      const selected = document.querySelector('.mention-item--selected');
+      expect(selected).toBeTruthy();
+    });
+
+    it('shows "No matches" when filter returns empty', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      autocomplete.open('zzzzz');
+
+      const dropdown = document.querySelector('.mention-dropdown');
+      expect(dropdown?.textContent).toContain('No matches');
+    });
+
+    it('removes dropdown on close', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      autocomplete.open('gob');
+      autocomplete.close();
+
+      const dropdown = document.querySelector('.mention-dropdown');
+      expect(dropdown).toBeFalsy();
     });
   });
 });

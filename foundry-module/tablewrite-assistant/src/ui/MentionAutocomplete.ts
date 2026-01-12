@@ -19,6 +19,10 @@ export interface EntityGroups {
 export class MentionAutocomplete {
   private textarea: HTMLTextAreaElement;
   private _isOpen: boolean = false;
+  private dropdown: HTMLElement | null = null;
+  private selectedIndex: number = 0;
+  private currentResults: MentionEntity[] = [];
+  private currentQuery: string = '';
 
   constructor(textarea: HTMLTextAreaElement) {
     this.textarea = textarea;
@@ -26,6 +30,116 @@ export class MentionAutocomplete {
 
   get isOpen(): boolean {
     return this._isOpen;
+  }
+
+  open(query: string): void {
+    this.currentQuery = query;
+    this.currentResults = this.filterEntities(query);
+    this.selectedIndex = 0;
+    this._isOpen = true;
+    this.renderDropdown();
+  }
+
+  close(): void {
+    this._isOpen = false;
+    if (this.dropdown) {
+      this.dropdown.remove();
+      this.dropdown = null;
+    }
+  }
+
+  private renderDropdown(): void {
+    // Remove existing dropdown
+    if (this.dropdown) {
+      this.dropdown.remove();
+    }
+
+    this.dropdown = document.createElement('div');
+    this.dropdown.className = 'mention-dropdown';
+
+    if (this.currentResults.length === 0) {
+      this.dropdown.innerHTML = '<div class="mention-empty">No matches</div>';
+    } else {
+      // Group by type
+      const grouped = this.groupByType(this.currentResults);
+      let itemIndex = 0;
+
+      for (const [type, entities] of Object.entries(grouped)) {
+        if (entities.length === 0) continue;
+
+        const group = document.createElement('div');
+        group.className = 'mention-group';
+
+        const header = document.createElement('div');
+        header.className = 'mention-group-header';
+        header.innerHTML = `${this.getTypeIcon(type)} ${this.getTypeLabel(type)}`;
+        group.appendChild(header);
+
+        for (const entity of entities) {
+          const item = document.createElement('div');
+          item.className = 'mention-item';
+          if (itemIndex === this.selectedIndex) {
+            item.classList.add('mention-item--selected');
+          }
+          item.textContent = entity.name;
+          item.dataset.index = String(itemIndex);
+          item.dataset.uuid = entity.uuid;
+          item.dataset.type = entity.type;
+          item.dataset.name = entity.name;
+          group.appendChild(item);
+          itemIndex++;
+        }
+
+        this.dropdown.appendChild(group);
+      }
+    }
+
+    // Position dropdown above textarea
+    this.positionDropdown();
+    document.body.appendChild(this.dropdown);
+  }
+
+  private groupByType(entities: MentionEntity[]): Record<string, MentionEntity[]> {
+    const groups: Record<string, MentionEntity[]> = {
+      JournalEntry: [],
+      Actor: [],
+      Item: [],
+      Scene: []
+    };
+    for (const entity of entities) {
+      groups[entity.type].push(entity);
+    }
+    return groups;
+  }
+
+  private getTypeIcon(type: string): string {
+    const icons: Record<string, string> = {
+      Actor: '\uD83C\uDFAD',
+      JournalEntry: '\uD83D\uDCD6',
+      Item: '\u2694\uFE0F',
+      Scene: '\uD83D\uDDFA\uFE0F'
+    };
+    return icons[type] || '\uD83D\uDCC4';
+  }
+
+  private getTypeLabel(type: string): string {
+    const labels: Record<string, string> = {
+      Actor: 'Actors',
+      JournalEntry: 'Journals',
+      Item: 'Items',
+      Scene: 'Scenes'
+    };
+    return labels[type] || type;
+  }
+
+  private positionDropdown(): void {
+    if (!this.dropdown) return;
+
+    const rect = this.textarea.getBoundingClientRect();
+    this.dropdown.style.position = 'fixed';
+    this.dropdown.style.left = `${rect.left}px`;
+    this.dropdown.style.bottom = `${window.innerHeight - rect.top + 4}px`;
+    this.dropdown.style.minWidth = `${rect.width}px`;
   }
 
   getEntities(): EntityGroups {
