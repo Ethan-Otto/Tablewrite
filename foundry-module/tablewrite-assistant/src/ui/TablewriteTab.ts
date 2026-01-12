@@ -5,6 +5,7 @@
 import { chatService, ChatMessage, ChatResponse } from './chat-service.js';
 import { BattleMapUpload } from './BattleMapUpload.js';
 import { ModuleUpload } from './ModuleUpload.js';
+import { MentionAutocomplete } from './MentionAutocomplete.js';
 import { getBackendUrl, isTokenArtEnabled, setTokenArtEnabled, getArtStyle, setArtStyle } from '../settings.js';
 
 // Foundry global declarations
@@ -16,6 +17,7 @@ export class TablewriteTab {
   private isLoading: boolean = false;
   private battleMapUpload: BattleMapUpload | null = null;
   private moduleUpload: ModuleUpload | null = null;
+  private mentionAutocomplete: MentionAutocomplete | null = null;
   private settingsOpen: boolean = false;
 
   constructor(container: HTMLElement) {
@@ -67,10 +69,12 @@ export class TablewriteTab {
           <div class="tablewrite-chat">
             <div class="tablewrite-messages"></div>
             <form class="tablewrite-input-form">
-              <textarea
-                class="tablewrite-input"
-                placeholder="${game.i18n.localize('TABLEWRITE_ASSISTANT.Placeholder')}"
-              ></textarea>
+              <div class="tablewrite-input-wrapper">
+                <textarea
+                  class="tablewrite-input"
+                  placeholder="${game.i18n.localize('TABLEWRITE_ASSISTANT.Placeholder')}"
+                ></textarea>
+              </div>
             </form>
           </div>
         </div>
@@ -109,6 +113,11 @@ export class TablewriteTab {
     const form = this.container.querySelector('.tablewrite-input-form');
     const input = this.container.querySelector('.tablewrite-input') as HTMLTextAreaElement;
 
+    // Initialize mention autocomplete
+    if (input) {
+      this.mentionAutocomplete = new MentionAutocomplete(input);
+    }
+
     form?.addEventListener('submit', (e) => {
       e.preventDefault();
       this.sendMessage(input.value);
@@ -117,6 +126,11 @@ export class TablewriteTab {
 
     // Enter to send, Shift+Enter for new line
     input?.addEventListener('keydown', (e) => {
+      // Let mention autocomplete handle its keys first
+      if (this.mentionAutocomplete?.handleKeyDown(e)) {
+        return; // Event was handled by autocomplete
+      }
+
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         form?.dispatchEvent(new Event('submit'));
