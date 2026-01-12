@@ -26,6 +26,32 @@ export class MentionAutocomplete {
 
   constructor(textarea: HTMLTextAreaElement) {
     this.textarea = textarea;
+    this.textarea.addEventListener('input', () => this.handleInput());
+  }
+
+  private handleInput(): void {
+    const cursorPos = this.textarea.selectionStart;
+    const textBeforeCursor = this.textarea.value.substring(0, cursorPos);
+
+    // Find @ that starts a mention (not in middle of word)
+    const atMatch = textBeforeCursor.match(/(^|\s)@(\S*)$/);
+
+    if (!atMatch) {
+      if (this._isOpen) {
+        this.close();
+      }
+      return;
+    }
+
+    const query = atMatch[2]; // The text after @
+
+    // Close if query contains space (user moved on)
+    if (query.includes(' ')) {
+      this.close();
+      return;
+    }
+
+    this.open(query);
   }
 
   get isOpen(): boolean {

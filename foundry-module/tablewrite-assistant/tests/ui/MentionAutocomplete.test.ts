@@ -538,4 +538,134 @@ describe('MentionAutocomplete', () => {
       expect(textarea.value).toBe('@xyz123nonexistent');
     });
   });
+
+  describe('handleInput', () => {
+    // Mock data for handleInput tests
+    const mockActors = [
+      { id: 'abc123', name: 'Goblin Scout', uuid: 'Actor.abc123' },
+      { id: 'def456', name: 'Goblin Boss', uuid: 'Actor.def456' }
+    ];
+    const mockJournals = [
+      { id: 'xyz789', name: 'Lost Mine of Phandelver', uuid: 'JournalEntry.xyz789' }
+    ];
+    const mockItems = [
+      { id: 'item001', name: 'Longsword', uuid: 'Item.item001' }
+    ];
+    const mockScenes = [
+      { id: 'scene001', name: 'Cragmaw Hideout', uuid: 'Scene.scene001' }
+    ];
+
+    beforeEach(() => {
+      // @ts-ignore
+      globalThis.game = {
+        actors: {
+          contents: mockActors,
+          map: function<T>(fn: (doc: any) => T): T[] { return this.contents.map(fn); }
+        },
+        journal: {
+          contents: mockJournals,
+          map: function<T>(fn: (doc: any) => T): T[] { return this.contents.map(fn); }
+        },
+        items: {
+          contents: mockItems,
+          map: function<T>(fn: (doc: any) => T): T[] { return this.contents.map(fn); }
+        },
+        scenes: {
+          contents: mockScenes,
+          map: function<T>(fn: (doc: any) => T): T[] { return this.contents.map(fn); }
+        }
+      };
+    });
+
+    it('opens autocomplete when @ is typed', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      textarea.value = '@';
+      textarea.selectionStart = 1;
+      textarea.selectionEnd = 1;
+      textarea.dispatchEvent(new Event('input'));
+
+      expect(autocomplete.isOpen).toBe(true);
+    });
+
+    it('updates results as user types after @', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      textarea.value = '@gob';
+      textarea.selectionStart = 4;
+      textarea.selectionEnd = 4;
+      textarea.dispatchEvent(new Event('input'));
+
+      expect(autocomplete.isOpen).toBe(true);
+    });
+
+    it('closes when @ is deleted', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      // First open
+      textarea.value = '@gob';
+      textarea.selectionStart = 4;
+      textarea.selectionEnd = 4;
+      textarea.dispatchEvent(new Event('input'));
+
+      expect(autocomplete.isOpen).toBe(true);
+
+      // Then delete the @
+      textarea.value = 'gob';
+      textarea.selectionStart = 3;
+      textarea.selectionEnd = 3;
+      textarea.dispatchEvent(new Event('input'));
+
+      expect(autocomplete.isOpen).toBe(false);
+    });
+
+    it('closes when space is typed after @query', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      // First open
+      textarea.value = '@gob';
+      textarea.selectionStart = 4;
+      textarea.selectionEnd = 4;
+      textarea.dispatchEvent(new Event('input'));
+
+      expect(autocomplete.isOpen).toBe(true);
+
+      // Then type space
+      textarea.value = '@gob ';
+      textarea.selectionStart = 5;
+      textarea.selectionEnd = 5;
+      textarea.dispatchEvent(new Event('input'));
+
+      expect(autocomplete.isOpen).toBe(false);
+    });
+
+    it('extracts query after @ for filtering', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      textarea.value = 'Hello @gob';
+      textarea.selectionStart = 10;
+      textarea.selectionEnd = 10;
+      textarea.dispatchEvent(new Event('input'));
+
+      // Should filter with 'gob' query
+      expect(autocomplete.isOpen).toBe(true);
+    });
+
+    it('does not trigger @ in middle of word', async () => {
+      const { MentionAutocomplete } = await import('../../src/ui/MentionAutocomplete');
+      const autocomplete = new MentionAutocomplete(textarea);
+
+      textarea.value = 'test@email.com';
+      textarea.selectionStart = 14;
+      textarea.selectionEnd = 14;
+      textarea.dispatchEvent(new Event('input'));
+
+      expect(autocomplete.isOpen).toBe(false);
+    });
+  });
 });
