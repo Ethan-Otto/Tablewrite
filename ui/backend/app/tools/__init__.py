@@ -6,6 +6,7 @@ from .actor_creator import ActorCreatorTool
 from .batch_actor_creator import BatchActorCreatorTool
 from .actor_editor import ActorEditorTool
 from .journal_creator import JournalCreatorTool
+from .journal_editor import JournalEditorTool
 from .scene_creator import SceneCreatorTool
 from .asset_deleter import AssetDeleterTool
 from .journal_query import JournalQueryTool
@@ -19,6 +20,7 @@ registry.register(ActorCreatorTool())
 registry.register(BatchActorCreatorTool())
 registry.register(ActorEditorTool())
 registry.register(JournalCreatorTool())
+registry.register(JournalEditorTool())
 registry.register(SceneCreatorTool())
 registry.register(AssetDeleterTool())
 registry.register(JournalQueryTool())
@@ -37,6 +39,7 @@ __all__ = [
     'BatchActorCreatorTool',
     'ActorEditorTool',
     'JournalCreatorTool',
+    'JournalEditorTool',
     'SceneCreatorTool',
     'AssetDeleterTool',
     'JournalQueryTool',

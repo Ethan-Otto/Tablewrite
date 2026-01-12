@@ -16,7 +16,7 @@ Convert official D&D PDFs into FoundryVTT content. Uses Google Gemini AI to extr
 - **Scene Upload** - Create FoundryVTT scenes with walls and proper grid settings
 
 ### Chat Interface (Tablewrite Module)
-Natural language interface directly in FoundryVTT with 11 tools:
+Natural language interface directly in FoundryVTT with 12 tools:
 
 | Tool | Description |
 |------|-------------|
@@ -24,6 +24,7 @@ Natural language interface directly in FoundryVTT with 11 tools:
 | `batch_create_actors` | Create multiple actors at once |
 | `edit_actor` | Modify an existing actor's properties |
 | `create_journal` | Create a journal entry |
+| `edit_journal` | Modify an existing journal's name, content, or pages |
 | `create_scene` | Create a scene from a battle map image |
 | `generate_images` | Generate D&D scene artwork via AI |
 | `delete_assets` | Delete actors, journals, or scenes |
@@ -41,12 +42,91 @@ Natural language interface directly in FoundryVTT with 11 tools:
 
 ### Prerequisites
 
-- Python 3.11+
-- [uv](https://github.com/astral-sh/uv) package manager
 - Google Gemini API key
 - FoundryVTT v12+ running locally or on The Forge
+- Docker (recommended) or Python 3.11+ with [uv](https://github.com/astral-sh/uv)
 
-### Option 1: Local Installation
+### Option 1: Docker Installation (Recommended)
+
+The easiest way to get started. No Python installation required.
+
+#### 1. Configure Environment
+
+Create a `.env` file:
+
+```bash
+# Required
+GeminiImageAPI=your_gemini_api_key
+FOUNDRY_URL=http://host.docker.internal:30000  # Use this for local Foundry
+
+# For Foundry on a different machine
+FOUNDRY_URL=http://192.168.1.100:30000
+```
+
+#### 2. Build and Run
+
+```bash
+# Using docker-compose (recommended)
+docker-compose -f docker-compose.tablewrite.yml up -d
+
+# Or build manually
+docker build -t tablewrite .
+docker run -d -p 8000:8000 --env-file .env -v ./data:/app/data -v ./output:/app/output tablewrite
+```
+
+#### 3. Install FoundryVTT Module
+
+The Tablewrite module must be installed in FoundryVTT to connect to the backend.
+
+**Option A: Download from Releases**
+1. Download the latest `tablewrite-assistant.zip` from GitHub releases
+2. Extract to your FoundryVTT modules directory:
+   - Windows: `%localappdata%/FoundryVTT/Data/modules/`
+   - macOS: `~/Library/Application Support/FoundryVTT/Data/modules/`
+   - Linux: `~/.local/share/FoundryVTT/Data/modules/`
+
+**Option B: Clone and Copy**
+```bash
+# Clone repo and copy module
+git clone https://github.com/your-repo/dnd_module_gen.git
+cp -r dnd_module_gen/foundry-module/tablewrite-assistant \
+  "/path/to/FoundryVTT/Data/modules/"
+```
+
+#### 4. Enable the Module in Foundry
+
+1. Launch FoundryVTT and open your world
+2. Go to **Settings** → **Manage Modules**
+3. Find "Tablewrite Assistant" and check the box to enable it
+4. Click **Save Module Settings**
+5. The page will refresh - look for the feather icon in the sidebar
+
+#### 5. Docker Commands
+
+```bash
+# Start
+docker-compose -f docker-compose.tablewrite.yml up -d
+
+# View logs
+docker-compose -f docker-compose.tablewrite.yml logs -f
+
+# Stop
+docker-compose -f docker-compose.tablewrite.yml down
+
+# Rebuild after code changes
+docker-compose -f docker-compose.tablewrite.yml up -d --build
+```
+
+#### 6. Health Check
+
+```bash
+curl http://localhost:8000/health
+# Returns: {"status": "healthy"}
+```
+
+### Option 2: Local Installation (For Developers)
+
+Use this option if you want to modify the code or run tests.
 
 #### 1. Install Dependencies
 
@@ -88,69 +168,25 @@ cp -r foundry-module/tablewrite-assistant \
   "/path/to/FoundryVTT/Data/modules/"
 ```
 
-Then enable "Tablewrite" in your FoundryVTT world settings.
+#### 4. Enable the Module in Foundry
 
-#### 4. Start the Backend
+1. Launch FoundryVTT and open your world
+2. Go to **Settings** → **Manage Modules**
+3. Find "Tablewrite Assistant" and check the box to enable it
+4. Click **Save Module Settings**
+
+#### 5. Start the Backend
 
 ```bash
 cd ui/backend
 uv run uvicorn app.main:app --reload --port 8000
 ```
 
-#### 5. Connect Foundry
+#### 6. Connect Foundry
 
-1. Open your FoundryVTT world
+1. Refresh your FoundryVTT world (F5)
 2. The Tablewrite module auto-connects to `ws://localhost:8000`
 3. Look for the feather icon in the sidebar tabs
-
-### Option 2: Docker Installation
-
-#### 1. Build and Run
-
-```bash
-# Using docker-compose (recommended)
-docker-compose -f docker-compose.tablewrite.yml up -d
-
-# Or build manually
-docker build -t tablewrite .
-docker run -d -p 8000:8000 --env-file .env -v ./data:/app/data -v ./output:/app/output tablewrite
-```
-
-#### 2. Configure Environment
-
-Create a `.env` file before running:
-
-```bash
-# Required
-GeminiImageAPI=your_gemini_api_key
-FOUNDRY_URL=http://host.docker.internal:30000  # Use this for local Foundry
-
-# For Foundry on a different machine
-FOUNDRY_URL=http://192.168.1.100:30000
-```
-
-#### 3. Docker Commands
-
-```bash
-# Start
-docker-compose -f docker-compose.tablewrite.yml up -d
-
-# View logs
-docker-compose -f docker-compose.tablewrite.yml logs -f
-
-# Stop
-docker-compose -f docker-compose.tablewrite.yml down
-
-# Rebuild after code changes
-docker-compose -f docker-compose.tablewrite.yml up -d --build
-```
-
-#### 4. Health Check
-
-```bash
-curl http://localhost:8000/health
-# Returns: {"status": "healthy"}
-```
 
 ### Option 3: The Forge Hosting
 
@@ -183,6 +219,7 @@ Response:
 - **create_scene**: Create a FoundryVTT scene from a battle map image.
 - **delete_assets**: Delete actors, journals, or scenes from FoundryVTT.
 - **edit_actor**: Edit an existing actor in FoundryVTT.
+- **edit_journal**: Edit an existing journal's name, content, or pages.
 - **generate_images**: Generate D&D scene artwork using AI.
 - **help**: List all available tools and commands.
 - **list_actors**: List all actors in the Foundry world with clickable links.
@@ -347,7 +384,7 @@ ui/backend/
 ├── app/
 │   ├── main.py               # FastAPI application
 │   ├── routers/              # API endpoints (chat, actors, scenes, journals)
-│   ├── tools/                # Chat tools (11 registered tools)
+│   ├── tools/                # Chat tools (12 registered tools)
 │   ├── services/             # Gemini service, command parser
 │   └── websocket/            # WebSocket connection to Foundry
 └── tests/                    # Backend tests
