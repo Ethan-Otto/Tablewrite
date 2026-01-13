@@ -274,6 +274,21 @@ class TestExecuteMethod:
         assert "goblin" in response.message.lower()
 
 
+class TestGeminiSystemPrompt:
+    """Test that system prompt includes actor query instructions."""
+
+    def test_system_prompt_mentions_actor_query(self):
+        """Test that the system prompt instructs AI to use query_actor tool."""
+        from app.services.gemini_service import GeminiService
+
+        service = GeminiService()
+        prompt = service._build_chat_prompt("test", {}, [])
+
+        # Should mention the query_actor tool
+        assert "query_actor" in prompt or "@mention" in prompt.lower(), \
+            "System prompt should mention actor querying"
+
+
 class TestActorQueryRouter:
     """Test the /api/tools/query_actor endpoint."""
 

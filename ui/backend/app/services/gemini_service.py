@@ -275,6 +275,11 @@ CRITICAL TOOL USAGE - You MUST use tools for these tasks:
 
 4. **ASSET DELETION**: When the user asks to delete journals, actors, or scenes, use the delete_assets tool.
 
+5. **ACTOR QUERIES**: When the user @mentions an actor and asks about its abilities, attacks, stats, or what it can do - you MUST call the query_actor tool. The actor_uuid will be provided in the mentioned_entities context.
+   - "@[Dire Wolf](Actor.xyz) What can this creature do" -> call query_actor
+   - "@[Goblin](Actor.abc) What attacks does it have" -> call query_actor
+   - "Tell me about @[Dragon](Actor.123)'s abilities" -> call query_actor
+
 Available commands:
 - /generate-scene [description] - Generate a new scene
 - /list-scenes [chapter] - List scenes in a chapter
