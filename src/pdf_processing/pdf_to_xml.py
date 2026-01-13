@@ -240,6 +240,7 @@ def get_legible_text_from_page(page_bytes: bytes, page_number: int, log_dir: str
             image = Image.open(io.BytesIO(img_bytes))
             ocr_text = pytesseract.image_to_string(image)
             ocr_output_path = os.path.join(log_dir, "pages", f"page_{page_number}_ocr.txt")
+            os.makedirs(os.path.dirname(ocr_output_path), exist_ok=True)
             with open(ocr_output_path, "w") as f:
                 f.write(ocr_text)
             
