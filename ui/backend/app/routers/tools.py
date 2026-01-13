@@ -31,6 +31,13 @@ class JournalQueryRequest(BaseModel):
     session_id: Optional[str] = None
 
 
+class ActorQueryRequest(BaseModel):
+    """Request model for query_actor tool."""
+    actor_uuid: str
+    query: str
+    query_type: str  # "abilities", "combat", "general"
+
+
 class ToolResponse(BaseModel):
     """Generic tool response model."""
     type: str
@@ -96,6 +103,33 @@ async def execute_query_journal(request: JournalQueryRequest) -> ToolResponse:
             journal_name=request.journal_name,
             folder=request.folder,
             session_id=request.session_id
+        )
+
+        return ToolResponse(
+            type=result.type,
+            message=result.message,
+            data=result.data
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/query_actor", response_model=ToolResponse)
+async def execute_query_actor(request: ActorQueryRequest) -> ToolResponse:
+    """
+    Execute the query_actor tool directly.
+
+    This endpoint is used when the AI calls the query_actor tool
+    to answer questions about an @mentioned actor.
+    """
+    try:
+        result = await registry.execute_tool(
+            "query_actor",
+            actor_uuid=request.actor_uuid,
+            query=request.query,
+            query_type=request.query_type
         )
 
         return ToolResponse(

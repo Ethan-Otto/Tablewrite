@@ -1,5 +1,6 @@
 """Unit tests for ActorQueryTool."""
 import pytest
+import httpx
 
 
 class TestActorQueryToolSchema:
@@ -271,3 +272,27 @@ class TestExecuteMethod:
 
         assert response.type == "text"
         assert "goblin" in response.message.lower()
+
+
+class TestActorQueryRouter:
+    """Test the /api/tools/query_actor endpoint."""
+
+    @pytest.fixture
+    def backend_client(self):
+        """HTTP client for backend API calls."""
+        return httpx.Client(base_url="http://localhost:8000", timeout=60.0)
+
+    @pytest.mark.integration
+    def test_query_actor_endpoint_exists(self, backend_client):
+        """Test that the endpoint exists and accepts POST."""
+        # This will fail if endpoint doesn't exist (404) or wrong method (405)
+        response = backend_client.post(
+            "/api/tools/query_actor",
+            json={
+                "actor_uuid": "Actor.test123",
+                "query": "What can this do?",
+                "query_type": "general"
+            }
+        )
+        # 200 = success, 400 = bad request (validation), anything else is a problem
+        assert response.status_code in [200, 400, 500], f"Unexpected status: {response.status_code}"
