@@ -146,6 +146,74 @@ async def test_query_actor_combat_info():
 
 @pytest.mark.integration
 @pytest.mark.asyncio
+async def test_query_actor_spells():
+    """Test querying actor's spells."""
+    await check_backend_and_foundry()
+
+    folder_id = await get_or_create_test_folder("Actor")
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        # Create actor with spells
+        actor_data = {
+            "name": "Test Mage",
+            "type": "npc",
+            "system": {
+                "details": {"cr": 1},
+                "attributes": {"ac": {"value": 12}, "hp": {"value": 9}}
+            },
+            "items": [
+                {
+                    "name": "Fire Bolt",
+                    "type": "spell",
+                    "system": {
+                        "level": 0,
+                        "school": "evocation"
+                    }
+                },
+                {
+                    "name": "Magic Missile",
+                    "type": "spell",
+                    "system": {
+                        "level": 1,
+                        "school": "evocation"
+                    }
+                }
+            ]
+        }
+
+        create_response = await client.post(
+            f"{BACKEND_URL}/api/foundry/actor",
+            json={"actor": actor_data, "folder": folder_id}
+        )
+        assert create_response.status_code == 200, f"Failed to create actor: {create_response.text}"
+        actor_uuid = create_response.json()["uuid"]
+
+        try:
+            # Query spells
+            query_response = await client.post(
+                f"{BACKEND_URL}/api/tools/query_actor",
+                json={
+                    "actor_uuid": actor_uuid,
+                    "query": "What spells can this creature cast?",
+                    "query_type": "combat"
+                }
+            )
+            assert query_response.status_code == 200
+
+            data = query_response.json()
+            assert data["type"] == "text"
+
+            message = data["message"].lower()
+            # Should mention the spells
+            assert "fire bolt" in message or "magic missile" in message or "spell" in message, \
+                f"Expected spell info in response: {data['message']}"
+
+        finally:
+            await client.delete(f"{BACKEND_URL}/api/foundry/actor/{actor_uuid}")
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
 async def test_query_nonexistent_actor():
     """Test querying a non-existent actor returns error."""
     await check_backend_and_foundry()

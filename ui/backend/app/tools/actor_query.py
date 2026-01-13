@@ -191,8 +191,42 @@ Question: """
         hp_data = attributes.get("hp", {})
         hp = hp_data.get("value", hp_data.get("max", "?"))
 
+        # Movement
+        movement = attributes.get("movement", {})
+        movement_strs = []
+        if movement.get("walk"):
+            movement_strs.append(f"walk {movement['walk']} ft")
+        if movement.get("fly"):
+            movement_strs.append(f"fly {movement['fly']} ft")
+        if movement.get("swim"):
+            movement_strs.append(f"swim {movement['swim']} ft")
+        if movement.get("climb"):
+            movement_strs.append(f"climb {movement['climb']} ft")
+        if movement.get("burrow"):
+            movement_strs.append(f"burrow {movement['burrow']} ft")
+        movement_str = ", ".join(movement_strs) if movement_strs else ""
+
         sections.append(f"[ACTOR: {name}]")
         sections.append(f"CR: {cr} | Type: {type_str} | AC: {ac} | HP: {hp}")
+        if movement_str:
+            sections.append(f"Movement: {movement_str}")
+
+        # Senses
+        senses = attributes.get("senses", {})
+        sense_strs = []
+        if senses.get("darkvision"):
+            sense_strs.append(f"darkvision {senses['darkvision']} ft")
+        if senses.get("blindsight"):
+            sense_strs.append(f"blindsight {senses['blindsight']} ft")
+        if senses.get("tremorsense"):
+            sense_strs.append(f"tremorsense {senses['tremorsense']} ft")
+        if senses.get("truesight"):
+            sense_strs.append(f"truesight {senses['truesight']} ft")
+        passive_perc = senses.get("passive", 0)
+        if passive_perc:
+            sense_strs.append(f"passive Perception {passive_perc}")
+        if sense_strs:
+            sections.append(f"Senses: {', '.join(sense_strs)}")
 
         # Abilities
         abilities = system.get("abilities", {})
@@ -207,6 +241,47 @@ Question: """
             if ability_strs:
                 sections.append("\n[ABILITIES]")
                 sections.append(" | ".join(ability_strs))
+
+        # Saving Throws - check proficiency flag
+        save_strs = []
+        for stat in ["str", "dex", "con", "int", "wis", "cha"]:
+            if stat in abilities:
+                stat_data = abilities[stat]
+                # Foundry uses 'proficient' flag for saving throw proficiency
+                if stat_data.get("proficient"):
+                    mod = stat_data.get("mod", 0)
+                    if isinstance(mod, (int, float)):
+                        sign = "+" if mod >= 0 else ""
+                        save_strs.append(f"{stat.upper()}: {sign}{mod}")
+        if save_strs:
+            sections.append(f"Saving Throws: {', '.join(save_strs)}")
+
+        # Skills
+        skills = system.get("skills", {})
+        skill_strs = []
+        for skill_name, skill_data in skills.items():
+            if isinstance(skill_data, dict):
+                total = skill_data.get("total", 0)
+                if total != 0:
+                    sign = "+" if total >= 0 else ""
+                    # Convert skill name to display format
+                    display_name = skill_name.replace("_", " ").title()
+                    skill_strs.append(f"{display_name}: {sign}{total}")
+        if skill_strs:
+            sections.append(f"Skills: {', '.join(skill_strs)}")
+
+        # Damage Resistances, Immunities, Vulnerabilities
+        traits = system.get("traits", {})
+        if traits.get("dr", {}).get("value"):
+            sections.append(f"Damage Resistances: {', '.join(traits['dr']['value'])}")
+        if traits.get("di", {}).get("value"):
+            sections.append(f"Damage Immunities: {', '.join(traits['di']['value'])}")
+        if traits.get("dv", {}).get("value"):
+            sections.append(f"Damage Vulnerabilities: {', '.join(traits['dv']['value'])}")
+        if traits.get("ci", {}).get("value"):
+            sections.append(f"Condition Immunities: {', '.join(traits['ci']['value'])}")
+        if traits.get("languages", {}).get("value"):
+            sections.append(f"Languages: {', '.join(traits['languages']['value'])}")
 
         # Items (weapons, feats, spells)
         items = actor.get("items", [])

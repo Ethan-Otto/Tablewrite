@@ -153,6 +153,174 @@ class TestActorContentExtraction:
         assert "Nimble Escape" in content
         assert "Bonus Action" in content or "bonus" in content.lower()
 
+    def test_extract_movement(self):
+        """Test extracting movement speeds."""
+        from app.tools.actor_query import ActorQueryTool
+
+        tool = ActorQueryTool()
+
+        actor = {
+            "name": "Test Dragon",
+            "system": {
+                "details": {},
+                "attributes": {
+                    "movement": {
+                        "walk": 30,
+                        "fly": 60,
+                        "swim": 30
+                    }
+                },
+                "abilities": {}
+            }
+        }
+
+        content = tool._extract_actor_content(actor)
+
+        assert "walk 30 ft" in content
+        assert "fly 60 ft" in content
+        assert "swim 30 ft" in content
+
+    def test_extract_senses(self):
+        """Test extracting senses like darkvision."""
+        from app.tools.actor_query import ActorQueryTool
+
+        tool = ActorQueryTool()
+
+        actor = {
+            "name": "Test Creature",
+            "system": {
+                "details": {},
+                "attributes": {
+                    "senses": {
+                        "darkvision": 60,
+                        "passive": 14
+                    }
+                },
+                "abilities": {}
+            }
+        }
+
+        content = tool._extract_actor_content(actor)
+
+        assert "darkvision 60 ft" in content
+        assert "passive Perception 14" in content
+
+    def test_extract_saving_throws(self):
+        """Test extracting saving throw bonuses."""
+        from app.tools.actor_query import ActorQueryTool
+
+        tool = ActorQueryTool()
+
+        # Foundry structure: proficient=1 means proficient in save, mod is the modifier
+        actor = {
+            "name": "Test Actor",
+            "system": {
+                "details": {},
+                "attributes": {},
+                "abilities": {
+                    "str": {"value": 16, "mod": 5, "proficient": 1},
+                    "dex": {"value": 12, "mod": 1, "proficient": 0},  # Not proficient
+                    "con": {"value": 14, "mod": 4, "proficient": 1}
+                }
+            }
+        }
+
+        content = tool._extract_actor_content(actor)
+
+        assert "Saving Throws" in content
+        assert "STR: +5" in content
+        assert "CON: +4" in content
+        # DEX should NOT appear (not proficient)
+        assert "DEX" not in content.split("Saving Throws")[1].split("\n")[0]
+
+    def test_extract_skills(self):
+        """Test extracting skill bonuses."""
+        from app.tools.actor_query import ActorQueryTool
+
+        tool = ActorQueryTool()
+
+        actor = {
+            "name": "Test Actor",
+            "system": {
+                "details": {},
+                "attributes": {},
+                "abilities": {},
+                "skills": {
+                    "stealth": {"total": 6},
+                    "perception": {"total": 4},
+                    "athletics": {"total": 0}  # Should be skipped
+                }
+            }
+        }
+
+        content = tool._extract_actor_content(actor)
+
+        assert "Skills:" in content
+        assert "Stealth: +6" in content
+        assert "Perception: +4" in content
+        assert "Athletics" not in content  # Zero skill shouldn't appear
+
+    def test_extract_damage_resistances(self):
+        """Test extracting damage resistances and immunities."""
+        from app.tools.actor_query import ActorQueryTool
+
+        tool = ActorQueryTool()
+
+        actor = {
+            "name": "Test Demon",
+            "system": {
+                "details": {},
+                "attributes": {},
+                "abilities": {},
+                "traits": {
+                    "dr": {"value": ["fire", "cold"]},
+                    "di": {"value": ["poison"]},
+                    "ci": {"value": ["poisoned", "frightened"]}
+                }
+            }
+        }
+
+        content = tool._extract_actor_content(actor)
+
+        assert "Damage Resistances: fire, cold" in content
+        assert "Damage Immunities: poison" in content
+        assert "Condition Immunities: poisoned, frightened" in content
+
+    def test_extract_spells(self):
+        """Test extracting spell items."""
+        from app.tools.actor_query import ActorQueryTool
+
+        tool = ActorQueryTool()
+
+        actor = {
+            "name": "Test Mage",
+            "system": {"details": {}, "attributes": {}, "abilities": {}},
+            "items": [
+                {
+                    "name": "Fireball",
+                    "type": "spell",
+                    "system": {
+                        "level": 3,
+                        "school": "evocation"
+                    }
+                },
+                {
+                    "name": "Magic Missile",
+                    "type": "spell",
+                    "system": {
+                        "level": 1,
+                        "school": "evocation"
+                    }
+                }
+            ]
+        }
+
+        content = tool._extract_actor_content(actor)
+
+        assert "[SPELLS]" in content
+        assert "Fireball (Level 3, evocation)" in content
+        assert "Magic Missile (Level 1, evocation)" in content
+
 
 class TestPromptBuilding:
     """Test prompt building for different query types."""
