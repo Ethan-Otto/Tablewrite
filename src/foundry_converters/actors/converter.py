@@ -240,6 +240,34 @@ async def convert_to_foundry(
     def ability_mod(score: int) -> int:
         return (score - 10) // 2
 
+    # Helper: check if attack is a natural weapon
+    def is_natural_weapon(name: str) -> bool:
+        """Detect natural weapons by name (bite, claw, etc.)."""
+        natural_keywords = {
+            "bite", "claw", "gore", "tail", "slam", "sting", "tentacle",
+            "horn", "tusk", "talon", "wing", "fist", "pseudopod", "tendril"
+        }
+        name_lower = name.lower()
+        return any(keyword in name_lower for keyword in natural_keywords)
+
+    # Helper: determine weapon type for FoundryVTT
+    def get_weapon_type(attack_name: str, attack_type: str) -> str:
+        """
+        Determine the FoundryVTT weapon type value.
+
+        Returns:
+            - "natural" for natural weapons (bite, claw, etc.)
+            - "simpleR" for ranged weapons (bow, crossbow, etc.)
+            - "simpleM" for melee weapons (sword, axe, etc.)
+        """
+        if is_natural_weapon(attack_name):
+            return "natural"
+        elif attack_type == "ranged":
+            return "simpleR"
+        else:
+            # "melee" or "melee_ranged" defaults to melee
+            return "simpleM"
+
     # Build abilities
     abilities = {}
     for ability in ["str", "dex", "con", "int", "wis", "cha"]:
@@ -349,16 +377,6 @@ async def convert_to_foundry(
 
         # Collect all items that need icons
         items_for_icons: List[Tuple[str, Optional[List[str]]]] = []
-
-        # Helper: check if attack is a natural weapon
-        def is_natural_weapon(name: str) -> bool:
-            """Detect natural weapons by name (bite, claw, etc.)."""
-            natural_keywords = {
-                "bite", "claw", "gore", "tail", "slam", "sting", "tentacle",
-                "horn", "tusk", "talon", "wing", "fist", "pseudopod", "tendril"
-            }
-            name_lower = name.lower()
-            return any(keyword in name_lower for keyword in natural_keywords)
 
         # Add attacks (natural weapons use creatures folder only, weapons use both)
         for attack in parsed_actor.attacks:
@@ -479,7 +497,7 @@ async def convert_to_foundry(
                     "reach": attack.reach,
                     "units": "ft"
                 },
-                "type": {"value": "natural", "baseItem": ""},
+                "type": {"value": get_weapon_type(attack.name, attack.attack_type), "baseItem": ""},
                 "properties": [],
                 "uses": {"spent": 0, "recovery": [], "max": ""}
             }

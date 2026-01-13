@@ -7,12 +7,15 @@ from pathlib import Path
 
 from .models import Scene, ChapterContext
 from util.parallel_image_gen import generate_images_parallel
+from image_styles import SCENE_STYLE_CHARCOAL, SCENE_STYLE_SIMPLE
 
 logger = logging.getLogger(__name__)
 
 # Image generation model - can switch back to "imagen-4.0-fast-generate-001" if needed
 MODEL_NAME = "gemini-2.5-flash-image"
-DEFAULT_STYLE_PROMPT = "fantasy illustration, D&D 5e art style, detailed environment, high quality"
+
+# Backward compatibility alias
+DEFAULT_STYLE_PROMPT = SCENE_STYLE_SIMPLE
 
 
 def construct_image_prompt(
@@ -31,7 +34,7 @@ def construct_image_prompt(
     Returns:
         Complete prompt string for Gemini Imagen
     """
-    style = style_prompt or DEFAULT_STYLE_PROMPT
+    style = style_prompt or SCENE_STYLE_CHARCOAL
 
     return f"""
 {scene.description}

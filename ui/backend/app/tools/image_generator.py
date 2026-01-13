@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List
 from .base import BaseTool, ToolSchema, ToolResponse
-from .image_styles import SCENE_STYLE
+from .image_styles import SCENE_STYLE_CHARCOAL
 from ..config import settings
 
 # Add src to path for imports (backend tools run from ui/backend)
@@ -25,8 +25,8 @@ class ImageGeneratorTool(BaseTool):
     # Image generation model - can switch back to "imagen-4.0-fast-generate-001" if needed
     MODEL_NAME = "gemini-2.5-flash-image"
 
-    # Default style for D&D fantasy illustrations (scenes)
-    DEFAULT_STYLE = SCENE_STYLE
+    # Default style for D&D fantasy illustrations (scenes) - charcoal sketch
+    DEFAULT_STYLE = SCENE_STYLE_CHARCOAL
 
     def __init__(self):
         """Initialize image generator."""

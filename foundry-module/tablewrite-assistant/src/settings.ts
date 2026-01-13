@@ -32,7 +32,7 @@ export function registerSettings(): void {
   game.settings.register(MODULE_ID, 'artStyle', {
     name: 'TABLEWRITE_ASSISTANT.SettingsArtStyle',
     hint: 'TABLEWRITE_ASSISTANT.SettingsArtStyleHint',
-    default: 'watercolor',
+    default: 'charcoal',
     type: String,
     config: false,  // Not in Foundry settings menu - use our custom UI
     scope: 'client',

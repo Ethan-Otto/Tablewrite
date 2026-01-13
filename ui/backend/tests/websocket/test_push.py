@@ -22,14 +22,15 @@ async def test_foundry_connection():
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_list_scenes(ensure_foundry_connected):
-    """Test listing all world scenes."""
-    from app.websocket.push import list_scenes
+    """Test listing all world scenes via HTTP endpoint."""
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"{BACKEND_URL}/api/foundry/scenes", timeout=15.0)
 
-    result = await list_scenes(timeout=10.0)
-
-    assert result.success, f"Failed to list scenes: {result.error}"
-    assert result.scenes is not None
-    assert isinstance(result.scenes, list)
+    assert response.status_code == 200, f"Failed to list scenes: {response.text}"
+    data = response.json()
+    assert data["success"] is True
+    assert "scenes" in data
+    assert isinstance(data["scenes"], list)
 
 
 @pytest.mark.integration
@@ -63,42 +64,50 @@ async def test_push_actor_returns_uuid():
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_remove_actor_items(ensure_foundry_connected, test_folders):
-    """Test removing items from an actor."""
-    from app.websocket.push import push_actor, remove_actor_items, get_or_create_folder
+    """Test removing items from an actor via HTTP endpoints."""
+    async with httpx.AsyncClient() as client:
+        # Create a test folder via HTTP
+        folder_response = await client.post(
+            f"{BACKEND_URL}/api/foundry/folders",
+            json={"name": "tests", "folder_type": "Actor"},
+            timeout=15.0
+        )
+        assert folder_response.status_code == 200, f"Failed to create folder: {folder_response.text}"
+        folder_id = folder_response.json().get("folder_id")
 
-    # Create a test actor with items
-    folder_result = await get_or_create_folder("tests", "Actor")
-    assert folder_result.success, f"Failed to create test folder: {folder_result.error}"
-    folder_id = folder_result.folder_id
-
-    # Create actor with items via direct WebSocket push
-    actor_data = {
-        "actor": {
-            "name": "Test Actor for Item Removal",
-            "type": "npc",
-            "folder": folder_id,
-            "items": [
-                {"name": "Test Sword", "type": "weapon"},
-                {"name": "Test Shield", "type": "equipment"}
-            ]
-        }
-    }
-    create_result = await push_actor(actor_data, timeout=30.0)
-    assert create_result.success, f"Failed to create actor: {create_result.error}"
-    actor_uuid = create_result.uuid
-
-    try:
-        # Remove the sword (case-insensitive partial match on "sword")
-        result = await remove_actor_items(
-            actor_uuid=actor_uuid,
-            item_names=["sword"],
+        # Create actor with items via HTTP
+        actor_response = await client.post(
+            f"{BACKEND_URL}/api/foundry/actor",
+            json={
+                "actor": {
+                    "name": "Test Actor for Item Removal",
+                    "type": "npc",
+                    "folder": folder_id,
+                    "items": [
+                        {"name": "Test Sword", "type": "weapon"},
+                        {"name": "Test Shield", "type": "equipment"}
+                    ]
+                }
+            },
             timeout=30.0
         )
+        assert actor_response.status_code == 200, f"Failed to create actor: {actor_response.text}"
+        actor_uuid = actor_response.json()["uuid"]
 
-        assert result.success, f"Failed to remove items: {result.error}"
-        assert result.items_removed == 1
-        assert "Test Sword" in result.removed_names
-    finally:
-        # Cleanup - delete the actor
-        from app.websocket.push import delete_actor
-        await delete_actor(actor_uuid)
+        try:
+            # Remove the sword via HTTP (case-insensitive partial match on "sword")
+            remove_response = await client.request(
+                "DELETE",
+                f"{BACKEND_URL}/api/foundry/actor/{actor_uuid}/items",
+                json={"item_names": ["sword"]},
+                timeout=30.0
+            )
+
+            assert remove_response.status_code == 200, f"Failed to remove items: {remove_response.text}"
+            result = remove_response.json()
+            assert result["success"] is True
+            assert result["items_removed"] == 1
+            assert "Test Sword" in result["removed_names"]
+        finally:
+            # Cleanup - delete the actor via HTTP
+            await client.delete(f"{BACKEND_URL}/api/foundry/actor/{actor_uuid}", timeout=15.0)

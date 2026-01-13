@@ -223,6 +223,76 @@ class TestConvertToFoundry:
         # Passive traits should NOT have activities
         assert len(pack_tactics["system"]["activities"]) == 0
 
+    @pytest.mark.asyncio
+    async def test_weapon_type_based_on_attack_type(self):
+        """Weapon type should be set based on attack type: simpleM for melee, simpleR for ranged, natural for natural."""
+        creature = ParsedActorData(
+            source_statblock_name="Test Creature",
+            name="Test Creature",
+            armor_class=15,
+            hit_points=50,
+            challenge_rating=1.0,
+            abilities={"STR": 14, "DEX": 16, "CON": 12, "INT": 10, "WIS": 10, "CHA": 8},
+            attacks=[
+                # Melee weapon - should be "simpleM"
+                Attack(
+                    name="Longsword",
+                    attack_type="melee",
+                    attack_bonus=4,
+                    reach=5,
+                    damage=[DamageFormula(number=1, denomination=8, bonus="+2", type="slashing")]
+                ),
+                # Ranged weapon - should be "simpleR"
+                Attack(
+                    name="Fire Bow",
+                    attack_type="ranged",
+                    attack_bonus=5,
+                    range_short=80,
+                    range_long=320,
+                    damage=[DamageFormula(number=1, denomination=8, bonus="+3", type="fire")]
+                ),
+                # Natural weapon (by name) - should be "natural"
+                Attack(
+                    name="Bite",
+                    attack_type="melee",
+                    attack_bonus=4,
+                    reach=5,
+                    damage=[DamageFormula(number=1, denomination=6, bonus="+2", type="piercing")]
+                ),
+                # Another natural weapon - should be "natural"
+                Attack(
+                    name="Claw",
+                    attack_type="melee",
+                    attack_bonus=4,
+                    reach=5,
+                    damage=[DamageFormula(number=1, denomination=4, bonus="+2", type="slashing")]
+                )
+            ]
+        )
+
+        result, spell_uuids = await convert_to_foundry(creature)
+
+        # Find weapons by name
+        longsword = next((item for item in result["items"] if item["name"] == "Longsword"), None)
+        fire_bow = next((item for item in result["items"] if item["name"] == "Fire Bow"), None)
+        bite = next((item for item in result["items"] if item["name"] == "Bite"), None)
+        claw = next((item for item in result["items"] if item["name"] == "Claw"), None)
+
+        # Verify melee weapon gets simpleM type
+        assert longsword is not None
+        assert longsword["system"]["type"]["value"] == "simpleM", f"Melee weapon should be simpleM, got {longsword['system']['type']['value']}"
+
+        # Verify ranged weapon gets simpleR type
+        assert fire_bow is not None
+        assert fire_bow["system"]["type"]["value"] == "simpleR", f"Ranged weapon should be simpleR, got {fire_bow['system']['type']['value']}"
+
+        # Verify natural weapons get natural type (by name detection)
+        assert bite is not None
+        assert bite["system"]["type"]["value"] == "natural", f"Bite (natural weapon) should be natural, got {bite['system']['type']['value']}"
+
+        assert claw is not None
+        assert claw["system"]["type"]["value"] == "natural", f"Claw (natural weapon) should be natural, got {claw['system']['type']['value']}"
+
 
 @pytest.mark.unit
 class TestConvertToFoundryWithRealData:
@@ -275,12 +345,14 @@ class TestConvertToFoundryWithRealData:
         assert scimitar["type"] == "weapon"
         assert scimitar["system"]["damage"]["base"]["denomination"] == 6
         assert scimitar["system"]["damage"]["base"]["types"] == ["slashing"]
+        assert scimitar["system"]["type"]["value"] == "simpleM", "Scimitar (melee) should be simpleM type"
 
         shortbow = next((item for item in result["items"] if item["name"] == "Shortbow"), None)
         assert shortbow is not None
         assert shortbow["type"] == "weapon"
         assert shortbow["system"]["range"]["value"] == 80
         assert shortbow["system"]["range"]["long"] == 320
+        assert shortbow["system"]["type"]["value"] == "simpleR", "Shortbow (ranged) should be simpleR type"
 
         # Check trait
         nimble_escape = next((item for item in result["items"] if item["name"] == "Nimble Escape"), None)

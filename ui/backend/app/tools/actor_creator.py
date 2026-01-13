@@ -77,7 +77,7 @@ Visual description for image generation:"""
 async def generate_actor_image(
     visual_description: str,
     upload_to_foundry: bool = True,
-    style: str = "watercolor"
+    style: str = "charcoal"
 ) -> tuple[Optional[str], Optional[str]]:
     """
     Generate an image of the actor using Imagen.
@@ -85,7 +85,7 @@ async def generate_actor_image(
     Args:
         visual_description: Visual description of the actor
         upload_to_foundry: Whether to upload the image to Foundry
-        style: Art style to use ("watercolor" or "oil")
+        style: Art style to use ("charcoal", "watercolor", "oil", etc.)
 
     Returns:
         Tuple of (local_url, foundry_path):
@@ -369,7 +369,7 @@ class ActorCreatorTool(BaseTool):
             context = get_request_context()
             settings = context.get('settings', {})
             art_enabled = settings.get('tokenArtEnabled', True)
-            art_style = settings.get('artStyle', 'watercolor')
+            art_style = settings.get('artStyle', 'charcoal')
 
             # Generate actor image BEFORE actor creation (if enabled)
             # This allows us to set the profile image on the actor

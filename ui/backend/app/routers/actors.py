@@ -11,12 +11,15 @@ from app.websocket import (
     fetch_actor,
     delete_actor,
     list_actors,
+    list_scenes,
     push_actor,
     update_actor,
     list_compendium_items,
     list_files,
     give_items,
     list_folders,
+    get_or_create_folder,
+    remove_actor_items,
 )
 
 router = APIRouter(prefix="/api", tags=["actors"])
@@ -34,6 +37,12 @@ class GiveItemsRequest(BaseModel):
     """Request body for giving items to an actor."""
 
     item_uuids: list[str]
+
+
+class RemoveItemsRequest(BaseModel):
+    """Request body for removing items from an actor."""
+
+    item_names: list[str]
 
 
 @router.get("/foundry/actor/{uuid}")
@@ -174,6 +183,29 @@ async def get_all_actors():
         raise HTTPException(status_code=500, detail=result.error)
 
 
+@router.get("/foundry/scenes")
+async def get_all_scenes():
+    """
+    List all world scenes from Foundry.
+
+    Returns:
+        List of scenes with uuid, id, and name
+    """
+    result = await list_scenes(timeout=10.0)
+
+    if result.success:
+        return {
+            "success": True,
+            "count": len(result.scenes) if result.scenes else 0,
+            "scenes": [
+                {"uuid": s.uuid, "id": s.id, "name": s.name}
+                for s in (result.scenes or [])
+            ],
+        }
+    else:
+        raise HTTPException(status_code=500, detail=result.error)
+
+
 @router.delete("/foundry/actors/duplicates")
 async def delete_duplicate_actors():
     """
@@ -246,6 +278,37 @@ async def give_items_to_actor(uuid: str, request: GiveItemsRequest):
             "actor_uuid": result.actor_uuid,
             "items_added": result.items_added,
             "errors": result.errors,
+        }
+    else:
+        raise HTTPException(status_code=500, detail=result.error)
+
+
+@router.delete("/foundry/actor/{uuid}/items")
+async def remove_items_from_actor(uuid: str, request: RemoveItemsRequest):
+    """
+    Remove items from an actor by name.
+
+    Performs case-insensitive partial matching on item names.
+
+    Args:
+        uuid: The actor UUID (e.g., "Actor.abc123")
+        request: RemoveItemsRequest with list of item names to remove
+
+    Returns:
+        Success status with items_removed count and removed_names
+    """
+    result = await remove_actor_items(
+        actor_uuid=uuid,
+        item_names=request.item_names,
+        timeout=30.0,
+    )
+
+    if result.success:
+        return {
+            "success": True,
+            "actor_uuid": result.actor_uuid,
+            "items_removed": result.items_removed,
+            "removed_names": result.removed_names,
         }
     else:
         raise HTTPException(status_code=500, detail=result.error)
