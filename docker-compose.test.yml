@@ -78,11 +78,14 @@ services:
     environment:
       - CI=false
       - SKIP_FOUNDRY_INIT=false
-      # Connect to host machine's services
-      - BACKEND_URL=http://host.docker.internal:8000
+      # Connect to backend container (if running) or host
+      - BACKEND_URL=http://tablewrite:8000
       - FOUNDRY_URL=http://host.docker.internal:30000
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - tablewrite-net
     command: >
       uv run pytest -v --tb=long --full
       -m "integration"
@@ -111,3 +114,8 @@ services:
       uv run pytest -v --tb=short
       -m "unit and not integration and not slow and not requires_api"
       -n auto --dist loadscope
+
+networks:
+  tablewrite-net:
+    external: true
+    name: dnd_module_gen_default

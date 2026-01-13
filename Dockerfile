@@ -48,6 +48,9 @@ COPY ui/ ./ui/
 # Create output directories
 RUN mkdir -p /app/output /app/data
 
+# Set PYTHONPATH so backend can import from src/ and find app module
+ENV PYTHONPATH=/app/src:/app/ui/backend
+
 # Expose port
 EXPOSE 8000
 
@@ -55,8 +58,9 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Run backend using uv
-CMD ["uv", "run", "uvicorn", "ui.backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run backend from ui/backend directory
+WORKDIR /app/ui/backend
+CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 # ============================================
 # Test target

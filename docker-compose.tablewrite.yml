@@ -13,6 +13,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: production
     container_name: tablewrite
     ports:
       - "8000:8000"
