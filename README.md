@@ -21,13 +21,14 @@ Use Chat UI to make edits, create actors, journals, scenes, etc
 - **Scene Upload** - Create FoundryVTT scenes with walls and proper grid settings
 
 ### Chat Interface (Tablewrite Module)
-Natural language interface directly in FoundryVTT with 12 tools:
+Natural language interface directly in FoundryVTT with 13 tools:
 
 | Tool | Description |
 |------|-------------|
 | `create_actor` | Create a D&D actor from natural language description |
 | `batch_create_actors` | Create multiple actors at once |
-| `edit_actor` | Modify an existing actor's properties |
+| `edit_actor` | Modify an existing actor's stats, items, or properties |
+| `query_actor` | Get detailed info about an actor's attacks, abilities, spells |
 | `create_journal` | Create a journal entry |
 | `edit_journal` | Modify an existing journal's name, content, or pages |
 | `create_scene` | Create a scene from a battle map image |
@@ -267,6 +268,37 @@ Generate an image of a dark forest clearing with ancient standing stones
 **Delete Assets:**
 ```
 Delete all actors named "Test Goblin"
+```
+
+### @Mentions
+
+Reference actors directly using `@` autocomplete. Type `@` followed by the actor name to see suggestions:
+
+**Query Actor Details:**
+```
+@Hobgoblin Iron Shadow What attacks does this creature have?
+```
+```
+@Ancient Red Dragon Tell me about its legendary actions
+```
+
+**Edit Existing Items:**
+```
+@Hobgoblin Iron Shadow Set the Longbow attack bonus to 0
+```
+```
+@Dragon Make the Bite attack do 3d10 fire damage
+```
+```
+@Warrior Add the magical property to their sword
+```
+
+**Modify Actor Stats:**
+```
+@Goblin Boss Set HP to 50 and AC to 16
+```
+```
+@Guard Give expertise in perception
 ```
 
 ### Full PDF Pipeline
