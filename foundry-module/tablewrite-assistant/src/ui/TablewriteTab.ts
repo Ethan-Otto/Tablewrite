@@ -135,6 +135,11 @@ export class TablewriteTab {
         e.preventDefault();
         form?.dispatchEvent(new Event('submit'));
       }
+
+      // Prevent Tab from leaving the input (keeps focus in chat)
+      if (e.key === 'Tab' && !e.shiftKey) {
+        e.preventDefault();
+      }
     });
 
     // Drag and drop support for future file uploads

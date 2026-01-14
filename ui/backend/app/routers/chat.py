@@ -15,6 +15,25 @@ router = APIRouter(prefix="/api", tags=["chat"])
 MENTION_PATTERN = re.compile(r'@\[([^\]]+)\]\(([^)]+)\)')
 
 
+def normalize_uuid(uuid_str: str) -> str:
+    """
+    Normalize a Foundry UUID to remove duplicate type prefixes.
+
+    Foundry sometimes returns UUIDs like 'Actor.Actor.xxx' instead of 'Actor.xxx'.
+    This function normalizes them to the correct format.
+    """
+    # Known entity type prefixes
+    prefixes = ['Actor', 'JournalEntry', 'Scene', 'Item', 'Compendium']
+
+    for prefix in prefixes:
+        doubled = f"{prefix}.{prefix}."
+        single = f"{prefix}."
+        if uuid_str.startswith(doubled):
+            uuid_str = uuid_str.replace(doubled, single, 1)
+
+    return uuid_str
+
+
 async def parse_and_resolve_mentions(message: str) -> tuple[str, list[dict]]:
     """
     Parse mentions in message and resolve them to entity context.
@@ -33,6 +52,9 @@ async def parse_and_resolve_mentions(message: str) -> tuple[str, list[dict]]:
     cleaned_message = message
 
     for name, uuid_str in mentions:
+        # Normalize UUID to fix doubled prefixes (Actor.Actor.xxx -> Actor.xxx)
+        uuid_str = normalize_uuid(uuid_str)
+
         # Parse the type from UUID (format: Type.id or just id)
         if '.' in uuid_str:
             entity_type = uuid_str.split('.')[0]
@@ -44,18 +66,19 @@ async def parse_and_resolve_mentions(message: str) -> tuple[str, list[dict]]:
         entity_context = {
             "name": name,
             "type": entity_type,
-            "uuid": uuid_str,
+            "uuid": uuid_str,  # Now using normalized UUID
             "details": None
         }
 
         # Try to fetch entity details based on type
+        # Use full UUID (uuid_str) for fetching, not just entity_id
         try:
             if entity_type == "Actor":
-                result = await fetch_actor(entity_id)
+                result = await fetch_actor(uuid_str)
                 if result.success and result.entity:
                     entity_context["details"] = _extract_actor_summary(result.entity)
             elif entity_type == "JournalEntry":
-                result = await fetch_journal(entity_id)
+                result = await fetch_journal(uuid_str)
                 if result.success and result.entity:
                     entity_context["details"] = _extract_journal_summary(result.entity)
             # Items and Scenes could be added similarly

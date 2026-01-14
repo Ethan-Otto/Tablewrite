@@ -2,21 +2,21 @@
  * Message handlers for Tablewrite.
  */
 
-export { handleActorCreate, handleGetActor, handleUpdateActor, handleDeleteActor, handleListActors, handleGiveItems, handleAddCustomItems, handleRemoveActorItems } from './actor.js';
+export { handleActorCreate, handleGetActor, handleUpdateActor, handleDeleteActor, handleListActors, handleGiveItems, handleAddCustomItems, handleRemoveActorItems, handleUpdateActorItem } from './actor.js';
 export { handleGetJournal, handleJournalCreate, handleJournalDelete, handleListJournals, handleUpdateJournal } from './journal.js';
 export { handleSceneCreate, handleGetScene, handleDeleteScene, handleListScenes } from './scene.js';
 export { handleSearchItems, handleGetItem, handleListCompendiumItems } from './items.js';
 export { handleListFiles, handleFileUpload } from './files.js';
 export { handleGetOrCreateFolder, handleListFolders, handleDeleteFolder } from './folder.js';
 
-import { handleActorCreate, handleGetActor, handleUpdateActor, handleDeleteActor, handleListActors, handleGiveItems, handleAddCustomItems, handleRemoveActorItems } from './actor.js';
+import { handleActorCreate, handleGetActor, handleUpdateActor, handleDeleteActor, handleListActors, handleGiveItems, handleAddCustomItems, handleRemoveActorItems, handleUpdateActorItem } from './actor.js';
 import { handleGetJournal, handleJournalCreate, handleJournalDelete, handleListJournals, handleUpdateJournal, JournalListResult, UpdateJournalResult } from './journal.js';
 import { handleSceneCreate, handleGetScene, handleDeleteScene, handleListScenes } from './scene.js';
 import { handleSearchItems, handleGetItem, handleListCompendiumItems } from './items.js';
 import { handleListFiles, handleFileUpload } from './files.js';
 import { handleGetOrCreateFolder, handleListFolders, handleDeleteFolder, FolderResult, ListFoldersResult, DeleteFolderResult } from './folder.js';
 
-export type MessageType = 'actor' | 'journal' | 'get_journal' | 'delete_journal' | 'list_journals' | 'update_journal' | 'scene' | 'get_scene' | 'delete_scene' | 'list_scenes' | 'get_actor' | 'update_actor' | 'delete_actor' | 'list_actors' | 'give_items' | 'add_custom_items' | 'remove_actor_items' | 'search_items' | 'get_item' | 'list_compendium_items' | 'list_files' | 'upload_file' | 'get_or_create_folder' | 'list_folders' | 'delete_folder' | 'module_progress' | 'connected' | 'pong';
+export type MessageType = 'actor' | 'journal' | 'get_journal' | 'delete_journal' | 'list_journals' | 'update_journal' | 'scene' | 'get_scene' | 'delete_scene' | 'list_scenes' | 'get_actor' | 'update_actor' | 'delete_actor' | 'list_actors' | 'give_items' | 'add_custom_items' | 'remove_actor_items' | 'update_actor_item' | 'search_items' | 'get_item' | 'list_compendium_items' | 'list_files' | 'upload_file' | 'get_or_create_folder' | 'list_folders' | 'delete_folder' | 'module_progress' | 'connected' | 'pong';
 
 export interface TablewriteMessage {
   type: MessageType;
@@ -383,6 +383,30 @@ export async function handleMessage(message: TablewriteMessage): Promise<Message
       const result = await handleRemoveActorItems(message.data as { actor_uuid: string; item_names: string[] });
       return {
         responseType: result.success ? 'actor_items_removed' : 'actor_error',
+        request_id: message.request_id,
+        data: result,
+        error: result.error
+      };
+    }
+    case 'update_actor_item': {
+      const result = await handleUpdateActorItem(message.data as {
+        actor_uuid: string;
+        item_name: string;
+        updates: {
+          name?: string;
+          attack_bonus?: number;
+          damage_formula?: string;
+          damage_type?: string;
+          damage_bonus?: string;
+          description?: string;
+          range?: number;
+          range_long?: number;
+          weapon_type?: string;
+          properties?: Record<string, boolean>;
+        };
+      });
+      return {
+        responseType: result.success ? 'actor_item_updated' : 'actor_error',
         request_id: message.request_id,
         data: result,
         error: result.error

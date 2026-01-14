@@ -577,6 +577,171 @@ export async function handleAddCustomItems(data: {
 }
 
 /**
+ * Handle update actor item request.
+ * Updates an existing embedded item on an actor (weapon, feat, spell, etc.).
+ * Finds item by name (case-insensitive partial match) and applies updates.
+ */
+export async function handleUpdateActorItem(data: {
+  actor_uuid: string;
+  item_name: string;
+  updates: {
+    name?: string;
+    attack_bonus?: number;
+    damage_formula?: string;
+    damage_type?: string;
+    damage_bonus?: string;  // Just the bonus part (e.g., "4" for +4)
+    description?: string;
+    range?: number;
+    range_long?: number;
+    weapon_type?: string;  // "natural", "simpleM", "simpleR", "martialM", "martialR"
+    // Weapon properties (all boolean)
+    properties?: {
+      ada?: boolean;  // Adamantine
+      amm?: boolean;  // Ammunition
+      fin?: boolean;  // Finesse
+      fir?: boolean;  // Firearm
+      foc?: boolean;  // Focus
+      hvy?: boolean;  // Heavy
+      lgt?: boolean;  // Light
+      lod?: boolean;  // Loading
+      mgc?: boolean;  // Magical
+      rch?: boolean;  // Reach
+      rel?: boolean;  // Reload
+      ret?: boolean;  // Returning
+      sil?: boolean;  // Silvered
+      spc?: boolean;  // Special
+      thr?: boolean;  // Thrown
+      two?: boolean;  // Two-Handed
+      ver?: boolean;  // Versatile
+    };
+  };
+}): Promise<{ success: boolean; item_name?: string; error?: string }> {
+  try {
+    const { actor_uuid, item_name, updates } = data;
+
+    if (!actor_uuid || !item_name) {
+      return {
+        success: false,
+        error: 'actor_uuid and item_name are required'
+      };
+    }
+
+    const actor = await fromUuid(actor_uuid) as FoundryDocument | null;
+    if (!actor) {
+      return {
+        success: false,
+        error: `Actor not found: ${actor_uuid}`
+      };
+    }
+
+    // Find item by name (case-insensitive partial match)
+    const actorItems = (actor as any).items as { id: string; name: string; type: string; system: any }[];
+    const searchLower = item_name.toLowerCase();
+    const matchingItem = actorItems.find((item) =>
+      item.name?.toLowerCase().includes(searchLower)
+    );
+
+    if (!matchingItem) {
+      return {
+        success: false,
+        error: `Item '${item_name}' not found on actor`
+      };
+    }
+
+    // Build update object for Foundry
+    const itemUpdates: Record<string, unknown> = {
+      _id: matchingItem.id
+    };
+
+    if (updates.name !== undefined) {
+      itemUpdates.name = updates.name;
+    }
+
+    if (updates.description !== undefined) {
+      itemUpdates['system.description.value'] = updates.description;
+    }
+
+    if (updates.range !== undefined) {
+      itemUpdates['system.range.value'] = updates.range;
+      itemUpdates['system.range.reach'] = updates.range;
+    }
+
+    if (updates.range_long !== undefined) {
+      itemUpdates['system.range.long'] = updates.range_long;
+    }
+
+    // Handle weapon type
+    if (updates.weapon_type !== undefined) {
+      itemUpdates['system.type.value'] = updates.weapon_type;
+    }
+
+    // Handle weapon properties
+    if (updates.properties !== undefined) {
+      for (const [prop, value] of Object.entries(updates.properties)) {
+        if (value !== undefined) {
+          itemUpdates[`system.properties.${prop}`] = value;
+        }
+      }
+    }
+
+    // Handle attack bonus - need to find the attack activity and update it
+    if (updates.attack_bonus !== undefined) {
+      const system = matchingItem.system || {};
+      const activities = system.activities || {};
+
+      // Find the attack activity
+      for (const [actId, activity] of Object.entries(activities)) {
+        if ((activity as any).type === 'attack') {
+          itemUpdates[`system.activities.${actId}.attack.bonus`] = String(updates.attack_bonus);
+          break;
+        }
+      }
+    }
+
+    // Handle damage formula (e.g., "2d8+4")
+    if (updates.damage_formula !== undefined) {
+      const match = updates.damage_formula.match(/(\d+)?d(\d+)([+-]\d+)?/i);
+      if (match) {
+        const number = parseInt(match[1] || "1");
+        const denom = parseInt(match[2]);
+        const bonus = match[3]?.replace("+", "") || "";
+
+        itemUpdates['system.damage.base.number'] = number;
+        itemUpdates['system.damage.base.denomination'] = denom;
+        itemUpdates['system.damage.base.bonus'] = bonus;
+      }
+    }
+
+    // Handle just the damage bonus (e.g., "4" to set +4 damage)
+    if (updates.damage_bonus !== undefined) {
+      itemUpdates['system.damage.base.bonus'] = updates.damage_bonus;
+    }
+
+    // Handle damage type
+    if (updates.damage_type !== undefined) {
+      itemUpdates['system.damage.base.types'] = [updates.damage_type];
+    }
+
+    // Apply updates (cast to any for updateEmbeddedDocuments)
+    await (actor as any).updateEmbeddedDocuments('Item', [itemUpdates]);
+
+    console.log(`[Tablewrite] Updated item '${matchingItem.name}' on actor ${actor.name}:`, updates);
+    ui.notifications?.info(`Updated ${matchingItem.name} on ${actor.name}`);
+
+    return {
+      success: true,
+      item_name: matchingItem.name ?? item_name
+    };
+  } catch (error) {
+    console.error('[Tablewrite] Failed to update actor item:', error);
+    return {
+      success: false,
+      error: String(error)
+    };
+  }
+}
+
+/**
  * Handle remove items from actor request.
  * Removes embedded items (spells, features, weapons, etc.) from an actor by name.
  * Uses case-insensitive partial matching.

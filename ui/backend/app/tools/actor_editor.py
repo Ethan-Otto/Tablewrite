@@ -2,7 +2,7 @@
 import logging
 from typing import Optional, Dict, Any, List
 from .base import BaseTool, ToolSchema, ToolResponse
-from app.websocket import update_actor, fetch_actor, list_actors, add_custom_items
+from app.websocket import update_actor, fetch_actor, list_actors, add_custom_items, update_actor_item
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +35,31 @@ async def find_actor_by_name(actor_name: str) -> Optional[str]:
     return None
 
 
+# Skill name to FoundryVTT abbreviation mapping
+SKILL_ABBREVIATIONS = {
+    "acrobatics": "acr",
+    "animal handling": "ani",
+    "animal_handling": "ani",
+    "arcana": "arc",
+    "athletics": "ath",
+    "deception": "dec",
+    "history": "his",
+    "insight": "ins",
+    "intimidation": "itm",
+    "investigation": "inv",
+    "medicine": "med",
+    "nature": "nat",
+    "perception": "prc",
+    "performance": "prf",
+    "persuasion": "per",
+    "religion": "rel",
+    "sleight of hand": "slt",
+    "sleight_of_hand": "slt",
+    "stealth": "ste",
+    "survival": "sur",
+}
+
+
 class ActorEditorTool(BaseTool):
     """Tool for editing existing D&D actors in FoundryVTT."""
 
@@ -49,7 +74,7 @@ class ActorEditorTool(BaseTool):
             description=(
                 "Edit an existing actor/creature in FoundryVTT. Use when user asks to "
                 "modify, change, update, or adjust an actor's stats, abilities, HP, AC, "
-                "name, or other attributes. Can search by actor name or use UUID directly."
+                "skills, name, or other attributes. Can search by actor name or use UUID directly."
             ),
             parameters={
                 "type": "object",
@@ -106,6 +131,39 @@ class ActorEditorTool(BaseTool):
                         "type": "integer",
                         "description": "New walking speed in feet"
                     },
+                    "skill_proficiencies": {
+                        "type": "array",
+                        "description": "Skills to set as proficient (1x proficiency bonus)",
+                        "items": {
+                            "type": "string",
+                            "enum": ["acrobatics", "animal handling", "arcana", "athletics", "deception",
+                                     "history", "insight", "intimidation", "investigation", "medicine",
+                                     "nature", "perception", "performance", "persuasion", "religion",
+                                     "sleight of hand", "stealth", "survival"]
+                        }
+                    },
+                    "skill_expertise": {
+                        "type": "array",
+                        "description": "Skills to set as expertise (2x proficiency bonus, double proficiency)",
+                        "items": {
+                            "type": "string",
+                            "enum": ["acrobatics", "animal handling", "arcana", "athletics", "deception",
+                                     "history", "insight", "intimidation", "investigation", "medicine",
+                                     "nature", "perception", "performance", "persuasion", "religion",
+                                     "sleight of hand", "stealth", "survival"]
+                        }
+                    },
+                    "remove_skill_proficiencies": {
+                        "type": "array",
+                        "description": "Skills to remove proficiency from (set to not proficient)",
+                        "items": {
+                            "type": "string",
+                            "enum": ["acrobatics", "animal handling", "arcana", "athletics", "deception",
+                                     "history", "insight", "intimidation", "investigation", "medicine",
+                                     "nature", "perception", "performance", "persuasion", "religion",
+                                     "sleight of hand", "stealth", "survival"]
+                        }
+                    },
                     "new_attacks": {
                         "type": "array",
                         "description": "New weapon attacks to add to the actor",
@@ -142,6 +200,49 @@ class ActorEditorTool(BaseTool):
                             },
                             "required": ["name", "description"]
                         }
+                    },
+                    "edit_items": {
+                        "type": "array",
+                        "description": "Edit existing items (weapons, feats, features) on the actor instead of creating new ones",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "item_name": {"type": "string", "description": "Current name of the item to edit (case-insensitive match)"},
+                                "new_name": {"type": "string", "description": "New name for the item"},
+                                "attack_bonus": {"type": "integer", "description": "New attack bonus modifier"},
+                                "damage_formula": {"type": "string", "description": "New damage dice (e.g., '2d6+3')"},
+                                "damage_type": {"type": "string", "description": "New damage type (e.g., 'slashing', 'piercing')"},
+                                "damage_bonus": {"type": "string", "description": "Additional damage bonus"},
+                                "description": {"type": "string", "description": "New item description"},
+                                "range": {"type": "integer", "description": "New attack range in feet"},
+                                "range_long": {"type": "integer", "description": "New long range in feet (for ranged weapons)"},
+                                "weapon_type": {"type": "string", "description": "Weapon type: 'natural', 'simpleM', 'simpleR', 'martialM', 'martialR'"},
+                                "properties": {
+                                    "type": "object",
+                                    "description": "Weapon property flags to set",
+                                    "properties": {
+                                        "ada": {"type": "boolean", "description": "Adamantine"},
+                                        "amm": {"type": "boolean", "description": "Ammunition"},
+                                        "fin": {"type": "boolean", "description": "Finesse"},
+                                        "fir": {"type": "boolean", "description": "Firearm"},
+                                        "foc": {"type": "boolean", "description": "Focus"},
+                                        "hvy": {"type": "boolean", "description": "Heavy"},
+                                        "lgt": {"type": "boolean", "description": "Light"},
+                                        "lod": {"type": "boolean", "description": "Loading"},
+                                        "mgc": {"type": "boolean", "description": "Magical"},
+                                        "rch": {"type": "boolean", "description": "Reach"},
+                                        "rel": {"type": "boolean", "description": "Reload"},
+                                        "ret": {"type": "boolean", "description": "Returning"},
+                                        "sil": {"type": "boolean", "description": "Silvered"},
+                                        "spc": {"type": "boolean", "description": "Special"},
+                                        "thr": {"type": "boolean", "description": "Thrown"},
+                                        "two": {"type": "boolean", "description": "Two-Handed"},
+                                        "ver": {"type": "boolean", "description": "Versatile"}
+                                    }
+                                }
+                            },
+                            "required": ["item_name"]
+                        }
                     }
                 },
                 "required": []
@@ -157,8 +258,12 @@ class ActorEditorTool(BaseTool):
         max_hp: Optional[int] = None,
         ac: Optional[int] = None,
         speed: Optional[int] = None,
+        skill_proficiencies: Optional[List[str]] = None,
+        skill_expertise: Optional[List[str]] = None,
+        remove_skill_proficiencies: Optional[List[str]] = None,
         new_attacks: Optional[List[Dict[str, Any]]] = None,
         new_feats: Optional[List[Dict[str, Any]]] = None,
+        edit_items: Optional[List[Dict[str, Any]]] = None,
         **kwargs  # Capture ability scores from Gemini (str, dex, con, int, wis, cha)
     ) -> ToolResponse:
         """Execute actor edit using WebSocket connection to Foundry."""
@@ -215,11 +320,42 @@ class ActorEditorTool(BaseTool):
             if speed is not None:
                 updates["system.attributes.movement.walk"] = speed
 
+            # Skill proficiency updates
+            # In DnD5e, skill.value is: 0 = not proficient, 1 = proficient, 2 = expertise
+            skill_changes = []
+            if skill_proficiencies:
+                for skill_name in skill_proficiencies:
+                    skill_key = SKILL_ABBREVIATIONS.get(skill_name.lower())
+                    if skill_key:
+                        updates[f"system.skills.{skill_key}.value"] = 1
+                        skill_changes.append(f"**{skill_name}** (proficient)")
+                    else:
+                        logger.warning(f"Unknown skill: {skill_name}")
+
+            if skill_expertise:
+                for skill_name in skill_expertise:
+                    skill_key = SKILL_ABBREVIATIONS.get(skill_name.lower())
+                    if skill_key:
+                        updates[f"system.skills.{skill_key}.value"] = 2
+                        skill_changes.append(f"**{skill_name}** (expertise)")
+                    else:
+                        logger.warning(f"Unknown skill: {skill_name}")
+
+            if remove_skill_proficiencies:
+                for skill_name in remove_skill_proficiencies:
+                    skill_key = SKILL_ABBREVIATIONS.get(skill_name.lower())
+                    if skill_key:
+                        updates[f"system.skills.{skill_key}.value"] = 0
+                        skill_changes.append(f"**{skill_name}** (removed)")
+                    else:
+                        logger.warning(f"Unknown skill: {skill_name}")
+
             # Check if we have any modifications to make
             has_stat_updates = bool(updates)
             has_custom_items = bool(new_attacks) or bool(new_feats)
+            has_item_edits = bool(edit_items)
 
-            if not has_stat_updates and not has_custom_items:
+            if not has_stat_updates and not has_custom_items and not has_item_edits:
                 return ToolResponse(
                     type="error",
                     message="No updates provided. Specify at least one attribute to change or items to add.",
@@ -298,8 +434,35 @@ class ActorEditorTool(BaseTool):
                     )
                 items_added = items_result.items_added or 0
 
-            # If we only added items (no stat updates), fetch actor name
-            if not has_stat_updates and has_custom_items:
+            # Edit existing items if any
+            items_edited = []
+            if has_item_edits:
+                for item_edit in edit_items:
+                    item_name = item_edit.get("item_name")
+                    if not item_name:
+                        continue
+
+                    # Build update dict for this item
+                    item_updates = {}
+                    for key in ["new_name", "attack_bonus", "damage_formula", "damage_type",
+                                "damage_bonus", "description", "range", "range_long",
+                                "weapon_type", "properties"]:
+                        if key in item_edit and item_edit[key] is not None:
+                            # Map new_name to name for the Foundry handler
+                            update_key = "name" if key == "new_name" else key
+                            item_updates[update_key] = item_edit[key]
+
+                    if item_updates:
+                        logger.info(f"Editing item '{item_name}' on actor {resolved_uuid}: {item_updates}")
+                        edit_result = await update_actor_item(resolved_uuid, item_name, item_updates)
+
+                        if edit_result.success:
+                            items_edited.append(edit_result.item_name or item_name)
+                        else:
+                            logger.warning(f"Failed to edit item '{item_name}': {edit_result.error}")
+
+            # If we only modified items (no stat updates), fetch actor name
+            if not has_stat_updates and (has_custom_items or has_item_edits):
                 fetch_result = await fetch_actor(resolved_uuid)
                 if fetch_result.success and fetch_result.entity:
                     actor_display_name = fetch_result.entity.get("name", "the actor")
@@ -323,6 +486,10 @@ class ActorEditorTool(BaseTool):
             if speed is not None:
                 change_summary.append(f"speed to **{speed} ft**")
 
+            # Add skill changes to summary
+            if skill_changes:
+                change_summary.append(f"skills: {', '.join(skill_changes)}")
+
             # Add attack/feat summaries
             if new_attacks:
                 attack_names = [a.get("name", "Attack") for a in new_attacks]
@@ -330,6 +497,10 @@ class ActorEditorTool(BaseTool):
             if new_feats:
                 feat_names = [f.get("name", "Ability") for f in new_feats]
                 change_summary.append(f"added abilities: **{', '.join(feat_names)}**")
+
+            # Add edited items summary
+            if items_edited:
+                change_summary.append(f"edited items: **{', '.join(items_edited)}**")
 
             changes_text = ", ".join(change_summary)
             actor_display_name = actor_display_name or "the actor"
@@ -350,6 +521,7 @@ class ActorEditorTool(BaseTool):
                     "name": actor_display_name,
                     "updates": updates,
                     "items_added": items_added,
+                    "items_edited": items_edited,
                     "link": actor_link
                 }
             )

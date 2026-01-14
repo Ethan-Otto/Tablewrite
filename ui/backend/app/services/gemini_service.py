@@ -133,6 +133,13 @@ class GeminiService:
         Returns:
             True if this appears to be a rules question
         """
+        # If message contains @mention, it's asking about a specific entity - NOT a rules question
+        # We need to query the actual actor/entity data, not answer from general rules knowledge
+        import re
+        if re.search(r'@\[[^\]]+\]\([^)]+\)', message):
+            print("[DEBUG] Message contains @mention - not a rules question")
+            return False
+
         prompt = f"""Is this message a QUESTION asking about D&D 5e rules, mechanics, or how something works in the game?
 
 Answer NO if the message is:
@@ -141,6 +148,7 @@ Answer NO if the message is:
 - A greeting or casual conversation
 - A question about a JOURNAL, document, or module content (e.g., "What's in the Lost Mine journal?", "Summarize chapter 1", "List NPCs in the module")
 - A query asking about specific content from a named source
+- A question about a SPECIFIC creature, actor, or entity (not general rules)
 
 Answer YES only if the message is genuinely ASKING about generic D&D rules/mechanics (e.g., "How does sneak attack work?", "What are the rules for grappling?").
 
@@ -315,6 +323,21 @@ Available commands:
             prompt += f"Current module: {context['module']}\n"
         if context.get("chapter"):
             prompt += f"Current chapter: {context['chapter']}\n"
+
+        # Add mentioned entities context
+        mentioned_entities = context.get("mentioned_entities", [])
+        if mentioned_entities:
+            prompt += "\n**Mentioned Entities:**\n"
+            for entity in mentioned_entities:
+                entity_type = entity.get("type", "Unknown")
+                entity_name = entity.get("name", "Unknown")
+                entity_uuid = entity.get("uuid", "")
+                details = entity.get("details", "")
+                prompt += f"- {entity_type}: {entity_name} (uuid: {entity_uuid})"
+                if details:
+                    prompt += f" - {details}"
+                prompt += "\n"
+            prompt += "\nUse these UUIDs when calling tools for the mentioned entities.\n"
 
         # Add conversation history if available
         if conversation_history:

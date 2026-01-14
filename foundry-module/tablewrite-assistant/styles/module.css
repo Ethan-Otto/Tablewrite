@@ -50,6 +50,18 @@
   font-size: var(--font-size-14, 14px);
   line-height: 1.4;
   color: #1a1a1a;
+  /* Enable text selection for copy/paste */
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  cursor: text;
+}
+
+/* Message content - ensure text selection works */
+.tablewrite-message-content {
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
 }
 
 /* User message styling */

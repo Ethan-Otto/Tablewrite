@@ -9,6 +9,22 @@ export interface MentionEntity {
   type: 'Actor' | 'JournalEntry' | 'Item' | 'Scene';
 }
 
+/**
+ * Normalize a Foundry UUID to remove duplicate type prefixes.
+ * Foundry sometimes returns UUIDs like 'Actor.Actor.xxx' instead of 'Actor.xxx'.
+ */
+function normalizeUuid(uuid: string): string {
+  const prefixes = ['Actor', 'JournalEntry', 'Scene', 'Item'];
+  for (const prefix of prefixes) {
+    const doubled = `${prefix}.${prefix}.`;
+    const single = `${prefix}.`;
+    if (uuid.startsWith(doubled)) {
+      return uuid.replace(doubled, single);
+    }
+  }
+  return uuid;
+}
+
 export interface EntityGroups {
   actors: MentionEntity[];
   journals: MentionEntity[];
@@ -194,22 +210,22 @@ export class MentionAutocomplete {
     return {
       actors: actorContents.map((doc: FoundryDocument) => ({
         name: doc.name,
-        uuid: doc.uuid,
+        uuid: normalizeUuid(doc.uuid),
         type: 'Actor' as const
       })),
       journals: journalContents.map((doc: FoundryDocument) => ({
         name: doc.name,
-        uuid: doc.uuid,
+        uuid: normalizeUuid(doc.uuid),
         type: 'JournalEntry' as const
       })),
       items: itemContents.map((doc: FoundryDocument) => ({
         name: doc.name,
-        uuid: doc.uuid,
+        uuid: normalizeUuid(doc.uuid),
         type: 'Item' as const
       })),
       scenes: sceneContents.map((doc: FoundryDocument) => ({
         name: doc.name,
-        uuid: doc.uuid,
+        uuid: normalizeUuid(doc.uuid),
         type: 'Scene' as const
       }))
     };
@@ -220,16 +236,20 @@ export class MentionAutocomplete {
 
     switch (event.key) {
       case 'ArrowDown':
+        event.preventDefault();
         this.moveSelection(1);
         return true;
       case 'ArrowUp':
+        event.preventDefault();
         this.moveSelection(-1);
         return true;
       case 'Tab':
       case 'Enter':
+        event.preventDefault();
         this.insertSelected();
         return true;
       case 'Escape':
+        event.preventDefault();
         this.close();
         return true;
       default:

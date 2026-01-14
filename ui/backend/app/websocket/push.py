@@ -1145,6 +1145,78 @@ class AddCustomItemsResult:
     error: Optional[str] = None
 
 
+@dataclass
+class UpdateActorItemResult:
+    """Result of updating an item on an actor."""
+    success: bool
+    item_name: Optional[str] = None
+    error: Optional[str] = None
+
+
+async def update_actor_item(
+    actor_uuid: str,
+    item_name: str,
+    updates: Dict[str, Any],
+    timeout: float = 30.0
+) -> UpdateActorItemResult:
+    """
+    Update an existing item on an actor via WebSocket.
+
+    Args:
+        actor_uuid: The actor UUID (e.g., "Actor.abc123")
+        item_name: Name of the item to update (case-insensitive match)
+        updates: Dictionary of updates to apply. Supported fields:
+            - name: New name for the item
+            - attack_bonus: Attack bonus modifier
+            - damage_formula: Damage dice (e.g., "2d6+3")
+            - damage_type: Damage type (e.g., "slashing")
+            - damage_bonus: Additional damage bonus
+            - description: Item description
+            - range: Attack range in feet
+            - range_long: Long range in feet (for ranged weapons)
+            - weapon_type: Weapon type (natural, simpleM, martialR, etc.)
+            - properties: Dict of property flags (ada, amm, fin, mgc, etc.)
+        timeout: Maximum seconds to wait for response
+
+    Returns:
+        UpdateActorItemResult with item_name if successful
+    """
+    response = await foundry_manager.broadcast_and_wait(
+        {
+            "type": "update_actor_item",
+            "data": {
+                "actor_uuid": actor_uuid,
+                "item_name": item_name,
+                "updates": updates
+            }
+        },
+        timeout=timeout
+    )
+
+    if response is None:
+        return UpdateActorItemResult(
+            success=False,
+            error="No Foundry client connected or timeout waiting for response"
+        )
+
+    if response.get("type") == "actor_item_updated":
+        data = response.get("data", {})
+        return UpdateActorItemResult(
+            success=True,
+            item_name=data.get("item_name")
+        )
+    elif response.get("type") == "actor_error":
+        return UpdateActorItemResult(
+            success=False,
+            error=response.get("error", "Unknown error from Foundry")
+        )
+    else:
+        return UpdateActorItemResult(
+            success=False,
+            error=f"Unexpected response type: {response.get('type')}"
+        )
+
+
 async def add_custom_items(
     actor_uuid: str,
     items: List[dict],

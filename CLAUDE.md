@@ -398,6 +398,12 @@ lsof -ti :8000 | xargs kill -9; cd ui/backend && uvicorn app.main:app --reload -
 - Group related changes
 - Copy `.env` when creating new worktree
 
+## Foundry Module Versioning
+
+- Use patch increments (0.0.1) for module releases: 0.2.0 → 0.2.1 → 0.2.2
+- Update version in `foundry-module/tablewrite-assistant/module.json`
+- Create GitHub release with tag matching version (e.g., `v0.2.1`)
+
 ## Playwright Testing for FoundryVTT
 
 Use the `FoundrySession` helper for E2E testing. Located at:

@@ -16,6 +16,23 @@ from util.gemini import GeminiAPI  # noqa: E402
 logger = logging.getLogger(__name__)
 
 
+def normalize_uuid(uuid_str: str) -> str:
+    """
+    Normalize a Foundry UUID to remove duplicate type prefixes.
+
+    Foundry sometimes returns UUIDs like 'Actor.Actor.xxx' instead of 'Actor.xxx'.
+    """
+    prefixes = ['Actor', 'JournalEntry', 'Scene', 'Item', 'Compendium']
+
+    for prefix in prefixes:
+        doubled = f"{prefix}.{prefix}."
+        single = f"{prefix}."
+        if uuid_str.startswith(doubled):
+            uuid_str = uuid_str.replace(doubled, single, 1)
+
+    return uuid_str
+
+
 class ActorQueryTool(BaseTool):
     """Tool for querying actors to answer questions about abilities, attacks, and stats."""
 
@@ -72,7 +89,11 @@ class ActorQueryTool(BaseTool):
             ToolResponse with answer about the actor
         """
         try:
-            # 1. Fetch the actor from Foundry
+            # 1. Normalize UUID to fix doubled prefixes (Actor.Actor.xxx -> Actor.xxx)
+            actor_uuid = normalize_uuid(actor_uuid)
+            logger.info(f"Querying actor with UUID: {actor_uuid}")
+
+            # 2. Fetch the actor from Foundry
             result = await fetch_actor(actor_uuid)
 
             if not result.success:
@@ -84,14 +105,15 @@ class ActorQueryTool(BaseTool):
 
             actor = result.entity
 
-            # 2. Extract structured content
+            # 3. Extract structured content
             content = self._extract_actor_content(actor)
+            logger.info(f"[ACTOR_CONTENT]\n{content}")
 
-            # 3. Build prompt and query Gemini
+            # 4. Build prompt and query Gemini
             prompt = self._build_prompt(query, query_type, content)
             answer = await self._query_gemini(prompt)
 
-            # 4. Return formatted response
+            # 5. Return formatted response
             return ToolResponse(
                 type="text",
                 message=answer,
@@ -206,8 +228,21 @@ Question: """
             movement_strs.append(f"burrow {movement['burrow']} ft")
         movement_str = ", ".join(movement_strs) if movement_strs else ""
 
+        # Calculate proficiency bonus early so we can show it in header
+        prof_bonus = attributes.get("prof")
+        if prof_bonus is None:
+            # Calculate from CR: prof = 2 + (CR-1)//4 for CR >= 1
+            try:
+                cr_val = float(cr) if cr not in ["?", None, ""] else 0
+                if cr_val < 1:
+                    prof_bonus = 2
+                else:
+                    prof_bonus = 2 + int((cr_val - 1) // 4)
+            except (ValueError, TypeError):
+                prof_bonus = 2
+
         sections.append(f"[ACTOR: {name}]")
-        sections.append(f"CR: {cr} | Type: {type_str} | AC: {ac} | HP: {hp}")
+        sections.append(f"CR: {cr} | Type: {type_str} | AC: {ac} | HP: {hp} | Proficiency: +{prof_bonus}")
         if movement_str:
             sections.append(f"Movement: {movement_str}")
 
@@ -228,14 +263,17 @@ Question: """
         if sense_strs:
             sections.append(f"Senses: {', '.join(sense_strs)}")
 
-        # Abilities
+        # Abilities - calculate mod from value since it's not always stored
         abilities = system.get("abilities", {})
+        ability_mods = {}  # Store calculated mods for weapon attack calculations
         if abilities:
             ability_strs = []
             for stat in ["str", "dex", "con", "int", "wis", "cha"]:
                 if stat in abilities:
                     val = abilities[stat].get("value", 10)
-                    mod = abilities[stat].get("mod", 0)
+                    # Calculate mod: (value - 10) // 2
+                    mod = (val - 10) // 2
+                    ability_mods[stat] = mod
                     sign = "+" if mod >= 0 else ""
                     ability_strs.append(f"{stat.upper()}: {val} ({sign}{mod})")
             if ability_strs:
@@ -295,14 +333,119 @@ Question: """
             item_system = item.get("system", {})
 
             if item_type == "weapon":
-                attack_bonus = item_system.get("attack", {}).get("bonus", 0)
-                damage_parts = item_system.get("damage", {}).get("parts", [])
-                damage_str = ", ".join(f"{d[0]} {d[1]}" for d in damage_parts) if damage_parts else "?"
-                range_val = item_system.get("range", {}).get("value", "")
-                range_units = item_system.get("range", {}).get("units", "")
-                range_str = f"{range_val} {range_units}" if range_val else ""
+                # Get weapon type for ranged/melee detection
+                weapon_type = item_system.get("type", {})
+                weapon_type_str = weapon_type.get("value", "") if isinstance(weapon_type, dict) else str(weapon_type)
 
-                weapons.append(f"- {item_name}: +{attack_bonus} to hit, {damage_str}" + (f" ({range_str})" if range_str else ""))
+                # Weapon properties for finesse detection
+                properties = item_system.get("properties", {})
+                is_finesse = properties.get("fin", False) if isinstance(properties, dict) else False
+
+                # Use calculated ability mods
+                str_mod = ability_mods.get("str", 0)
+                dex_mod = ability_mods.get("dex", 0)
+
+                # Determine which ability mod to use based on weapon type
+                # Types ending in 'R' are ranged (simpleR, martialR)
+                is_ranged = weapon_type_str.endswith("R") or "ranged" in weapon_type_str.lower()
+                if is_ranged:
+                    ability_mod = dex_mod
+                elif is_finesse and dex_mod > str_mod:
+                    ability_mod = dex_mod
+                else:
+                    ability_mod = str_mod
+
+                # Get attack bonus from activities structure
+                activities = item_system.get("activities", {})
+                activity_bonus = 0
+                for activity_id, activity in activities.items():
+                    if activity.get("type") == "attack":
+                        bonus_str = activity.get("attack", {}).get("bonus", "0")
+                        try:
+                            activity_bonus = int(bonus_str) if bonus_str else 0
+                        except ValueError:
+                            activity_bonus = 0
+                        break
+
+                # Check if proficient
+                proficient = item_system.get("proficient")
+                if proficient is None:
+                    proficient = True  # Default true for NPCs
+                prof_to_add = prof_bonus if proficient else 0
+
+                # Calculate total attack bonus
+                calculated_attack = ability_mod + prof_to_add + activity_bonus
+                logger.info(f"[WEAPON] {item_name}: +{calculated_attack} = {ability_mod}(ability) + {prof_to_add}(prof) + {activity_bonus}(bonus)")
+
+                # Extract damage formula
+                damage_str = "?"
+                # Try activities structure (newer DnD5e)
+                activities = item_system.get("activities", {})
+                for activity_id, activity in activities.items():
+                    if activity.get("type") == "attack":
+                        damage_data = activity.get("damage", {})
+                        damage_parts = damage_data.get("parts", [])
+                        if damage_parts:
+                            damage_strs = []
+                            for part in damage_parts:
+                                formula = part[0] if isinstance(part, list) else part.get("formula", "")
+                                dmg_type = part[1] if isinstance(part, list) and len(part) > 1 else part.get("type", "")
+                                if formula:
+                                    damage_strs.append(f"{formula} {dmg_type}".strip())
+                            damage_str = ", ".join(damage_strs) if damage_strs else "?"
+                        break
+                # Fallback to old structure
+                if damage_str == "?":
+                    damage_parts = item_system.get("damage", {}).get("parts", [])
+                    if damage_parts:
+                        damage_str = ", ".join(f"{d[0]} {d[1]}" for d in damage_parts if isinstance(d, list))
+                # Try base damage structure
+                if damage_str == "?":
+                    base_damage = item_system.get("damage", {}).get("base", {})
+                    if base_damage:
+                        num = base_damage.get("number", 1)
+                        die = base_damage.get("denomination", "")
+                        bonus = base_damage.get("bonus", "")
+                        dmg_types = base_damage.get("types", [])
+                        dmg_type = dmg_types[0] if dmg_types else ""
+                        if die:
+                            formula = f"{num}d{die}"
+                            if bonus:
+                                formula += f" + {bonus}"
+                            damage_str = f"{formula} {dmg_type}".strip()
+
+                # Range
+                range_data = item_system.get("range", {})
+                range_val = range_data.get("value", "") if isinstance(range_data, dict) else ""
+                range_long = range_data.get("long", "") if isinstance(range_data, dict) else ""
+                range_units = range_data.get("units", "ft") if isinstance(range_data, dict) else "ft"
+                if range_val and range_long:
+                    range_str = f"{range_val}/{range_long} {range_units}"
+                elif range_val:
+                    range_str = f"{range_val} {range_units}"
+                else:
+                    range_str = ""
+
+                # Weapon type for context
+                weapon_type = item_system.get("type", {})
+                weapon_type_str = weapon_type.get("value", "") if isinstance(weapon_type, dict) else str(weapon_type)
+
+                attack_sign = "+" if calculated_attack >= 0 else ""
+                type_context = f" [{weapon_type_str}]" if weapon_type_str else ""
+                range_context = f" (range {range_str})" if range_str else ""
+
+                # Build attack bonus breakdown for clarity
+                breakdown_parts = []
+                if ability_mod != 0:
+                    ability_name = "DEX" if is_ranged or (is_finesse and dex_mod > str_mod) else "STR"
+                    breakdown_parts.append(f"{ability_name} {'+' if ability_mod >= 0 else ''}{ability_mod}")
+                if prof_to_add != 0:
+                    breakdown_parts.append(f"Prof +{prof_to_add}")
+                if activity_bonus != 0:
+                    breakdown_parts.append(f"Weapon bonus +{activity_bonus}")
+                breakdown_str = f" ({' + '.join(breakdown_parts)})" if breakdown_parts else ""
+
+                weapons.append(f"- {item_name}{type_context}: {attack_sign}{calculated_attack} to hit{breakdown_str}, {damage_str}{range_context}")
 
             elif item_type == "feat":
                 activation = item_system.get("activation", {}).get("type", "")
