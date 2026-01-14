@@ -39,6 +39,24 @@ class HelpTool(BaseTool):
                     desc = desc.split(". ")[0] + "."
                 lines.append(f"- **{schema.name}**: {desc}")
 
+            # Add @mentions section
+            lines.append("\n**@Mentions:**")
+            lines.append("Type `@` to reference actors directly. Examples:")
+            lines.append("- `@Goblin What attacks does it have?` - Query actor details")
+            lines.append("- `@Dragon Set the Bite damage to 3d10` - Edit existing items")
+            lines.append("- `@Guard Give expertise in perception` - Modify stats")
+
+            # Add slash commands
+            lines.append("\n**Slash Commands:**")
+            lines.append("- `/help` - Show this help")
+            lines.append("- `/list-actors` - List all actors")
+            lines.append("- `/list-scenes` - List all scenes")
+
+            # Add tips
+            lines.append("\n**Tips:**")
+            lines.append("- Use @mentions to edit existing weapons instead of creating duplicates")
+            lines.append("- Ask rules questions and I'll use extended thinking for thorough answers")
+
             return ToolResponse(
                 type="text",
                 message="\n".join(lines),
