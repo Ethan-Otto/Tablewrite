@@ -23,6 +23,8 @@ Use Chat UI to make edits, create actors, journals, scenes, etc
 ### Chat Interface (Tablewrite Module)
 Natural language interface directly in FoundryVTT with 13 tools:
 
+![Chat Actor Creation](docs/screenshots/chat-interface/actor-creation.png)
+
 | Tool | Description |
 |------|-------------|
 | `create_actor` | Create a D&D actor from natural language description |
