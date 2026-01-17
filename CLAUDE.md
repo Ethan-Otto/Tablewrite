@@ -531,3 +531,18 @@ ln -s "$(pwd)/foundry-module/tablewrite-assistant" "/Users/ethanotto/Library/App
 
 # Restart Foundry or refresh world after symlink change
 ```
+
+## Claude Code Plugins
+
+### Context7 - Live Documentation
+
+Gives Claude access to up-to-date library documentation, solving the training cutoff problem.
+
+```bash
+claude mcp add context7 -- npx -y @upstash/context7-mcp@latest
+```
+
+**Usage:** Ask Claude to use Context7 for current docs:
+```
+Using context7, show me the Next.js 15 cache API
+```
