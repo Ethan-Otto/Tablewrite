@@ -558,6 +558,19 @@ claude mcp add context7 -- npx -y @upstash/context7-mcp@latest
 Using context7, show me the Next.js 15 cache API
 ```
 
+### Code-Simplifier - Clean Code Agent
+
+Official Anthropic plugin that simplifies and refines code for clarity without changing functionality. Reduces token usage 20-30%.
+
+```bash
+claude plugin install code-simplifier
+```
+
+**Usage:** Run after implementing features to clean up code:
+```
+/code-simplifier
+```
+
 ## References
 
 - [Claude Code Mastery Guide](https://thedecipherist.github.io/claude-code-mastery/) - Comprehensive guide for Claude Code best practices
