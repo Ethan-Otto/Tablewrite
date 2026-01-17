@@ -557,3 +557,7 @@ claude mcp add context7 -- npx -y @upstash/context7-mcp@latest
 ```
 Using context7, show me the Next.js 15 cache API
 ```
+
+## References
+
+- [Claude Code Mastery Guide](https://thedecipherist.github.io/claude-code-mastery/) - Comprehensive guide for Claude Code best practices
