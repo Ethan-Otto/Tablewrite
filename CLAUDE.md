@@ -532,6 +532,17 @@ ln -s "$(pwd)/foundry-module/tablewrite-assistant" "/Users/ethanotto/Library/App
 # Restart Foundry or refresh world after symlink change
 ```
 
+## Context Management
+
+> *"One Task, One Chat"*
+
+| Scenario | Action |
+|----------|--------|
+| New feature | New chat |
+| Bug fix (unrelated) | `/clear` then new task |
+| Research vs implementation | Separate chats |
+| 20+ turns elapsed | Start fresh |
+
 ## Claude Code Plugins
 
 ### Context7 - Live Documentation
