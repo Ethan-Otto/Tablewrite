@@ -19,23 +19,23 @@ class TestNPCExtraction:
 
         npcs = identify_npcs_with_gemini(xml_content)
 
-        # Should find at least Klarg and Sildar
+        # Should find at least Snarltooth and Erik Stoneheart
         assert len(npcs) >= 2
 
         npc_names = [npc.name for npc in npcs]
-        assert "Klarg" in npc_names
-        assert "Sildar Hallwinter" in npc_names
+        assert "Snarltooth" in npc_names
+        assert "Erik Stoneheart" in npc_names
 
-        # Check Klarg details
-        klarg = next(npc for npc in npcs if npc.name == "Klarg")
-        assert klarg.creature_stat_block_name == "Bugbear"
-        assert "goblin" in klarg.description.lower() or "cragmaw" in klarg.description.lower()
-        assert klarg.location is not None
+        # Check Snarltooth details (bugbear leader)
+        snarltooth = next(npc for npc in npcs if npc.name == "Snarltooth")
+        assert snarltooth.creature_stat_block_name == "Bugbear"
+        assert "goblin" in snarltooth.description.lower() or "mill" in snarltooth.description.lower()
+        assert snarltooth.location is not None
 
-        # Check Sildar details
-        sildar = next(npc for npc in npcs if npc.name == "Sildar Hallwinter")
-        assert sildar.creature_stat_block_name == "Human Fighter"
-        assert "lords" in sildar.description.lower() or "alliance" in sildar.description.lower()
+        # Check Erik Stoneheart details (human fighter)
+        erik = next(npc for npc in npcs if npc.name == "Erik Stoneheart")
+        assert erik.creature_stat_block_name == "Human Fighter"
+        assert "merchant" in erik.description.lower() or "guild" in erik.description.lower()
 
     def test_identify_npcs_no_npcs(self, check_api_key):
         """Test extraction from XML with no named NPCs."""

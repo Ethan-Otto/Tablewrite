@@ -1,18 +1,18 @@
-<!-- tests/actors/fixtures/sample_chapter_with_npcs.xml -->
-<Chapter_01_Introduction>
+<!-- tests/actor_pipeline/fixtures/sample_chapter_with_npcs.xml -->
+<Chapter_01_The_Old_Mill>
     <page number="1">
         <section>Goblin Ambush</section>
-        <p>On the road to Phandalin, the party encounters a group of goblins led by a scout.</p>
+        <p>On the road to Millbrook, the party encounters a group of goblins led by a scout.</p>
     </page>
 
     <page number="2">
-        <section>Cragmaw Hideout</section>
-        <subsection>Area 1: Cave Mouth</subsection>
+        <section>Mill Hideout</section>
+        <subsection>Area 1: Mill Entrance</subsection>
         <p>The entrance is guarded by goblins.</p>
 
-        <subsection>Area 6: Goblin Den</subsection>
-        <p>Klarg, a bugbear, leads the Cragmaw goblins from this chamber. He has taken Sildar Hallwinter prisoner.</p>
-        <p>Klarg wears a tattered cloak and wields a morningstar. He is accompanied by his pet wolf, Ripper.</p>
+        <subsection>Area 4: Goblin Den</subsection>
+        <p>Snarltooth, a bugbear, leads the goblins from this chamber. He has taken Marcus Thornwood prisoner.</p>
+        <p>Snarltooth wears a tattered cloak and wields a morningstar. He is accompanied by his pet wolf, Fang.</p>
 
         <stat_block name="Bugbear">
 BUGBEAR
@@ -25,9 +25,9 @@ Challenge 1 (200 XP)
 
     <page number="3">
         <section>Prisoners</section>
-        <p>Sildar Hallwinter is a human fighter and member of the Lords' Alliance.
-        He was escorting Gundren Rockseeker to Phandalin when they were ambushed by goblins.
-        Sildar knows that Gundren was taken to Cragmaw Castle but doesn't know where it is.</p>
+        <p>Erik Stoneheart is a human fighter and member of the merchant guild.
+        He was escorting Marcus Thornwood to Millbrook when they were ambushed by goblins.
+        Erik knows that Marcus was taken to the mill but doesn't know the full layout.</p>
 
         <stat_block name="Human Fighter">
 HUMAN FIGHTER
@@ -37,4 +37,4 @@ Hit Points 32 (5d8 + 10)
 Challenge 2 (450 XP)
         </stat_block>
     </page>
-</Chapter_01_Introduction>
+</Chapter_01_The_Old_Mill>

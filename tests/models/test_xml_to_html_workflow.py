@@ -25,7 +25,7 @@ def test_xml_document_to_journal_to_html_complete_workflow():
     - Round-trip XML serialization preserves data
     """
     # Use test fixture XML file
-    xml_path = Path("tests/fixtures/xml/02_Part_1_Goblin_Arrows.xml")
+    xml_path = Path("tests/fixtures/xml/sample_adventure.xml")
 
     assert xml_path.exists(), f"Test XML file not found: {xml_path}"
 

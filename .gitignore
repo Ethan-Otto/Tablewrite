@@ -57,3 +57,23 @@ github.secrets
 # Test log file
 test.log
 terminal-config-backup.md
+
+# PDF files
+data/pdfs/*.pdf
+
+# Generated XML fixtures
+tests/fixtures/xml/01_*.xml
+tests/fixtures/xml/02_*.xml
+tests/fixtures/xml/03_*.xml
+tests/fixtures/xml/04_*.xml
+tests/fixtures/xml/05_*.xml
+tests/fixtures/xml/06_*.xml
+tests/fixtures/xml/07_*.xml
+tests/fixtures/xml/08_*.xml
+tests/fixtures/xml/09_*.xml
+
+# Keep generic test fixtures tracked
+!tests/fixtures/xml/sample_adventure.xml
+
+# Battle maps
+data/verification/battlemaps/Cragmaw.webp

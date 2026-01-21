@@ -1,0 +1,149 @@
+<Chapter_01_The_Tavern_Heist>
+  <page number="1">
+    <chapter_title>THE TAVERN HEIST</chapter_title>
+    <p>This adventure is designed for four to five characters of 1st level. During the course of the adventure, the characters will advance to 3rd level.</p>
+    <p>The adventure takes place in and around the town of Millbrook, a small settlement on the edge of the Greenwood Forest.</p>
+    <section>RUNNING THE ADVENTURE</section>
+    <p>This section explains how to run the adventure effectively.</p>
+    <p>Read through the entire adventure before running it so you understand the flow and can foreshadow events.</p>
+    <section>THE DUNGEON MASTER</section>
+    <p>The Dungeon Master (DM) has a special role in the game.</p>
+    <p>The DM is a referee. When it's not clear what ought to happen next, the DM decides how to apply the rules and keep the story going.</p>
+    <p>The DM is a narrator. The DM sets the pace of the story and presents the various challenges and encounters the players must overcome.</p>
+    <boxed_text>
+      <subsection>RULES TO GAME BY</subsection>
+      <p>As the Dungeon Master, you are the final authority when it comes to rules questions or disputes during the game.</p>
+      <p>When in doubt, make it up! It's better to keep the game moving than to get bogged down in the rules.</p>
+      <p>It's not a competition. The DM isn't competing against the player characters.</p>
+    </boxed_text>
+    <section>BACKGROUND</section>
+    <p>Three months ago, the merchant Marcus Thornwood discovered an ancient map leading to a lost treasure vault beneath the Old Mill ruins outside Millbrook.</p>
+    <p>Unfortunately, a band of goblins has taken up residence in the mill, and they've been raiding caravans on the East Road.</p>
+    <p>Marcus has hired the adventurers to clear out the goblins and find the entrance to the vault.</p>
+    <footer>
+      <page_number>2</page_number>
+      <p>THE TAVERN HEIST</p>
+    </footer>
+  </page>
+  <page number="2">
+    <section>OVERVIEW</section>
+    <p>The Tavern Heist is divided into three parts.</p>
+    <p>In part 1, "The Crow's Nest Inn," the adventurers meet their patron Marcus at the local tavern and learn about the goblin threat.</p>
+    <p>In part 2, "The Old Mill," the characters investigate the ruined mill and confront the goblins.</p>
+    <p>Part 3, "The Vault Below," has the adventurers descend into the ancient vault to claim their reward.</p>
+    <section>GLOSSARY</section>
+    <p>The adventure uses terms that might be unfamiliar to you.</p>
+    <definition_list>
+      <definition_item>
+        <term>Characters.</term>
+        <definition>This term refers to the adventurers run by the players. They are the protagonists in any adventure.</definition>
+      </definition_item>
+      <definition_item>
+        <term>Nonplayer Characters (NPCs).</term>
+        <definition>This term refers to characters run by the DM. How an NPC behaves is dictated by the adventure and by the DM.</definition>
+      </definition_item>
+      <definition_item>
+        <term>Boxed Text.</term>
+        <definition>At various places, the adventure presents descriptive text that's meant to be read or paraphrased aloud to players.</definition>
+      </definition_item>
+      <definition_item>
+        <term>Stat Block.</term>
+        <definition>Any monster or NPC that is likely to be involved in combat requires game statistics presented in a format called a statistics block.</definition>
+      </definition_item>
+    </definition_list>
+    <section>ABBREVIATIONS</section>
+    <p>The following abbreviations are used in this adventure.</p>
+    <table>
+      <table_row>
+        <table_cell>DC = Difficulty Class</table_cell>
+        <table_cell>XP = experience points</table_cell>
+      </table_row>
+      <table_row>
+        <table_cell>gp = gold piece(s)</table_cell>
+        <table_cell>pp = platinum piece(s)</table_cell>
+      </table_row>
+      <table_row>
+        <table_cell>sp = silver piece(s)</table_cell>
+        <table_cell>ep = electrum piece(s)</table_cell>
+      </table_row>
+      <table_row>
+        <table_cell>cp = copper piece(s)</table_cell>
+        <table_cell></table_cell>
+      </table_row>
+    </table>
+    <footer>
+      <chapter_title>THE TAVERN HEIST</chapter_title>
+      <page_number>3</page_number>
+    </footer>
+  </page>
+  <page number="3">
+    <section>PART 1: THE CROW'S NEST INN</section>
+    <p>The adventure begins when the characters arrive at the Crow's Nest Inn in Millbrook.</p>
+    <boxed_text>
+      <p>The wooden sign above the door depicts a crow perched on a tankard. Inside, the common room is warm and filled with the smell of roasting meat. A fire crackles in the hearth, and a half-dozen patrons sit at rough-hewn tables.</p>
+    </boxed_text>
+    <subsection>Important NPCs</subsection>
+    <p>**Marcus Thornwood** is a middle-aged human merchant with graying temples and nervous hands. He offers the party 50 gp each to clear out the Old Mill.</p>
+    <p>**Ingrid the Innkeeper** is a stout dwarf woman who runs the Crow's Nest. She can tell the party that goblins have been spotted near the East Road.</p>
+    <list>
+      <item>**Easy (DC 10).** A character can learn the goblins have a leader.</item>
+      <item>**Moderate (DC 15).** The leader is bigger than the others, possibly a bugbear.</item>
+      <item>**Hard (DC 20).** The goblins came from the Greenwood three months ago.</item>
+    </list>
+    <section>PART 2: THE OLD MILL</section>
+    <p>The Old Mill lies two miles east of Millbrook along a dirt path.</p>
+    <boxed_text>
+      <p>The ruined mill stands at the edge of the forest. Its waterwheel hangs broken and still. Vines crawl up the crumbling stone walls, and the wooden roof has partially collapsed.</p>
+    </boxed_text>
+    <subsection>1. Mill Entrance</subsection>
+    <p>Two **goblins** stand guard at the entrance. They attack strangers on sight.</p>
+    <subsection>2. Main Floor</subsection>
+    <p>Three more **goblins** wait here, hiding behind overturned machinery.</p>
+    <footer>
+      <page_number>4</page_number>
+      <chapter_title>THE TAVERN HEIST</chapter_title>
+    </footer>
+  </page>
+  <page number="4">
+    <subsection>3. Upper Floor</subsection>
+    <p>The stairs creak dangerously. A character who searches the debris finds a small pouch containing 15 sp.</p>
+    <subsection>4. Basement</subsection>
+    <p>The **goblin boss** Snarltooth makes his lair here with two **wolves**.</p>
+    <stat_block name="Goblin">
+GOBLIN
+Small humanoid (goblinoid), neutral evil
+
+Armor Class 15 (leather armor, shield)
+Hit Points 7 (2d6)
+Speed 30 ft.
+
+STR     DEX     CON     INT     WIS     CHA
+8 (-1)  14 (+2) 10 (+0) 10 (+0) 8 (-1)  8 (-1)
+
+Skills Stealth +6
+Senses darkvision 60 ft., passive Perception 9
+Languages Common, Goblin
+Challenge 1/4 (50 XP)
+
+Nimble Escape. The goblin can take the Disengage or Hide action as a bonus action on each of its turns.
+
+ACTIONS
+
+Scimitar. Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) slashing damage.
+
+Shortbow. Ranged Weapon Attack: +4 to hit, range 80/320 ft., one target. Hit: 5 (1d6 + 2) piercing damage.
+    </stat_block>
+    <section>PART 3: THE VAULT BELOW</section>
+    <p>Behind a hidden door in the basement, stone stairs descend into darkness.</p>
+    <boxed_text>
+      <p>The vault is a single chamber, fifty feet square. Ancient pillars support a vaulted ceiling. In the center, a stone chest sits on a raised dais.</p>
+    </boxed_text>
+    <p>The chest contains 200 gp, a *potion of healing*, and a *+1 dagger*.</p>
+    <section>CONCLUDING THE ADVENTURE</section>
+    <p>When the characters return to Millbrook with news of their success, Marcus pays them as promised. The townsfolk celebrate the heroes at the Crow's Nest Inn.</p>
+    <footer>
+      <chapter_title>THE TAVERN HEIST</chapter_title>
+      <page_number>5</page_number>
+    </footer>
+  </page>
+</Chapter_01_The_Tavern_Heist>

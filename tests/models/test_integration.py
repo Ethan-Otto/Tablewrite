@@ -8,7 +8,7 @@ from models import XMLDocument, Journal
 def test_full_workflow_with_real_xml():
     """Test complete workflow: Load XML → Parse → Create Journal → Export HTML"""
     # Use test fixture XML file
-    xml_path = Path("tests/fixtures/xml/02_Part_1_Goblin_Arrows.xml")
+    xml_path = Path("tests/fixtures/xml/sample_adventure.xml")
 
     assert xml_path.exists(), f"Test XML file not found: {xml_path}"
 

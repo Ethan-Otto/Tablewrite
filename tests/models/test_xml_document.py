@@ -810,7 +810,7 @@ class TestRealXMLIntegration:
         files are found (e.g., in fresh worktrees or CI environments).
         """
         # Use test fixture XML file
-        xml_file = Path("tests/fixtures/xml/01_Introduction.xml")
+        xml_file = Path("tests/fixtures/xml/sample_adventure.xml")
 
         assert xml_file.exists(), f"Test XML file not found: {xml_file}"
 
