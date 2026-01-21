@@ -2,7 +2,7 @@
   "id": "tablewrite-assistant",
   "title": "Tablewrite",
   "description": "Create D&D content through natural language. Actors, journals, and scenes appear automatically.",
-  "version": "0.2.1",
+  "version": "0.1.2",
   "compatibility": {
     "minimum": "12",
     "verified": "13"
