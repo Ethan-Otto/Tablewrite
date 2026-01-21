@@ -8,6 +8,8 @@ venv/
 
 # Environment
 .env
+.env.swp
+parallel.env
 
 # Output
 output/
