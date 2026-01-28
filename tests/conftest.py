@@ -9,11 +9,17 @@ import time
 from datetime import datetime
 import pytest
 from pathlib import Path
+import filelock
 
 from tests.foundry_init import ensure_foundry_ready as _ensure_foundry_ready
 
+# Playwright user pool for parallel browser tests
+PLAYWRIGHT_USERS = ["Testing1", "Testing2", "Testing3", "Testing4", "Testing5"]
+PLAYWRIGHT_LOCK_DIR = Path(__file__).parent / ".playwright_locks"
+
 # Store session timing information
 _session_start_time = None
+_log_file = None
 
 
 def pytest_addoption(parser):
@@ -83,18 +89,73 @@ def pytest_collection_modifyitems(items):
 
 
 def pytest_sessionstart(session):
-    """Log test session start time."""
-    global _session_start_time
+    """Log test session start time and set up output logging."""
+    global _session_start_time, _log_file
     _session_start_time = time.time()
     start_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     # Get worker info if running with xdist
     worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
 
+    # Set up log file (only on main worker)
     if worker_id == "main":
+        root_dir = Path(session.config.rootdir)
+        logs_dir = root_dir / "tests" / "logs"
+        logs_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create timestamped log file
+        log_filename = f"test_{timestamp}.log"
+        log_path = logs_dir / log_filename
+        _log_file = open(log_path, "w", encoding="utf-8")
+
+        # Update test.log symlink to point to latest
+        symlink_path = root_dir / "test.log"
+        try:
+            if symlink_path.is_symlink() or symlink_path.exists():
+                symlink_path.unlink()
+            symlink_path.symlink_to(log_path.relative_to(root_dir))
+        except OSError:
+            pass  # Symlink creation may fail on some systems
+
         print(f"\n{'='*70}")
         print(f"TEST SESSION START: {start_str}")
         print(f"{'='*70}")
+
+        # Also write to log file
+        _log_file.write(f"\n{'='*70}\n")
+        _log_file.write(f"TEST SESSION START: {start_str}\n")
+        _log_file.write(f"{'='*70}\n")
+        _log_file.flush()
+
+
+def pytest_report_header(config):
+    """Log pytest header info to file."""
+    global _log_file
+    if _log_file:
+        _log_file.write(f"platform {sys.platform} -- Python {sys.version.split()[0]}\n")
+        _log_file.write(f"rootdir: {config.rootdir}\n")
+        _log_file.flush()
+
+
+def pytest_runtest_logstart(nodeid, location):
+    """Log when a test starts."""
+    global _log_file
+    if _log_file:
+        _log_file.write(f"RUNNING: {nodeid}\n")
+        _log_file.flush()
+
+
+def pytest_runtest_logreport(report):
+    """Log test results in real-time."""
+    global _log_file
+    if _log_file and report.when == "call":
+        outcome = report.outcome.upper()
+        duration = f"{report.duration:.2f}s" if report.duration else ""
+        _log_file.write(f"  {outcome}: {report.nodeid} ({duration})\n")
+        if report.failed and report.longreprtext:
+            _log_file.write(f"    Error: {report.longreprtext[:500]}...\n" if len(report.longreprtext) > 500 else f"    Error: {report.longreprtext}\n")
+        _log_file.flush()
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
@@ -107,7 +168,7 @@ def pytest_runtest_makereport(item, call):
 
 def pytest_sessionfinish(session, exitstatus):
     """Log session end time and auto-escalate to full suite if smoke tests fail."""
-    global _session_start_time
+    global _session_start_time, _log_file
 
     # Log session end time (only on main process)
     worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
@@ -127,6 +188,14 @@ def pytest_sessionfinish(session, exitstatus):
         print(f"TEST SESSION END: {end_str}")
         print(f"TOTAL DURATION: {duration_str}")
         print(f"{'='*70}")
+
+        # Write to log file
+        if _log_file:
+            _log_file.write(f"\n{'='*70}\n")
+            _log_file.write(f"TEST SESSION END: {end_str}\n")
+            _log_file.write(f"TOTAL DURATION: {duration_str}\n")
+            _log_file.write(f"{'='*70}\n")
+            _log_file.flush()
 
     # Check if auto-escalation is enabled (default: enabled, but shows errors first)
     auto_escalate = os.getenv("AUTO_ESCALATE", "true").lower() == "true"
@@ -180,12 +249,25 @@ def pytest_sessionfinish(session, exitstatus):
                 print("(Set AUTO_ESCALATE=false to stop here)")
                 print("="*70 + "\n")
                 time.sleep(3)  # Give user time to see the error
+                # Clean up before re-running
+                _cleanup_log_file()
                 # Re-run pytest with full suite
                 sys.exit(pytest.main(["--full"] + sys.argv[1:]))
             else:
                 print("To run full test suite: pytest --full")
                 print("To enable auto-escalation: AUTO_ESCALATE=true pytest")
                 print("="*70)
+
+    # Clean up log file tee
+    _cleanup_log_file()
+
+
+def _cleanup_log_file():
+    """Close log file."""
+    global _log_file
+    if _log_file is not None:
+        _log_file.close()
+        _log_file = None
 
 
 # Store the initialization result at module level to avoid re-running
@@ -314,6 +396,47 @@ def require_foundry(ensure_foundry_connected):
     if not ensure_foundry_connected.get("foundry_connected"):
         pytest.fail("Foundry is not connected - start backend and connect Foundry module")
     return ensure_foundry_connected
+
+
+@pytest.fixture
+def playwright_user():
+    """
+    Acquire a Playwright user from the pool for parallel browser tests.
+
+    This fixture manages a pool of 5 Foundry users (Testing1-Testing5) to allow
+    up to 5 Playwright tests to run in parallel. If all users are in use, the
+    test will wait (up to 5 minutes) for a user to become available.
+
+    Usage:
+        @pytest.mark.playwright
+        def test_something(playwright_user):
+            with FoundrySession(user=playwright_user) as session:
+                ...
+    """
+    PLAYWRIGHT_LOCK_DIR.mkdir(exist_ok=True)
+
+    # Try to grab any free user (non-blocking)
+    for user in PLAYWRIGHT_USERS:
+        lock_path = PLAYWRIGHT_LOCK_DIR / f"{user}.lock"
+        lock = filelock.FileLock(lock_path, timeout=0)
+        try:
+            lock.acquire(blocking=False)
+            yield user
+            lock.release()
+            return
+        except filelock.Timeout:
+            continue
+
+    # All users taken - wait for preferred user (based on worker ID)
+    worker_id = os.environ.get("PYTEST_XDIST_WORKER", "gw0")
+    worker_num = int(worker_id.replace("gw", "")) if "gw" in worker_id else 0
+    preferred_user = PLAYWRIGHT_USERS[worker_num % len(PLAYWRIGHT_USERS)]
+
+    lock_path = PLAYWRIGHT_LOCK_DIR / f"{preferred_user}.lock"
+    lock = filelock.FileLock(lock_path, timeout=300)  # Wait up to 5 min
+    lock.acquire()
+    yield preferred_user
+    lock.release()
 
 
 # Project root

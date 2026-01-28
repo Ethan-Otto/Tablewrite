@@ -150,6 +150,15 @@ scene = create_scene("maps/castle.webp")  # → SceneCreationResult
 - Executes Foundry API calls (Actor.create, Scene.create, JournalEntry.create)
 - Shows notifications when content is created
 
+### Foundry Connection Management
+
+**IMPORTANT:** When Foundry needs to be refreshed, reconnected, or logged in, Claude MUST run `python tests/foundry_init.py --force-refresh` automatically. Never ask the user to manually refresh Foundry - always use the foundry_init script.
+
+```bash
+# Refresh/reconnect Foundry connection (Claude should run this automatically)
+python tests/foundry_init.py --force-refresh
+```
+
 ### Actor Pipeline
 
 **Module:** `src/actor_pipeline/`
@@ -230,6 +239,42 @@ pytest --full                               # Full suite (~5 min parallel)
 pytest --full -n auto --dist loadscope      # Parallel execution (fastest)
 pytest -m "not integration and not slow"    # Unit tests only
 pytest -m integration                       # Integration tests (cost money)
+```
+
+### Test Logging
+
+All pytest output is written to log files in real-time:
+
+| File | Contents |
+|------|----------|
+| `test.log` | Symlink to most recent test log |
+| `tests/logs/test_YYYYMMDD_HHMMSS.log` | Timestamped log files (one per run) |
+| `test-results.xml` | JUnit XML report for CI integration |
+
+**Log format:**
+```
+======================================================================
+TEST SESSION START: 2026-01-28 10:30:45
+======================================================================
+platform darwin -- Python 3.13.5
+rootdir: /path/to/project
+RUNNING: tests/models/test_example.py::TestClass::test_method
+  PASSED: tests/models/test_example.py::TestClass::test_method (0.02s)
+...
+======================================================================
+TEST SESSION END: 2026-01-28 10:31:15
+TOTAL DURATION: 30.0s
+======================================================================
+```
+
+To tail logs in real-time during test runs:
+```bash
+tail -f test.log
+```
+
+To view previous test runs:
+```bash
+ls -la tests/logs/
 ```
 
 **Important:** Always use `--dist loadscope` with `-n auto`. This groups tests by fixture scope so session-scoped fixtures run once per group instead of once per worker.
@@ -428,6 +473,28 @@ lsof -ti :8000 | xargs kill -9; cd ui/backend && uvicorn app.main:app --reload -
 Use the `FoundrySession` helper for E2E testing. Located at:
 `foundry-module/tablewrite-assistant/scripts/feedback/foundry_helper.py`
 
+### Parallel Playwright Tests (User Pool)
+
+Playwright tests can run in parallel using a pool of 5 FoundryVTT users (Testing1-Testing5). The `playwright_user` fixture manages this automatically:
+
+```python
+@pytest.mark.playwright
+def test_something(playwright_user):
+    with FoundrySession(headless=True, user=playwright_user) as session:
+        session.goto_tablewrite()
+        # ...
+```
+
+**How it works:**
+- Up to 5 Playwright tests run concurrently (one per user)
+- 6th+ tests wait (up to 5 min) for a user to become available
+- Non-Playwright tests run freely in parallel with all workers
+- Uses file locks in `tests/.playwright_locks/` for coordination
+
+**Requirements:**
+- 5 users in FoundryVTT: Testing1, Testing2, Testing3, Testing4, Testing5
+- All users must have permission to join the game session
+
 ### Using FoundrySession Helper
 
 ```python
@@ -438,8 +505,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "foundry-module/tablewrite
 
 from foundry_helper import FoundrySession
 
-# Basic usage - headless=False for debugging
-with FoundrySession(headless=False, user="Testing") as session:
+# Basic usage - headless=False for debugging, use playwright_user fixture in tests
+with FoundrySession(headless=False, user="Testing1") as session:
     # Navigate to Tablewrite tab
     session.goto_tablewrite()
 

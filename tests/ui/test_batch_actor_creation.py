@@ -58,14 +58,14 @@ def validate_actor_content(actor: dict) -> list[str]:
 @pytest.mark.foundry
 @pytest.mark.gemini
 @pytest.mark.slow
-def test_batch_actor_creation_e2e():
+def test_batch_actor_creation_e2e(playwright_user):
     """
     E2E test: Send batch request via chat UI, verify actors created with correct content.
     """
     created_uuids = []
 
     try:
-        with FoundrySession(headless=True) as session:
+        with FoundrySession(headless=True, user=playwright_user) as session:
             # Step 1: Navigate to Tablewrite tab
             session.goto_tablewrite()
             time.sleep(1)
@@ -138,20 +138,27 @@ def test_batch_actor_creation_e2e():
 @pytest.mark.foundry
 @pytest.mark.gemini
 @pytest.mark.slow
-def test_batch_actor_duplicates_have_unique_names():
+def test_batch_actor_duplicates_have_unique_names(playwright_user):
     """Test that requesting multiple of same creature creates unique names."""
     created_uuids = []
 
     try:
-        with FoundrySession(headless=True) as session:
+        with FoundrySession(headless=True, user=playwright_user) as session:
             session.goto_tablewrite()
             time.sleep(1)
 
             # Request two of the same creature
-            session.send_message("Create two goblins", wait=90)
+            query = "Create two goblins"
+            print(f"[DEBUG] Sending: {query}")
+            session.send_message(query, wait=90)
 
             response_text = session.get_message_text()
             response_html = session.get_message_html()
+            print(f"[DEBUG] Response text: {response_text[:500]}...")
+            print(f"[DEBUG] Response HTML: {response_html[:500]}...")
+
+            session.screenshot("/tmp/batch_duplicates.png")
+            print("[DEBUG] Screenshot: /tmp/batch_duplicates.png")
 
             # Parse UUIDs - try both formats
             uuid_pattern_raw = r'@UUID\[Actor\.([a-zA-Z0-9]+)\]\{([^}]+)\}'
@@ -161,7 +168,8 @@ def test_batch_actor_duplicates_have_unique_names():
             if not matches:
                 matches = re.findall(uuid_pattern_html, response_html)
 
-            assert len(matches) >= 2, f"Expected 2 goblins, found {len(matches)}"
+            print(f"[DEBUG] Matches found: {matches}")
+            assert len(matches) >= 2, f"Expected 2 goblins, found {len(matches)}. Response: {response_text[:300]}"
 
             created_uuids = [f"Actor.{m[0]}" for m in matches]
             actor_names = [m[1] for m in matches]

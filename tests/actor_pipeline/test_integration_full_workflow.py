@@ -47,13 +47,13 @@ class TestFullActorExtractionWorkflow:
             assert stat_block.raw_text  # Original text preserved
 
         # Verify NPCs were extracted
-        assert len(npcs) >= 2, "Should extract at least 2 NPCs (Klarg, Sildar)"
+        assert len(npcs) >= 2, "Should extract at least 2 NPCs (Snarltooth, Erik Stoneheart)"
 
         # Find NPCs by name
         npc_names = [npc.name for npc in npcs]
-        assert "Klarg" in npc_names, "Should extract Klarg"
-        assert "Sildar Hallwinter" in npc_names or "Sildar" in npc_names, \
-            "Should extract Sildar Hallwinter"
+        assert "Snarltooth" in npc_names, "Should extract Snarltooth"
+        assert "Erik Stoneheart" in npc_names or "Erik" in npc_names, \
+            "Should extract Erik Stoneheart"
 
         # Verify NPCs have required fields and stat block links
         for npc in npcs:
@@ -63,16 +63,16 @@ class TestFullActorExtractionWorkflow:
             assert npc.plot_relevance
 
         # Verify NPCs are linked to correct stat blocks
-        klarg = next((npc for npc in npcs if npc.name == "Klarg"), None)
-        assert klarg is not None
-        assert klarg.creature_stat_block_name == "Bugbear", \
-            "Klarg should be linked to Bugbear stat block"
+        snarltooth = next((npc for npc in npcs if npc.name == "Snarltooth"), None)
+        assert snarltooth is not None
+        assert snarltooth.creature_stat_block_name == "Bugbear", \
+            "Snarltooth should be linked to Bugbear stat block"
 
-        sildar = next((npc for npc in npcs if "Sildar" in npc.name), None)
-        assert sildar is not None
-        assert "Human" in sildar.creature_stat_block_name or \
-               "Fighter" in sildar.creature_stat_block_name, \
-            "Sildar should be linked to Human Fighter stat block"
+        erik = next((npc for npc in npcs if "Erik" in npc.name), None)
+        assert erik is not None
+        assert "Human" in erik.creature_stat_block_name or \
+               "Fighter" in erik.creature_stat_block_name, \
+            "Erik should be linked to Human Fighter stat block"
 
     def test_workflow_with_run_directory(self, check_api_key, tmp_path):
         """

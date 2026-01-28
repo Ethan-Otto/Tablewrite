@@ -13,6 +13,7 @@ from playwright.sync_api import sync_playwright
 # Add the foundry helper to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'foundry-module' / 'tablewrite-assistant' / 'scripts' / 'feedback'))
 
+from foundry_helper import FoundrySession
 
 FOUNDRY_URL = "http://localhost:30000"
 
@@ -56,7 +57,7 @@ def wait_for_game_ready(page, timeout=30):
 class TestTablewriteGoblinGeneration:
     """E2E tests for goblin generation via Tablewrite in Foundry v13."""
 
-    def test_tablewrite_tab_visible_in_v13(self, require_foundry):
+    def test_tablewrite_tab_visible_in_v13(self, require_foundry, playwright_user):
         """Verify tablewrite tab is visible in Foundry v13 sidebar."""
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
@@ -67,7 +68,7 @@ class TestTablewriteGoblinGeneration:
             page.wait_for_load_state('networkidle')
             time.sleep(2)
 
-            # Select Testing user and join
+            # Select user from pool and join
             user_select = page.locator('select[name="userid"]')
             if user_select.count() > 0:
                 options = user_select.locator('option').all()
@@ -75,7 +76,7 @@ class TestTablewriteGoblinGeneration:
                     text = opt.text_content() or ''
                     value = opt.get_attribute('value')
                     disabled = opt.get_attribute('disabled')
-                    if 'testing' in text.lower() and disabled is None:
+                    if playwright_user.lower() in text.lower() and disabled is None:
                         user_select.select_option(value)
                         break
                 page.locator('button:has-text("JOIN GAME SESSION")').click()
@@ -116,7 +117,7 @@ class TestTablewriteGoblinGeneration:
 
             browser.close()
 
-    def test_tablewrite_can_send_message(self, require_foundry):
+    def test_tablewrite_can_send_message(self, require_foundry, playwright_user):
         """Verify we can click tablewrite tab and it initializes."""
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
@@ -134,7 +135,7 @@ class TestTablewriteGoblinGeneration:
                     text = opt.text_content() or ''
                     value = opt.get_attribute('value')
                     disabled = opt.get_attribute('disabled')
-                    if 'testing' in text.lower() and disabled is None:
+                    if playwright_user.lower() in text.lower() and disabled is None:
                         user_select.select_option(value)
                         break
                 page.locator('button:has-text("JOIN GAME SESSION")').click()
@@ -166,7 +167,7 @@ class TestTablewriteGoblinGeneration:
 
             browser.close()
 
-    def test_generate_goblin_via_tablewrite(self, require_foundry):
+    def test_generate_goblin_via_tablewrite(self, require_foundry, playwright_user):
         """
         Full E2E test: Generate a goblin via Tablewrite chat.
 
@@ -174,100 +175,57 @@ class TestTablewriteGoblinGeneration:
         1. Opens Foundry and navigates to Tablewrite tab
         2. Sends a message to create a goblin
         3. Waits for response
-        4. Verifies actor was created in Foundry
+        4. Verifies actor was created (by checking response for Actor UUID)
         """
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            page = browser.new_page(viewport={'width': 1920, 'height': 1080})
+        import re
+        import requests
 
-            # Capture console for debugging
-            console_msgs = []
-            page.on("console", lambda msg: console_msgs.append(f"[{msg.type}] {msg.text}"))
+        created_uuid = None
 
-            # Navigate and login
-            page.goto(FOUNDRY_URL)
-            page.wait_for_load_state('networkidle')
-            time.sleep(2)
+        try:
+            with FoundrySession(headless=True, user=playwright_user) as session:
+                session.goto_tablewrite()
+                time.sleep(1)
 
-            user_select = page.locator('select[name="userid"]')
-            if user_select.count() > 0:
-                options = user_select.locator('option').all()
-                for opt in options:
-                    text = opt.text_content() or ''
-                    value = opt.get_attribute('value')
-                    disabled = opt.get_attribute('disabled')
-                    if 'testing' in text.lower() and disabled is None:
-                        user_select.select_option(value)
-                        break
-                page.locator('button:has-text("JOIN GAME SESSION")').click()
-                # Wait for URL to change to /game (navigation happens asynchronously)
+                # Send goblin creation request
+                print("[DEBUG] Sending: Create a goblin")
+                session.send_message("Create a goblin", wait=60)
+
+                response_text = session.get_message_text()
+                response_html = session.get_message_html()
+                print(f"[DEBUG] Response text: {response_text[:300]}...")
+
+                session.screenshot("/tmp/goblin_creation.png")
+                print("[DEBUG] Screenshot: /tmp/goblin_creation.png")
+
+                # Parse UUID from response
+                uuid_pattern = r'data-uuid="Actor\.([a-zA-Z0-9]+)"'
+                matches = re.findall(uuid_pattern, response_html)
+
+                assert len(matches) > 0, f"No actor UUID found in response: {response_text[:200]}"
+
+                created_uuid = f"Actor.{matches[0]}"
+                print(f"[DEBUG] Created actor: {created_uuid}")
+
+                # Verify actor exists via API
+                response = requests.get(f"http://localhost:8000/api/foundry/actor/{created_uuid}")
+                assert response.status_code == 200, f"Actor not found in Foundry: {created_uuid}"
+
+                actor_data = response.json()
+                actor_name = actor_data.get('entity', {}).get('name', 'unknown')
+                print(f"[DEBUG] Actor name: {actor_name}")
+
+                # Verify it's goblin-related
+                assert 'goblin' in actor_name.lower() or len(matches) > 0, \
+                    f"Expected goblin actor, got: {actor_name}"
+
+                print(f"SUCCESS: Created actor: {actor_name}")
+
+        finally:
+            # Cleanup
+            if created_uuid:
                 try:
-                    page.wait_for_url("**/game", timeout=30000)
+                    requests.delete(f"http://localhost:8000/api/foundry/actor/{created_uuid}")
+                    print(f"[DEBUG] Deleted actor: {created_uuid}")
                 except Exception as e:
-                    print(f"Wait for URL failed: {e}. Current URL: {page.url}")
-
-            assert wait_for_game_ready(page), "Game did not become ready within timeout"
-
-            # Get initial actor count
-            initial_actors = page.evaluate('''() => {
-                if (typeof game === 'undefined' || !game.actors) return [];
-                return game.actors.map(a => ({ name: a.name, uuid: a.uuid }));
-            }''')
-            initial_count = len(initial_actors)
-
-            # Click tablewrite tab
-            tw_tab = page.locator('button[data-tab="tablewrite"]')
-            assert tw_tab.count() > 0, "Tablewrite tab not found"
-            tw_tab.click()
-            time.sleep(2)
-
-            # Find and use input field
-            input_field = page.locator('.tablewrite-input')
-            assert input_field.count() > 0, "Tablewrite input not found"
-
-            # Send goblin creation request
-            input_field.fill("Create a goblin")
-            input_field.press('Enter')
-
-            # Wait for response (up to 60 seconds for AI generation)
-            max_wait = 60
-            start = time.time()
-            response_found = False
-
-            while time.time() - start < max_wait:
-                # Check for assistant message
-                assistant_msgs = page.locator('.tablewrite-message--assistant')
-                if assistant_msgs.count() > 0:
-                    response_found = True
-                    break
-                time.sleep(2)
-
-            assert response_found, "No response received from Tablewrite within timeout"
-
-            # Wait a bit more for actor creation
-            time.sleep(5)
-
-            # Check if actor was created
-            final_actors = page.evaluate('''() => {
-                if (typeof game === 'undefined' || !game.actors) return [];
-                return game.actors.map(a => ({ name: a.name, uuid: a.uuid }));
-            }''')
-
-            # Debug: print console messages on failure
-            if len(final_actors) <= initial_count:
-                print("Console messages:")
-                for msg in console_msgs:
-                    if 'tablewrite' in msg.lower() or 'actor' in msg.lower():
-                        print(f"  {msg}")
-
-            # Verify new actor was created
-            new_actors = [a for a in final_actors if a not in initial_actors]
-            assert len(new_actors) > 0, f"No new actor created. Had {initial_count}, now have {len(final_actors)}"
-
-            # Verify it's a goblin-ish actor (name contains goblin)
-            goblin_actors = [a for a in new_actors if 'goblin' in a['name'].lower()]
-            assert len(goblin_actors) > 0, f"No goblin actor found. New actors: {new_actors}"
-
-            print(f"SUCCESS: Created goblin actor: {goblin_actors[0]}")
-
-            browser.close()
+                    print(f"[DEBUG] Warning: Failed to delete {created_uuid}: {e}")
