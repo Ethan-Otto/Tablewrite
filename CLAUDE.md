@@ -234,8 +234,11 @@ logger = get_run_logger("pdf_to_xml", run_dir)
 ### Running Tests
 
 ```bash
+./scripts/run_tests.sh                      # Full suite, parallel (recommended)
+./scripts/run_tests.sh -k "test_name"       # Run specific test pattern
+
 pytest                                      # Smoke tests only (~1 min, 25 tests)
-pytest --full                               # Full suite (~5 min parallel)
+pytest --full                               # Full suite (~7 min parallel)
 pytest --full -n auto --dist loadscope      # Parallel execution (fastest)
 pytest -m "not integration and not slow"    # Unit tests only
 pytest -m integration                       # Integration tests (cost money)
