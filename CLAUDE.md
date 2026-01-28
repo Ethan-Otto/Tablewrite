@@ -2,9 +2,28 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Branch: document_cleanup
+
+**Status:** Ready for public release
+
+**Public repo:** https://github.com/Ethan-Otto/Tablewrite
+
+**What was done:**
+- Removed proprietary content from git history (PDFs, adventure XML fixtures, battlemaps)
+- Created generic test fixtures (`tests/fixtures/xml/sample_adventure.xml`)
+- Updated tests to use generic content
+- Purged sensitive files (parallel.env, .env.swp) from history
+- Released Tablewrite Assistant v0.1.2
+
+**Remotes:**
+- `origin` → private repo (full history, local use only)
+- `public` → https://github.com/Ethan-Otto/Tablewrite (clean history)
+
+**To push changes:** `git push public document_cleanup:main`
+
 ## Project Overview
 
-D&D module converter: transforms official D&D PDFs into structured XML assets for FoundryVTT. Uses Google's Gemini 2.5 Pro for AI-powered document analysis.
+Converts PDF modules into FoundryVTT modules. Generate and edit FoundryVTT objects using AI-powered document analysis (Google Gemini 2.5 Pro).
 
 ## Quick Start
 
